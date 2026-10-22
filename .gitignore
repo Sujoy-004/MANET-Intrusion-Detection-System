@@ -1,0 +1,22 @@
+# Generated simulation output — reproducible from a seed, never commit (guide §4)
+traces/
+data/
+
+# Experiment output: keep plots, drop bulk per-run records
+results/*
+!results/plots/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
