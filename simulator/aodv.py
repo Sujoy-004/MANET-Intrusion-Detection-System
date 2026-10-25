@@ -80,6 +80,7 @@ class AODVNode:
         self.pending_rreqs: Set[int] = set()
 
         # Behavioral flags for attack simulation injection
+        self.attack_behavior: Optional[Any] = None
         self.is_blackhole: bool = False
         self.is_grayhole: bool = False
         self.grayhole_drop_prob: float = 0.5
@@ -177,6 +178,36 @@ class AODVNode:
             dest_seq=rreq.originator_seq,
             lifetime=self.active_route_timeout,
         )
+
+        # Check if attack behavior intercepts RREQ with spoofed RREP
+        if (
+            self.attack_behavior is not None
+            and hasattr(self.attack_behavior, "get_spoofed_rrep_params")
+            and self.node_id != rreq.dest
+            and rreq.originator != self.node_id
+        ):
+            spoofed_seq, spoofed_hops = self.attack_behavior.get_spoofed_rrep_params(
+                rreq.dest, rreq.dest_seq
+            )
+            rrep = RREP(
+                originator=rreq.originator,
+                dest=rreq.dest,
+                dest_seq=spoofed_seq,
+                hop_count=spoofed_hops,
+                lifetime=self.active_route_timeout,
+            )
+            self.log_event(
+                sim_time=now,
+                src=self.node_id,
+                dst=rreq.originator,
+                pkt_id=rreq.rreq_id,
+                pkt_type="RREP",
+                hop_count=spoofed_hops,
+            )
+            reverse_route = self.get_route(rreq.originator)
+            if reverse_route:
+                self.send_packet(reverse_route.next_hop, rrep)
+            return
 
         # Check if this node is the destination
         if self.node_id == rreq.dest:

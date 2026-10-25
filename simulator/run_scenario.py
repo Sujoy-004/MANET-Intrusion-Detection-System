@@ -15,8 +15,10 @@ from pathlib import Path
 import random
 from typing import Any, Dict, Generator, List, Optional, Tuple
 
+import networkx as nx
 import simpy
 
+from attacks.registry import create_attack_strategy
 from simulator.aodv import AODVNode, RERR, RREP, RREQ, RouteEntry
 from simulator.metrics import compute_metrics
 from simulator.mobility import RandomWaypoint, random_position
@@ -52,6 +54,7 @@ class SimulationRunner:
         self.aodv_nodes: Dict[int, AODVNode] = {}
         self.traffic_flows: List[CBRTraffic] = []
         self.trace_rows: List[List[Any]] = []
+        self.attacker_ids: List[int] = []
 
         self._pkt_counter = 1
 
@@ -107,8 +110,79 @@ class SimulationRunner:
         # Initial neighbor discovery
         self.update_topology()
 
+        # Attack configuration wiring
+        self.attacker_ids = []
+        attack_cfg = self.scenario.get("attack", {})
+        if attack_cfg.get("enabled", False):
+            attack_type = attack_cfg.get("type", "Blackhole")
+            attackers_spec = attack_cfg.get("attackers", "dynamic")
+            if attackers_spec == "dynamic" or attackers_spec == [] or attackers_spec is None:
+                chosen_id = self.select_dynamic_attacker(self.scenario.get("flows", []))
+                attackers_list = [chosen_id]
+            elif isinstance(attackers_spec, list):
+                attackers_list = attackers_spec
+            elif isinstance(attackers_spec, int):
+                attackers_list = [attackers_spec]
+            else:
+                attackers_list = []
+
+            self.attacker_ids = attackers_list
+            seq_offset = int(attack_cfg.get("seq_offset", 1000))
+            spoofed_hops = int(attack_cfg.get("spoofed_hops", 1))
+            for aid in self.attacker_ids:
+                if aid in self.aodv_nodes:
+                    strategy = create_attack_strategy(attack_type, seq_offset=seq_offset, spoofed_hops=spoofed_hops)
+                    self.aodv_nodes[aid].attack_behavior = strategy
+                    if attack_type.lower() == "blackhole":
+                        self.aodv_nodes[aid].is_blackhole = True
+
         # Start periodic topology refresh process
         self.env.process(self._periodic_topology_refresh())
+
+    def select_dynamic_attacker(self, flows: List[Dict[str, Any]]) -> int:
+        """Select intermediate node along active CBR flow paths to guarantee interception."""
+        G = nx.Graph()
+        for nid, node_state in self.nodes.items():
+            G.add_node(nid)
+            for nb in node_state.neighbors:
+                G.add_edge(nid, nb)
+
+        # Protect flow endpoints from being selected as malicious nodes
+        endpoints = set(f["src"] for f in flows) | set(f["dst"] for f in flows)
+
+        # Step 1: Count intermediate occurrences on shortest multi-hop flow paths
+        path_intermediates: Dict[int, int] = {}
+        for f in flows:
+            s, d = f["src"], f["dst"]
+            if nx.has_path(G, s, d):
+                p = nx.shortest_path(G, s, d)
+                for node in p[1:-1]:
+                    if node not in endpoints:
+                        path_intermediates[node] = path_intermediates.get(node, 0) + 1
+
+        if path_intermediates:
+            # Pick intermediate node appearing on the most paths, breaking ties by degree and lowest node ID
+            return max(path_intermediates.keys(), key=lambda n: (path_intermediates[n], G.degree[n], -n))
+
+        # Step 2: Fallback to non-endpoint neighbors of active sources
+        source_nbrs: Dict[int, int] = {}
+        for f in flows:
+            s = f["src"]
+            for nbr in G.neighbors(s):
+                if nbr not in endpoints:
+                    source_nbrs[nbr] = source_nbrs.get(nbr, 0) + G.degree[nbr]
+        if source_nbrs:
+            return max(source_nbrs.keys(), key=lambda n: (source_nbrs[n], -n))
+
+        # Step 3: Fallback to highest betweenness centrality among non-endpoints
+        bc = nx.betweenness_centrality(G)
+        candidates = {n: bc[n] for n in sorted(G.nodes) if n not in endpoints}
+        if candidates:
+            return max(candidates.keys(), key=lambda n: (candidates[n], -n))
+
+        # Final deterministic fallback
+        non_endpoints = [n for n in sorted(self.nodes.keys()) if n not in endpoints]
+        return non_endpoints[0] if non_endpoints else 0
 
     def get_node_position(self, node_id: int) -> Tuple[float, float]:
         """Get current (x, y) coordinates for a node."""
@@ -209,6 +283,18 @@ class SimulationRunner:
         aodv_node = self.aodv_nodes[current_hop]
 
         # Check for attack injection behavior
+        if aodv_node.attack_behavior is not None and hasattr(aodv_node.attack_behavior, "should_drop_data") and aodv_node.attack_behavior.should_drop_data(pkt.src, pkt.dst, pkt.pkt_id):
+            self.log_event(
+                sim_time=self.env.now,
+                src=pkt.src,
+                dst=pkt.dst,
+                pkt_id=pkt.pkt_id,
+                pkt_type="DATA_DROP",
+                hop_count=pkt.hop_count,
+                dropped_by=current_hop,
+            )
+            return
+
         if aodv_node.is_blackhole:
             self.log_event(
                 sim_time=self.env.now,

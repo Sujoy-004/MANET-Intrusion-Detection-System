@@ -20,3 +20,7 @@ venv/
 Thumbs.db
 .idea/
 .vscode/
+
+# GSD local planning (commit_docs: false)
+.planning/
+
