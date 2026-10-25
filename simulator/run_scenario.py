@@ -39,7 +39,7 @@ class NodeState:
 class SimulationRunner:
     """Orchestrates deterministic simulation execution."""
 
-    TRACE_HEADER = ["time", "src", "dst", "pkt_id", "type", "hop_count", "dropped_by"]
+    TRACE_HEADER = ["time", "src", "dst", "pkt_id", "type", "hop_count", "dropped_by", "node_id", "speed", "neighbor_count"]
     HOP_DELAY = 0.002  # 2ms wireless propagation and MAC processing delay per hop
 
     def __init__(self, scenario_config: Dict[str, Any], seed: int, out_path: Optional[Path] = None):
@@ -103,7 +103,16 @@ class SimulationRunner:
                 node_id=node_id,
                 get_time=lambda: self.env.now,
                 send_packet_cb=lambda target, msg, src=node_id: self.send_network_message(src, target, msg),
-                log_event_cb=self.log_event,
+                log_event_cb=lambda sim_time, src, dst, pkt_id, pkt_type, hop_count, dropped_by=None, nid=node_id: self.log_event(
+                    sim_time=sim_time,
+                    src=src,
+                    dst=dst,
+                    pkt_id=pkt_id,
+                    pkt_type=pkt_type,
+                    hop_count=hop_count,
+                    dropped_by=dropped_by,
+                    node_id=nid,
+                ),
             )
             self.aodv_nodes[node_id] = aodv_node
 
@@ -136,8 +145,29 @@ class SimulationRunner:
                     if attack_type.lower() == "blackhole":
                         self.aodv_nodes[aid].is_blackhole = True
 
-        # Start periodic topology refresh process
+        # Start periodic processes
         self.env.process(self._periodic_topology_refresh())
+        self.env.process(self._periodic_status_logger())
+
+    def _periodic_status_logger(self, interval: float = 1.0) -> Generator[simpy.Event, None, None]:
+        """Periodically log NODE_STATUS telemetry rows for all nodes."""
+        while True:
+            yield self.env.timeout(interval)
+            now = self.env.now
+            for nid in sorted(self.nodes.keys()):
+                node = self.nodes[nid]
+                self.trace_rows.append([
+                    f"{now:.6f}",
+                    nid,
+                    -1,
+                    0,
+                    "NODE_STATUS",
+                    0,
+                    "",
+                    nid,
+                    f"{node.speed:.4f}",
+                    len(node.neighbors),
+                ])
 
     def select_dynamic_attacker(self, flows: List[Dict[str, Any]]) -> int:
         """Select intermediate node along active CBR flow paths to guarantee interception."""
@@ -252,6 +282,7 @@ class SimulationRunner:
                     pkt_type="LINK_BROKEN",
                     hop_count=1,
                     dropped_by=src,
+                    node_id=src,
                 )
                 self.aodv_nodes[src].send_rerr(target)
 
@@ -264,6 +295,7 @@ class SimulationRunner:
             pkt_id=pkt.pkt_id,
             pkt_type="DATA_SENT",
             hop_count=0,
+            node_id=pkt.src,
         )
         self.env.process(self._route_and_forward_data(pkt, current_hop=pkt.src))
 
@@ -277,6 +309,7 @@ class SimulationRunner:
                 pkt_id=pkt.pkt_id,
                 pkt_type="DATA_RECV",
                 hop_count=pkt.hop_count,
+                node_id=current_hop,
             )
             return
 
@@ -292,6 +325,7 @@ class SimulationRunner:
                 pkt_type="DATA_DROP",
                 hop_count=pkt.hop_count,
                 dropped_by=current_hop,
+                node_id=current_hop,
             )
             return
 
@@ -304,6 +338,7 @@ class SimulationRunner:
                 pkt_type="DATA_DROP",
                 hop_count=pkt.hop_count,
                 dropped_by=current_hop,
+                node_id=current_hop,
             )
             return
 
@@ -316,6 +351,7 @@ class SimulationRunner:
                 pkt_type="DATA_DROP",
                 hop_count=pkt.hop_count,
                 dropped_by=current_hop,
+                node_id=current_hop,
             )
             return
 
@@ -338,6 +374,7 @@ class SimulationRunner:
                     pkt_type="DATA_DROP",
                     hop_count=pkt.hop_count,
                     dropped_by=current_hop,
+                    node_id=current_hop,
                 )
                 aodv_node.send_rerr(pkt.dst)
             return
@@ -355,6 +392,7 @@ class SimulationRunner:
                 pkt_id=pkt.pkt_id,
                 pkt_type="DATA_FWD",
                 hop_count=pkt.hop_count,
+                node_id=current_hop,
             )
             self.env.process(self._route_and_forward_data(pkt, current_hop=next_hop))
         else:
@@ -367,6 +405,7 @@ class SimulationRunner:
                 pkt_type="DATA_DROP",
                 hop_count=pkt.hop_count,
                 dropped_by=current_hop,
+                node_id=current_hop,
             )
             aodv_node.send_rerr(pkt.dst)
 
@@ -396,9 +435,15 @@ class SimulationRunner:
         pkt_type: str,
         hop_count: int,
         dropped_by: Optional[int] = None,
+        node_id: Optional[int] = None,
+        speed: Optional[float] = None,
+        neighbor_count: Optional[int] = None,
     ) -> None:
-        """Record a packet event in the trace log."""
+        """Record an event in the trace log."""
+        acting_node = node_id if node_id is not None else src
         dropped_str = str(dropped_by) if dropped_by is not None else ""
+        speed_str = f"{speed:.4f}" if speed is not None else ""
+        nbr_str = str(neighbor_count) if neighbor_count is not None else ""
         self.trace_rows.append([
             f"{sim_time:.6f}",
             src,
@@ -407,6 +452,9 @@ class SimulationRunner:
             pkt_type,
             hop_count,
             dropped_str,
+            acting_node,
+            speed_str,
+            nbr_str,
         ])
 
     def write_traces(self) -> None:

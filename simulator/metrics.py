@@ -104,7 +104,10 @@ def compute_metrics(
     elif isinstance(trace_source, pd.DataFrame):
         df = trace_source
     else:
-        header = ["time", "src", "dst", "pkt_id", "type", "hop_count", "dropped_by"]
+        if trace_source and len(trace_source[0]) == 10:
+            header = ["time", "src", "dst", "pkt_id", "type", "hop_count", "dropped_by", "node_id", "speed", "neighbor_count"]
+        else:
+            header = ["time", "src", "dst", "pkt_id", "type", "hop_count", "dropped_by"]
         df = pd.DataFrame(trace_source, columns=header)
 
     m = compute_metrics_from_df(df, sim_duration=sim_duration)
