@@ -1,0 +1,43 @@
+{
+  "contract": "1.0.0",
+  "flavor": "core",
+  "milestone": null,
+  "phases": [
+    {
+      "number": "1",
+      "name": "Pure-Python MANET Simulator Engine",
+      "status": "complete"
+    },
+    {
+      "number": "2",
+      "name": "Blackhole Attack, Trace Logging & Feature Pipeline",
+      "status": "pending"
+    },
+    {
+      "number": "3",
+      "name": "Machine Learning Classification Pipeline & Evaluation",
+      "status": "pending"
+    },
+    {
+      "number": "4",
+      "name": "Grayhole Attack & Generalization Testing",
+      "status": "pending"
+    },
+    {
+      "number": "5",
+      "name": "Closed-Loop IDS Mitigation & Network Re-Evaluation",
+      "status": "pending"
+    },
+    {
+      "number": "6",
+      "name": "Visualization, Documentation & Project Deliverables",
+      "status": "pending"
+    }
+  ],
+  "next": {
+    "command": "/gsd-progress --next",
+    "label": "Advance to the next step",
+    "reason": "Phase 2 of 6 · 17% · executing"
+  },
+  "updated_at": "2026-10-25T08:27:15.725Z"
+}

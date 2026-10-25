@@ -22,5 +22,19 @@ Thumbs.db
 .vscode/
 
 # GSD local planning (commit_docs: false)
-.planning/
 
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+!.env.sample
+
+# Credentials and private keys
+secrets/
+credentials/
+*.pem
+*.key
+
+# Gemini instructions
+GEMINI.md
