@@ -1,7 +1,7 @@
 """CLI entry point and composition root for MANET simulations.
 
 Handles deterministic scenario execution, SimPy environment lifecycle,
-and trace logging.
+mobility, radio connectivity, and trace logging.
 """
 
 from __future__ import annotations
@@ -12,9 +12,12 @@ from dataclasses import dataclass, field
 import json
 from pathlib import Path
 import random
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Generator, List, Optional, Tuple
 
 import simpy
+
+from simulator.mobility import RandomWaypoint, random_position
+from simulator.radio import calculate_distance, compute_all_neighbors, get_neighbors
 
 
 @dataclass
@@ -23,6 +26,7 @@ class NodeState:
     node_id: int
     x: float = 0.0
     y: float = 0.0
+    speed: float = 0.0
     neighbors: List[int] = field(default_factory=list)
 
 
@@ -38,19 +42,77 @@ class SimulationRunner:
         self.rng = random.Random(seed)
         self.env = simpy.Environment()
         self.nodes: Dict[int, NodeState] = {}
+        self.mobility_models: Dict[int, RandomWaypoint] = {}
         self.trace_rows: List[List[Any]] = []
 
-    def initialize_nodes(self) -> None:
-        """Initialize node states and initial random positions uniformly."""
-        num_nodes = int(self.scenario.get("nodes", 30))
-        area = self.scenario.get("area", [1000, 1000])
-        max_x, max_y = float(area[0]), float(area[1])
+        # Config extraction
+        self.area = self.scenario.get("area", [1000, 1000])
+        self.radio_range = float(self.scenario.get("radio", {}).get("range", 250.0))
+        self.loss_prob = float(self.scenario.get("radio", {}).get("loss_probability", 0.0))
 
-        # Use sorted keys / explicit indexing for determinism
+    def initialize_nodes(self) -> None:
+        """Initialize node states, mobility models, and initial positions."""
+        num_nodes = int(self.scenario.get("nodes", 30))
+        mob_cfg = self.scenario.get("mobility", {})
+        speed_range = tuple(mob_cfg.get("speed_range", [1.0, 10.0]))
+        pause_time = float(mob_cfg.get("pause_time", 5.0))
+        boundary = mob_cfg.get("boundary", "wrap")
+
+        # Deterministic generation for each node in sorted order
         for node_id in range(num_nodes):
-            x = self.rng.uniform(0.0, max_x)
-            y = self.rng.uniform(0.0, max_y)
-            self.nodes[node_id] = NodeState(node_id=node_id, x=x, y=y)
+            init_pos = random_position(self.rng, self.area)
+            mob = RandomWaypoint(
+                env=self.env,
+                node_id=node_id,
+                area=self.area,
+                speed_range=speed_range,
+                pause_time=pause_time,
+                rng=self.rng,
+                initial_pos=init_pos,
+                boundary=boundary,
+            )
+            self.mobility_models[node_id] = mob
+            self.nodes[node_id] = NodeState(
+                node_id=node_id,
+                x=init_pos[0],
+                y=init_pos[1],
+            )
+
+        # Initial neighbor discovery
+        self.update_topology()
+
+        # Start periodic topology refresh process
+        self.env.process(self._periodic_topology_refresh())
+
+    def get_node_position(self, node_id: int) -> Tuple[float, float]:
+        """Get current (x, y) coordinates for a node."""
+        mob = self.mobility_models[node_id]
+        return (mob.state.x, mob.state.y)
+
+    def get_all_positions(self) -> Dict[int, Tuple[float, float]]:
+        """Get positions for all nodes keyed by sorted node ID."""
+        return {nid: self.get_node_position(nid) for nid in sorted(self.nodes.keys())}
+
+    def update_topology(self) -> None:
+        """Recalculate dynamic neighbor sets for all nodes."""
+        positions = self.get_all_positions()
+        all_neighbors = compute_all_neighbors(
+            positions=positions,
+            range_m=self.radio_range,
+            rng=self.rng,
+            loss_prob=self.loss_prob,
+        )
+        for nid, nbs in all_neighbors.items():
+            node = self.nodes[nid]
+            node.x, node.y = positions[nid]
+            node.speed = self.mobility_models[nid].state.current_speed
+            node.neighbors = nbs
+
+    def _periodic_topology_refresh(self, interval: float = 1.0) -> Generator[simpy.Event, None, None]:
+        """Periodically refresh topology and neighbor tables."""
+        while True:
+            yield self.env.timeout(interval)
+            self.update_topology()
 
     def log_event(
         self,
@@ -90,7 +152,7 @@ class SimulationRunner:
         sim_duration = duration if duration is not None else float(self.scenario.get("duration", 300.0))
         self.initialize_nodes()
 
-        # Minimal initial trace event as tracer slice proof
+        # Log initialization event
         if self.nodes:
             self.log_event(
                 sim_time=self.env.now,
