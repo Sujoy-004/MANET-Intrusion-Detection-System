@@ -340,8 +340,8 @@ def test_persistence_classes_ordering(dataset_artifacts):
 
     best_model = joblib.load("ml/models/best_model.joblib")
     classes = list(best_model.classes_)
-    assert set(classes) == {"Normal", "Blackhole"}
-    assert "Blackhole" in classes
+    assert set(classes).issubset({"Normal", "Blackhole", "Grayhole"})
+    assert "Normal" in classes and "Blackhole" in classes
     bh_idx = classes.index("Blackhole")
 
     test_df = dataset_artifacts["test"].head(500)

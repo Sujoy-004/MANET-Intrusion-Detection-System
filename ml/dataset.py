@@ -10,7 +10,7 @@ import hashlib
 import json
 from pathlib import Path
 import sys
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -62,12 +62,12 @@ def validate_feature_frame(frame: pd.DataFrame) -> None:
         raise ValueError("Required 'label' column missing from frame.")
 
     unique_labels = set(frame["label"].unique())
-    valid_labels = {"Normal", "Blackhole"}
+    valid_labels = {"Normal", "Blackhole", "Grayhole"}
     if not unique_labels.issubset(valid_labels):
         raise ValueError(f"Frame contains invalid labels: {unique_labels - valid_labels}")
 
-    if unique_labels != valid_labels:
-        raise ValueError(f"Degenerate frame: expected both classes {valid_labels}, but found {unique_labels}")
+    if "Normal" not in unique_labels:
+        raise ValueError(f"Degenerate frame: missing 'Normal' baseline class, found {unique_labels}")
 
 
 def build_composite_run(
@@ -81,9 +81,10 @@ def build_composite_run(
 ) -> pd.DataFrame:
     """Run a single seeded simulation with dynamic attack onset and extract tabular features."""
     cfg = load_scenario(scenario_path)
+    scenario_id = cfg.get("scenario_id", "sim")
     trace_dir_path = Path(trace_dir)
     trace_dir_path.mkdir(parents=True, exist_ok=True)
-    trace_path = trace_dir_path / f"e3_onset_seed{seed}.csv"
+    trace_path = trace_dir_path / f"{scenario_id}_seed{seed}.csv"
 
     runner = SimulationRunner(cfg, seed=seed, out_path=trace_path)
     runner.run(duration=duration)
@@ -110,7 +111,7 @@ def build_composite_run(
 
 def build_master(
     seeds: Tuple[int, ...] = (42, 43, 44),
-    scenario_path: Union[str, Path] = "scenarios/e3_blackhole_onset_30n.json",
+    scenario_path: Union[str, Path, Sequence[Union[str, Path]]] = "scenarios/e3_blackhole_onset_30n.json",
     trace_dir: Union[str, Path] = "traces",
     window_size: float = 5.0,
     step_size: float = 1.0,
@@ -118,19 +119,25 @@ def build_master(
     duration: float = 300.0,
 ) -> pd.DataFrame:
     """Build master dataset concatenated in deterministic sorted-seed order."""
+    if isinstance(scenario_path, (str, Path)):
+        scenario_list = [scenario_path]
+    else:
+        scenario_list = list(scenario_path)
+
     frames: List[pd.DataFrame] = []
-    for s in sorted(seeds):
-        frame = build_composite_run(
-            seed=s,
-            scenario_path=scenario_path,
-            trace_dir=trace_dir,
-            window_size=window_size,
-            step_size=step_size,
-            warmup=warmup,
-            duration=duration,
-        )
-        validate_feature_frame(frame)
-        frames.append(frame)
+    for scn in scenario_list:
+        for s in sorted(seeds):
+            frame = build_composite_run(
+                seed=s,
+                scenario_path=scn,
+                trace_dir=trace_dir,
+                window_size=window_size,
+                step_size=step_size,
+                warmup=warmup,
+                duration=duration,
+            )
+            validate_feature_frame(frame)
+            frames.append(frame)
 
     master_df = pd.concat(frames, ignore_index=True)
     # Ensure canonical column order: SCHEMA_COLUMNS + ["seed"]
@@ -196,12 +203,17 @@ def write_dataset_files(
     train_sha = sha256_file(train_path)
     test_sha = sha256_file(test_path)
 
-    cfg = load_scenario(scenario_path)
+    if isinstance(scenario_path, (str, Path)) and Path(scenario_path).is_file():
+        cfg = load_scenario(scenario_path)
+        scenario_id = cfg.get("scenario_id", str(scenario_path))
+    else:
+        cfg = {}
+        scenario_id = "multi_attack" if not isinstance(scenario_path, (str, Path)) or str(scenario_path) == "multi_attack" else str(scenario_path)
 
     params = build_params or {}
     params_record = {
         "duration": params.get("duration", 300.0),
-        "scenario_id": cfg.get("scenario_id", "e3_blackhole_onset_30n"),
+        "scenario_id": scenario_id,
         "scenario_path": str(scenario_path),
         "step_size": params.get("step_size", 1.0),
         "warmup": params.get("warmup", 10.0),

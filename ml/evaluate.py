@@ -84,22 +84,31 @@ def evaluate_on_test(
         pipeline = models[name]
         y_pred = pipeline.predict(X)
 
-        # Explicit label ordering: Normal = 0, Blackhole = 1
-        cm = confusion_matrix(y, y_pred, labels=["Normal", "Blackhole"])
-        tn, fp, fn, tp = cm.ravel()
+        # Binary mapping for network-level attack isolation: 0 = Normal, 1 = Attack
+        y_true_bin = np.array([0 if val == "Normal" else 1 for val in y])
+        y_pred_bin = np.array([0 if val == "Normal" else 1 for val in y_pred])
+
+        cm_bin = confusion_matrix(y_true_bin, y_pred_bin, labels=[0, 1])
+        tn, fp, fn, tp = cm_bin.ravel()
 
         fpr = float(fp / (fp + tn)) if (fp + tn) > 0 else 0.0
-        acc = float(accuracy_score(y, y_pred))
-        prec = float(precision_score(y, y_pred, pos_label="Blackhole", zero_division=0.0))
-        rec = float(recall_score(y, y_pred, pos_label="Blackhole", zero_division=0.0))
-        f1 = float(f1_score(y, y_pred, pos_label="Blackhole", zero_division=0.0))
+        acc = float(accuracy_score(y_true_bin, y_pred_bin))
+        prec = float(precision_score(y_true_bin, y_pred_bin, pos_label=1, zero_division=0.0))
+        rec = float(recall_score(y_true_bin, y_pred_bin, pos_label=1, zero_division=0.0))
+        f1 = float(f1_score(y_true_bin, y_pred_bin, pos_label=1, zero_division=0.0))
+
+        # Individual attack metrics
+        f1_bh = float(f1_score(y == "Blackhole", y_pred == "Blackhole", pos_label=True, zero_division=0.0))
+        f1_gh = float(f1_score(y == "Grayhole", y_pred == "Grayhole", pos_label=True, zero_division=0.0)) if "Grayhole" in set(y) else 0.0
 
         rows.append({
             "model": name,
             "accuracy": acc,
             "precision": prec,
             "recall": rec,
-            "f1_blackhole": f1,
+            "f1": f1,
+            "f1_blackhole": f1_bh,
+            "f1_grayhole": f1_gh,
             "fpr": fpr,
             "tn": int(tn),
             "fp": int(fp),
@@ -143,10 +152,10 @@ def select_champion(
 
         eligible_with_meta.append((r, pipe, {"latency_ms": latency_ms, "file_size_bytes": file_size}))
 
-    # Tie-break key: max f1_blackhole, min latency, min file size
+    # Tie-break key: max f1, min latency, min file size
     champion_row, champion_pipe, tie_breakers = max(
         eligible_with_meta,
-        key=lambda item: (item[0]["f1_blackhole"], -item[2]["latency_ms"], -item[2]["file_size_bytes"]),
+        key=lambda item: (item[0]["f1"], -item[2]["latency_ms"], -item[2]["file_size_bytes"]),
     )
 
     return champion_row, champion_pipe, tie_breakers
@@ -196,7 +205,21 @@ def export_metrics_csv(
     """Export benchmark metrics to CSV."""
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame(rows).to_csv(p, index=False)
+    cols = [
+        "model",
+        "accuracy",
+        "precision",
+        "recall",
+        "f1_blackhole",
+        "fpr",
+        "tn",
+        "fp",
+        "fn",
+        "tp",
+    ]
+    df = pd.DataFrame(rows)
+    export_cols = [c for c in cols if c in df.columns]
+    df[export_cols].to_csv(p, index=False)
 
 
 def plot_confusion_matrices(
@@ -209,18 +232,19 @@ def plot_confusion_matrices(
     out_path = Path(out_dir)
     out_path.mkdir(parents=True, exist_ok=True)
 
+    labels = sorted(list(set(y_test.unique()) | {"Normal"}))
     for name, pipeline in models.items():
         y_pred = pipeline.predict(X_test)
-        cm = confusion_matrix(y_test, y_pred, labels=["Normal", "Blackhole"])
+        cm = confusion_matrix(y_test, y_pred, labels=labels)
 
-        fig, ax = plt.subplots(figsize=(5, 4))
+        fig, ax = plt.subplots(figsize=(6, 5))
         sns.heatmap(
             cm,
             annot=True,
             fmt="d",
             cmap="Blues",
-            xticklabels=["Normal", "Blackhole"],
-            yticklabels=["Normal", "Blackhole"],
+            xticklabels=labels,
+            yticklabels=labels,
             ax=ax,
         )
         ax.set_xlabel("Predicted")
@@ -266,7 +290,7 @@ def export_feature_importance(
             y=y_test,
             n_repeats=5,
             random_state=42,
-            scoring=make_scorer(f1_score, pos_label="Blackhole"),
+            scoring="f1_macro",
         )
         for feat, mean, std in zip(feature_cols, perm.importances_mean, perm.importances_std):
             rows.append({

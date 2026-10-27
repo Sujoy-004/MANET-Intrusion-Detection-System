@@ -1,0 +1,78 @@
+{
+  "scenario_id": "e4_grayhole_50n",
+  "description": "50-node dense MANET scenario with dynamic Grayhole attacker",
+  "nodes": 50,
+  "area": [1200, 1200],
+  "duration": 60.0,
+  "mobility": {
+    "model": "random_waypoint",
+    "speed_range": [1.0, 10.0],
+    "pause_time": 5.0,
+    "boundary": "wrap"
+  },
+  "radio": {
+    "range": 250,
+    "loss_probability": 0.01
+  },
+  "traffic": {
+    "protocol": "CBR_UDP",
+    "packet_size": 512
+  },
+  "flows": [
+    {
+      "flow_id": 0,
+      "src": 0,
+      "dst": 25,
+      "rate_pps": 4.0,
+      "start_time": 5.0,
+      "duration": 50.0
+    },
+    {
+      "flow_id": 1,
+      "src": 5,
+      "dst": 35,
+      "rate_pps": 4.0,
+      "start_time": 8.0,
+      "duration": 48.0
+    },
+    {
+      "flow_id": 2,
+      "src": 12,
+      "dst": 42,
+      "rate_pps": 4.0,
+      "start_time": 10.0,
+      "duration": 45.0
+    },
+    {
+      "flow_id": 3,
+      "src": 18,
+      "dst": 7,
+      "rate_pps": 4.0,
+      "start_time": 12.0,
+      "duration": 45.0
+    },
+    {
+      "flow_id": 4,
+      "src": 22,
+      "dst": 48,
+      "rate_pps": 4.0,
+      "start_time": 15.0,
+      "duration": 42.0
+    },
+    {
+      "flow_id": 5,
+      "src": 30,
+      "dst": 15,
+      "rate_pps": 4.0,
+      "start_time": 15.0,
+      "duration": 40.0
+    }
+  ],
+  "attack": {
+    "enabled": true,
+    "type": "Grayhole",
+    "attackers": "dynamic",
+    "drop_prob": 0.5,
+    "start_time": 15.0
+  }
+}

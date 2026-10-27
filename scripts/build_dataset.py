@@ -36,7 +36,13 @@ def parse_args(args: Optional[List[str]] = None) -> argparse.Namespace:
         "--scenario",
         type=str,
         default="scenarios/e3_blackhole_onset_30n.json",
-        help="Path to scenario JSON config (default: scenarios/e3_blackhole_onset_30n.json)",
+        help="Path or comma-separated paths to scenario JSON configs (default: scenarios/e3_blackhole_onset_30n.json)",
+    )
+    parser.add_argument(
+        "--multi-attack",
+        action="store_true",
+        default=False,
+        help="Build unified multi-attack dataset from e3_blackhole_onset_30n.json and e4_grayhole_onset_30n.json",
     )
     parser.add_argument(
         "--out-dir",
@@ -82,10 +88,18 @@ def main(args: Optional[List[str]] = None) -> int:
     parsed = parse_args(args)
     seed_list = tuple(int(s.strip()) for s in parsed.seeds.split(",") if s.strip())
 
+    if parsed.multi_attack:
+        scenarios = [
+            "scenarios/e3_blackhole_onset_30n.json",
+            "scenarios/e4_grayhole_onset_30n.json",
+        ]
+    else:
+        scenarios = [s.strip() for s in parsed.scenario.split(",") if s.strip()]
+
     print("=" * 80)
     print("MANET INTRUSION DETECTION SYSTEM - DATASET BUILDER (D-01 / D-02 / DATA-04)")
     print("=" * 80)
-    print(f"Scenario:    {parsed.scenario}")
+    print(f"Scenarios:   {scenarios}")
     print(f"Seeds:       {seed_list}")
     print(f"Duration:    {parsed.duration}s (warmup: {parsed.warmup}s, window: {parsed.window}s, step: {parsed.step}s)")
     print(f"Output dir:  {parsed.out_dir}")
@@ -97,13 +111,14 @@ def main(args: Optional[List[str]] = None) -> int:
         "step_size": parsed.step,
         "warmup": parsed.warmup,
         "window_size": parsed.window,
+        "scenarios": scenarios,
     }
 
     try:
         print("[*] Generating simulation runs and extracting features per seed...")
         master_df = build_master(
             seeds=seed_list,
-            scenario_path=parsed.scenario,
+            scenario_path=scenarios,
             trace_dir=parsed.trace_dir,
             window_size=parsed.window,
             step_size=parsed.step,
@@ -123,7 +138,7 @@ def main(args: Optional[List[str]] = None) -> int:
             train=train_df,
             test=test_df,
             out_dir=parsed.out_dir,
-            scenario_path=parsed.scenario,
+            scenario_path=scenarios[0] if len(scenarios) == 1 else "multi_attack",
             build_params=build_params,
         )
 

@@ -61,12 +61,15 @@ def load_training_data(
         raise ValueError("Missing 'label' column in training dataset.")
 
     unique_labels = set(df["label"].unique())
-    valid_labels = {"Normal", "Blackhole"}
+    valid_labels = {"Normal", "Blackhole", "Grayhole"}
     if not unique_labels.issubset(valid_labels):
         raise ValueError(f"Unexpected labels found: {unique_labels - valid_labels}")
 
-    if "Blackhole" not in unique_labels:
-        raise ValueError("Training dataset has zero 'Blackhole' rows (degenerate).")
+    if "Normal" not in unique_labels:
+        raise ValueError("Training dataset has zero 'Normal' rows (degenerate).")
+
+    if not (unique_labels - {"Normal"}):
+        raise ValueError("Training dataset has zero attack rows (degenerate).")
 
     X = df[feature_cols].copy()
     y = df["label"].astype(str).copy()
@@ -74,9 +77,23 @@ def load_training_data(
 
 
 def build_scoring() -> Dict[str, Any]:
-    """Construct multi-metric scoring dictionary with Blackhole as the explicit positive class."""
+    """Construct multi-metric scoring dictionary."""
+    def make_class_scorer(target_label: str):
+        def scorer_func(y_true, y_pred):
+            y_true_bin = [1 if v == target_label else 0 for v in y_true]
+            y_pred_bin = [1 if v == target_label else 0 for v in y_pred]
+            return float(f1_score(y_true_bin, y_pred_bin, pos_label=1, zero_division=0))
+        return make_scorer(scorer_func)
+
+    def attack_f1(y_true, y_pred):
+        y_true_bin = [0 if v == "Normal" else 1 for v in y_true]
+        y_pred_bin = [0 if v == "Normal" else 1 for v in y_pred]
+        return float(f1_score(y_true_bin, y_pred_bin, pos_label=1, zero_division=0))
+
     return {
-        "f1_blackhole": make_scorer(f1_score, pos_label="Blackhole"),
+        "f1_blackhole": make_class_scorer("Blackhole"),
+        "f1_grayhole": make_class_scorer("Grayhole"),
+        "f1_attack": make_scorer(attack_f1),
         "f1_macro": "f1_macro",
         "balanced_accuracy": "balanced_accuracy",
     }
@@ -99,7 +116,11 @@ def build_pipelines() -> Dict[str, Tuple[Pipeline, Dict[str, List[Any]]]]:
             ]),
             {
                 "clf__n_estimators": [50, 100],
-                "clf__max_depth": [8, 12, None],
+                "clf__max_depth": [12, None],
+                "clf__class_weight": [
+                    "balanced_subsample",
+                    {"Normal": 1.0, "Blackhole": 25.0, "Grayhole": 10.0},
+                ],
             },
         ),
         "decision_tree": (
@@ -165,13 +186,16 @@ def fit_pipeline(
     X: pd.DataFrame,
     y: pd.Series,
     cv: int = 5,
+    refit: Optional[str] = None,
 ) -> GridSearchCV:
-    """Run stratified 5-fold GridSearchCV tuning on f1_blackhole scoring."""
+    """Run stratified 5-fold GridSearchCV tuning on f1_macro or attack-specific scoring."""
+    if refit is None:
+        refit = "f1_macro" if "Grayhole" in set(y) else "f1_blackhole"
     grid = GridSearchCV(
         estimator=pipeline,
         param_grid=param_grid,
         scoring=build_scoring(),
-        refit="f1_blackhole",
+        refit=refit,
         cv=cv,
         n_jobs=1,
         return_train_score=False,
