@@ -97,7 +97,7 @@ Plans:
 **Plans**: 2 plans
 
 **Wave 1**
-- [ ] 04-01: Grayhole attack strategy, honest routing hook, dynamic scenario & time-aware feature extraction
+- [x] 04-01: Grayhole attack strategy, honest routing hook, dynamic scenario & time-aware feature extraction
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 04-02: Zero-shot transfer, multi-attack dataset & model training, and generalization stress matrix
@@ -146,6 +146,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 1. Pure-Python MANET Simulator Engine | 3/3 | Complete    | 2026-10-25 |
 | 2. Blackhole Attack, Trace Logging & Feature Pipeline | 3/3 | Complete    | 2026-10-25 |
 | 3. Machine Learning Classification Pipeline & Evaluation | 3/3 | Complete    | 2026-10-27 |
-| 4. Grayhole Attack & Generalization Testing | 0/2 | In progress | - |
+| 4. Grayhole Attack & Generalization Testing | 1/2 | In progress | - |
 | 5. Closed-Loop IDS Mitigation & Network Re-Evaluation | 0/2 | Not started | - |
 | 6. Visualization, Documentation & Project Deliverables | 0/2 | Not started | - |
