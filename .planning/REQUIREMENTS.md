@@ -17,9 +17,9 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Attack Injection
 
-- [ ] **ATK-01**: Decoupled Blackhole attack strategy advertising highest destination sequence number and 1-hop distance in spoofed RREP, silently dropping all intercepted data traffic
-- [ ] **ATK-02**: Decoupled Grayhole attack strategy forwarding control traffic while selectively or probabilistically dropping data packets
-- [ ] **ATK-03**: Scenario configuration runner injecting attacker behaviors at runtime without modifying baseline simulator code
+- [x] **ATK-01**: Decoupled Blackhole attack strategy advertising highest destination sequence number and 1-hop distance in spoofed RREP, silently dropping all intercepted data traffic
+- [x] **ATK-02**: Decoupled Grayhole attack strategy forwarding control traffic while selectively or probabilistically dropping data packets
+- [x] **ATK-03**: Scenario configuration runner injecting attacker behaviors at runtime without modifying baseline simulator code
 
 ### Trace Logging & Feature Engineering
 
@@ -74,14 +74,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SIM-05 | Phase 1 | Complete |
 | ATK-01 | Phase 2 | Pending |
 | ATK-03 | Phase 2 | Pending |
-| DATA-01 | Phase 2 | Pending |
-| DATA-02 | Phase 2 | Pending |
-| DATA-03 | Phase 2 | Pending |
-| DATA-04 | Phase 3 | Pending |
-| ML-01 | Phase 3 | Pending |
-| ML-02 | Phase 3 | Pending |
-| ML-03 | Phase 3 | Pending |
-| ATK-02 | Phase 4 | Pending |
+| DATA-01 | Phase 2 | Complete |
+| DATA-02 | Phase 2 | Complete |
+| DATA-03 | Phase 2 | Complete |
+| DATA-04 | Phase 3 | Complete |
+| ML-01 | Phase 3 | Complete |
+| ML-02 | Phase 3 | Complete |
+| ML-03 | Phase 3 | Complete |
+| ATK-02 | Phase 4 | Complete |
 | RESP-01 | Phase 5 | Pending |
 | RESP-02 | Phase 5 | Pending |
 | RESP-03 | Phase 6 | Pending |

@@ -1,18 +1,18 @@
 ---
 gsd_state_version: "1.0"
-current_phase: 04
-current_phase_name: Grayhole Attack & Generalization Testing
-status: in_progress
-stopped_at: Phase 04 planned (04-01-PLAN.md, 04-02-PLAN.md ready)
-last_updated: "2026-10-27T08:25:00.000Z"
+current_phase: 05
+current_phase_name: Closed-Loop IDS Mitigation & Network Re-Evaluation
+status: completed
+stopped_at: Phase 04 executed and verified (all 50 tests passing)
+last_updated: "2026-10-27T09:50:00.000Z"
 last_activity: 2026-10-27
-last_activity_desc: Phase 04 research and planning completed
+last_activity_desc: Phase 04 execution completed
 progress:
   total_phases: 6
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 15
-  completed_plans: 9
-  percent: 50
+  completed_plans: 11
+  percent: 73
 ---
 
 # Project State
@@ -22,16 +22,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-23)
 
 **Core value:** Provide a reproducible end-to-end demonstration chain: from simulated normal and malicious MANET traffic traces and non-leaking feature extraction, to ML-based intrusion detection and active node exclusion, demonstrating measurable QoS recovery (Packet Delivery Ratio, throughput, end-to-end delay) over unprotected baseline AODV.  
-**Current focus:** Phase 04 planned — Ready for Phase 04 Execution: Grayhole Attack & Generalization Testing
+**Current focus:** Phase 04 completed — Ready for Phase 05: Closed-Loop IDS Mitigation & Network Re-Evaluation
 
 ## Current Position
 
-Phase: 04 (Grayhole Attack & Generalization Testing) — IN PROGRESS (Planned)
-Plan: 0 of 2 complete
-Status: Phase 04 planned and verified
-Last activity: 2026-10-27 — Phase 04 research and planning completed
+Phase: 04 (Grayhole Attack & Generalization Testing) — COMPLETED
+Plan: 2 of 2 complete
+Status: Phase 04 complete
+Last activity: 2026-10-27 — Phase 04 execution completed
 
-Progress: [█████░░░░░] 50% (Phase 3 complete out of 6)
+Progress: [███████░░░] 73% (Phase 4 complete out of 6)
+
+## Phase 4 Verification
+
+- **04-01 (Grayhole Attack Strategy & Feature Pipeline Integration):** Completed & verified. Implemented `GrayholeStrategy` (`attacks/grayhole.py`) with honest AODV control routing seam and configurable Bernoulli / selective data dropping. Updated runner wiring in `simulator/run_scenario.py` and dynamic attack labeling in `feature_extraction/extract_features.py`. Created composite scenario `scenarios/e4_grayhole_onset_30n.json` and comprehensive test suite (`tests/test_attacks_grayhole.py`).
+- **04-02 (Zero-Shot Transfer, Multi-Attack Modeling & Generalization Matrix):** Completed & verified. Evaluated Phase 3 champion zero-shot on Grayhole (28.0% recall, 0.088% FPR). Extended dataset builder to multi-attack (52,200 total samples; train: 34,800 rows; test: 17,400 rows). Retrained classifiers under the locked FPR $\le$ 1.0% gate: Random Forest selected as champion (F1 0.7593, FPR 0.0099), serialized to `ml/models/best_model.joblib`. Implemented and executed 18-combination generalization matrix across speeds, drop rates, and densities (`scripts/run_generalization_matrix.py`), exporting `results/generalization_metrics.csv`, `results/generalization_report.md`, and boundary plots. All 50 tests pass.
 
 ## Phase 3 Verification
 
