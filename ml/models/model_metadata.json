@@ -1,0 +1,103 @@
+{
+  "all_candidates": [
+    {
+      "accuracy": 0.9847126436781609,
+      "f1_blackhole": 0.6356164383561644,
+      "fn": 84,
+      "fp": 49,
+      "fpr": 0.005764705882352941,
+      "model": "random_forest",
+      "precision": 0.703030303030303,
+      "recall": 0.58,
+      "tn": 8451,
+      "tp": 116
+    },
+    {
+      "accuracy": 0.9890804597701149,
+      "f1_blackhole": 0.7040498442367601,
+      "fn": 87,
+      "fp": 8,
+      "fpr": 0.0009411764705882353,
+      "model": "decision_tree",
+      "precision": 0.9338842975206612,
+      "recall": 0.565,
+      "tn": 8492,
+      "tp": 113
+    },
+    {
+      "accuracy": 0.8826436781609195,
+      "f1_blackhole": 0.06927985414767548,
+      "fn": 162,
+      "fp": 859,
+      "fpr": 0.10105882352941177,
+      "model": "svm",
+      "precision": 0.042363433667781496,
+      "recall": 0.19,
+      "tn": 7641,
+      "tp": 38
+    }
+  ],
+  "champion": "decision_tree",
+  "champion_params": {
+    "ccp_alpha": 0.0,
+    "class_weight": "balanced",
+    "criterion": "gini",
+    "max_depth": null,
+    "max_features": null,
+    "max_leaf_nodes": null,
+    "min_impurity_decrease": 0.0,
+    "min_samples_leaf": 1,
+    "min_samples_split": 2,
+    "min_weight_fraction_leaf": 0.0,
+    "monotonic_cst": null,
+    "random_state": 42,
+    "splitter": "best"
+  },
+  "feature_columns": [
+    "packet_forward_ratio",
+    "packet_drop_ratio",
+    "avg_delay",
+    "route_request_rate",
+    "route_reply_rate",
+    "throughput",
+    "hop_count",
+    "neighbor_count",
+    "mobility_speed"
+  ],
+  "labels": {
+    "classes": [
+      "Blackhole",
+      "Normal"
+    ],
+    "positive_class": "Blackhole"
+  },
+  "persistence": {
+    "champion_path": "ml/models/best_model.joblib",
+    "format": "joblib compress=3"
+  },
+  "selection": {
+    "fpr_gate": 0.01,
+    "fpr_gate_satisfied": true,
+    "primary_metric": "f1_blackhole",
+    "tie_breakers": [
+      "latency_ms",
+      "file_size_bytes"
+    ]
+  },
+  "telemetry": {
+    "file_size_bytes": 5151,
+    "latency_ms": 3.221400002075825
+  },
+  "test_metrics": {
+    "accuracy": 0.9890804597701149,
+    "f1_blackhole": 0.7040498442367601,
+    "fn": 87,
+    "fp": 8,
+    "fpr": 0.0009411764705882353,
+    "model": "decision_tree",
+    "precision": 0.9338842975206612,
+    "recall": 0.565,
+    "tn": 8492,
+    "tp": 113
+  }
+}

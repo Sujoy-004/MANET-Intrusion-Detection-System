@@ -74,9 +74,14 @@ Plans:
 **Plans**: TBD
 
 Plans:
-- [ ] 03-01: Anti-leakage scenario/seed dataset builder and preprocessor
-- [ ] 03-02: Multi-classifier training and hyperparameter tuning pipeline (RF, DT, SVM)
-- [ ] 03-03: Comprehensive classification evaluation suite and model persistence
+**Wave 1**
+- [x] 03-01: Anti-leakage scenario/seed dataset builder and preprocessor
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [x] 03-02: Multi-classifier training and hyperparameter tuning pipeline (RF, DT, SVM)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [x] 03-03: Comprehensive classification evaluation suite and model persistence
 
 ### Phase 4: Grayhole Attack & Generalization Testing
 

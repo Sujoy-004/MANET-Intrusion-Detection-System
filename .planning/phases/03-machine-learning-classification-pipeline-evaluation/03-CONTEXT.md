@@ -53,7 +53,7 @@ Phase 3 delivers a complete classical machine learning classification and evalua
 - `.planning/REQUIREMENTS.md` — Requirements DATA-04, ML-01, ML-02, ML-03
 - `.planning/ROADMAP.md` § Phase 3 — Phase goals and success criteria
 - `.planning/phases/02-blackhole-attack-trace-logging-feature-pipeline/02-CONTEXT.md` — Feature extraction and schema definitions
-- `.planning/phases/02-blackhole-attack-trace-logging-feature-pipeline/02-VERIFICATION.md` — Gate 2 verification benchmarks and baseline metrics
+- `.planning/phases/02-blackhole-attack-trace-logging-feature-pipeline/02-VALIDATION.md` — Phase 02 Nyquist validation framework: requirements-to-validation matrix and Gate 2 ≥25% PDR-drop benchmark
 </canonical_refs>
 
 <code_context>

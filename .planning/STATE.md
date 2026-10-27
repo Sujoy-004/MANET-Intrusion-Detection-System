@@ -1,19 +1,18 @@
 ---
 gsd_state_version: "1.0"
-current_phase: 02
-current_phase_name: Blackhole Attack, Trace Logging & Feature Pipeline
+current_phase: 04
+current_phase_name: Grayhole Attack & Generalization Testing
 status: completed
-stopped_at: Phase 03 context gathered
-last_updated: "2026-10-25T09:21:42.284Z"
-last_activity: 2026-10-25
-last_activity_desc: Phase 02 execution completed
-state_head: 288b9cd34a58ce3076bde8dd8be49d9e046bab6e
+stopped_at: Phase 03 executed and verified
+last_updated: "2026-10-27T07:50:00.000Z"
+last_activity: 2026-10-27
+last_activity_desc: Phase 03 execution completed
 progress:
   total_phases: 6
-  completed_phases: 2
-  total_plans: 6
-  completed_plans: 6
-  percent: 33
+  completed_phases: 3
+  total_plans: 15
+  completed_plans: 9
+  percent: 50
 ---
 
 # Project State
@@ -23,16 +22,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-23)
 
 **Core value:** Provide a reproducible end-to-end demonstration chain: from simulated normal and malicious MANET traffic traces and non-leaking feature extraction, to ML-based intrusion detection and active node exclusion, demonstrating measurable QoS recovery (Packet Delivery Ratio, throughput, end-to-end delay) over unprotected baseline AODV.  
-**Current focus:** Phase 02 completed — Ready for Phase 03: Machine Learning Classification Pipeline & Evaluation
+**Current focus:** Phase 03 completed — Ready for Phase 04: Grayhole Attack & Generalization Testing
 
 ## Current Position
 
-Phase: 02 (Blackhole Attack, Trace Logging & Feature Pipeline) — COMPLETED
+Phase: 03 (Machine Learning Classification Pipeline & Evaluation) — COMPLETED
 Plan: 3 of 3 complete
-Status: Phase 02 Complete
-Last activity: 2026-10-25 — Phase 02 execution completed
+Status: Phase 03 complete
+Last activity: 2026-10-27 — Phase 03 execution completed
 
-Progress: [███░░░░░░░] 33% (Phase 2 complete out of 6)
+Progress: [█████░░░░░] 50% (Phase 3 complete out of 6)
+
+## Phase 3 Verification
+
+- **03-01 (Composite Attack Onset & Seed-Partitioned Dataset Builder):** Completed & verified. Runner delayed onset seam (`_delayed_attack_activation`), time-aware labeling, deterministic seed-holdout dataset builder (`scripts/build_dataset.py`, `ml/dataset.py`) generating `data/train.csv` (17,400 rows, seeds 42+43) and `data/test.csv` (8,700 rows, seed 44) with SHA-256 manifest.
+- **03-02 (Scikit-learn Classifier Pipelines & Focused Grid Search CV):** Completed & verified. Uniform Scikit-learn pipelines with `StandardScaler` and `class_weight='balanced'`. 5-fold CV tuned Random Forest (best CV F1 0.6746), Decision Tree (best CV F1 0.5497), and SVM (best CV F1 0.2477) serialized to `ml/models/`.
+- **03-03 (Seed-44 Evaluation, FPR Gate & Champion Model Persistence):** Completed & verified. Evaluated all models on untouched seed 44 data. Enforced locked FPR $\le$ 0.01 gate: Decision Tree selected as champion (F1 0.7040, FPR 0.0009), serialized to `ml/models/best_model.joblib`. Full export suite generated (`results/metrics.csv`, `results/plots/`, `results/feature_importance.csv`, `results/evaluation_report.md`).
 
 ## Phase 2 Verification
 
@@ -43,9 +48,9 @@ Progress: [███░░░░░░░] 33% (Phase 2 complete out of 6)
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 6
-- Average duration: 0 min
-- Total execution time: 0.0 hours
+- Total plans completed: 9
+- Average duration: ~15 min
+- Total execution time: ~1.5 hours
 
 **By Phase:**
 
@@ -53,7 +58,7 @@ Progress: [███░░░░░░░] 33% (Phase 2 complete out of 6)
 |-------|-------|-------|----------|
 | 1. Pure-Python MANET Simulator Engine | 3/3 | Complete | - |
 | 2. Blackhole Attack, Trace Logging & Feature Pipeline | 3/3 | Complete | - |
-| 3. Machine Learning Classification Pipeline & Evaluation | 0/3 | - | - |
+| 3. Machine Learning Classification Pipeline & Evaluation | 3/3 | Complete | ~15 min |
 | 4. Grayhole Attack & Generalization Testing | 0/2 | - | - |
 | 5. Closed-Loop IDS Mitigation & Network Re-Evaluation | 0/2 | - | - |
 | 6. Visualization, Documentation & Project Deliverables | 0/2 | - | - |

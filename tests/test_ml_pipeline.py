@@ -260,3 +260,159 @@ def test_train_no_test_file_access():
     for f in forbidden_files:
         assert f not in content, f"ml/train.py contains forbidden reference to '{f}'!"
 
+
+@pytest.mark.skipif(not Path("ml/models/best_model.joblib").exists(), reason="run ml/evaluate.py first")
+def test_metrics_csv_security_columns():
+    """Verify results/metrics.csv contains the 10 security metric columns and valid FPR values."""
+    metrics_path = Path("results/metrics.csv")
+    assert metrics_path.exists(), "results/metrics.csv missing"
+
+    df = pd.read_csv(metrics_path)
+    expected_cols = [
+        "model",
+        "accuracy",
+        "precision",
+        "recall",
+        "f1_blackhole",
+        "fpr",
+        "tn",
+        "fp",
+        "fn",
+        "tp",
+    ]
+    assert list(df.columns) == expected_cols
+    assert len(df) == 3
+
+    for _, row in df.iterrows():
+        expected_fpr = row["fp"] / (row["fp"] + row["tn"]) if (row["fp"] + row["tn"]) > 0 else 0.0
+        np.testing.assert_allclose(row["fpr"], expected_fpr, rtol=1e-5)
+
+
+@pytest.mark.skipif(not Path("ml/models/best_model.joblib").exists(), reason="run ml/evaluate.py first")
+def test_fpr_gate_champion():
+    """Verify champion satisfies FPR <= 0.01 and achieved highest F1 among eligible models."""
+    from ml.evaluate import FPR_GATE
+
+    metrics_df = pd.read_csv("results/metrics.csv")
+    meta_path = Path("ml/models/model_metadata.json")
+    assert meta_path.exists(), "ml/models/model_metadata.json missing"
+    with open(meta_path, "r", encoding="utf-8") as f:
+        meta = json.load(f)
+
+    champ_name = meta["champion"]
+    assert meta["selection"]["fpr_gate_satisfied"] is True
+    assert meta["selection"]["fpr_gate"] == FPR_GATE
+
+    eligible = metrics_df[metrics_df["fpr"] <= FPR_GATE]
+    assert not eligible.empty
+    max_f1 = eligible["f1_blackhole"].max()
+    champ_row = metrics_df[metrics_df["model"] == champ_name].iloc[0]
+
+    assert champ_row["fpr"] <= FPR_GATE
+    assert champ_row["f1_blackhole"] == max_f1
+
+
+@pytest.mark.skipif(not Path("ml/models/best_model.joblib").exists(), reason="run ml/evaluate.py first")
+def test_persistence_loaded_parity(dataset_artifacts):
+    """Verify joblib-loaded champion predictions match source candidate model predictions."""
+    import joblib
+
+    with open("ml/models/model_metadata.json", "r", encoding="utf-8") as f:
+        meta = json.load(f)
+    champ_name = meta["champion"]
+
+    best_model = joblib.load("ml/models/best_model.joblib")
+    candidate_model = joblib.load(f"ml/models/{champ_name}.joblib")
+
+    test_df = dataset_artifacts["test"].head(500)
+    feature_cols = [c for c in SCHEMA_COLUMNS if c != "label"]
+    X_slice = test_df[feature_cols]
+
+    preds_best = best_model.predict(X_slice)
+    preds_cand = candidate_model.predict(X_slice)
+    assert np.array_equal(preds_best, preds_cand)
+
+
+@pytest.mark.skipif(not Path("ml/models/best_model.joblib").exists(), reason="run ml/evaluate.py first")
+def test_persistence_classes_ordering(dataset_artifacts):
+    """Verify champion classes_ contains both labels and predict_proba positive column resolves."""
+    import joblib
+
+    best_model = joblib.load("ml/models/best_model.joblib")
+    classes = list(best_model.classes_)
+    assert set(classes) == {"Normal", "Blackhole"}
+    assert "Blackhole" in classes
+    bh_idx = classes.index("Blackhole")
+
+    test_df = dataset_artifacts["test"].head(500)
+    feature_cols = [c for c in SCHEMA_COLUMNS if c != "label"]
+    X_slice = test_df[feature_cols]
+
+    preds = best_model.predict(X_slice)
+    probs = best_model.predict_proba(X_slice)
+
+    for i, p in enumerate(preds):
+        if p == "Blackhole":
+            assert np.argmax(probs[i]) == bh_idx
+
+
+@pytest.mark.skipif(not Path("ml/models/best_model.joblib").exists(), reason="run ml/evaluate.py first")
+def test_exports_artifacts_complete():
+    """Verify metrics CSV, confusion plots, feature importance CSV, and evaluation report exist."""
+    # 1. Metrics CSV
+    metrics_path = Path("results/metrics.csv")
+    assert metrics_path.exists()
+    assert len(pd.read_csv(metrics_path)) == 3
+
+    # 2. Confusion plots
+    plots_dir = Path("results/plots")
+    for m in ["random_forest", "decision_tree", "svm"]:
+        pfile = plots_dir / f"confusion_matrix_{m}.png"
+        assert pfile.exists()
+        assert pfile.stat().st_size > 1024, f"{pfile} size is too small"
+
+    # 3. Feature importance
+    feat_path = Path("results/feature_importance.csv")
+    assert feat_path.exists()
+    feat_df = pd.read_csv(feat_path)
+    feature_cols = [c for c in SCHEMA_COLUMNS if c != "label"]
+    for m in ["random_forest", "decision_tree", "svm"]:
+        perm_rows = feat_df[(feat_df["model"] == m) & (feat_df["source"] == "permutation")]
+        assert len(perm_rows) == len(feature_cols)
+    for m in ["random_forest", "decision_tree"]:
+        gini_rows = feat_df[(feat_df["model"] == m) & (feat_df["source"] == "gini")]
+        assert len(gini_rows) == len(feature_cols)
+
+    # 4. Evaluation report
+    rep_path = Path("results/evaluation_report.md")
+    assert rep_path.exists()
+    rep_text = rep_path.read_text(encoding="utf-8")
+    with open("ml/models/model_metadata.json", "r", encoding="utf-8") as f:
+        meta = json.load(f)
+    champ_name = meta["champion"]
+    assert champ_name in rep_text
+    f1_str = f"{meta['test_metrics']['f1_blackhole']:.4f}"
+    assert f1_str in rep_text
+
+
+@pytest.mark.skipif(not Path("ml/models/best_model.joblib").exists(), reason="run ml/evaluate.py first")
+def test_evaluate_deterministic_rows(tmp_path):
+    """Verify evaluate_on_test produces identical results and byte-identical export."""
+    from ml.evaluate import (
+        evaluate_on_test,
+        export_metrics_csv,
+        load_candidates,
+    )
+
+    candidates = load_candidates()
+    rows1, _, _ = evaluate_on_test(candidates, "data/test.csv")
+    rows2, _, _ = evaluate_on_test(candidates, "data/test.csv")
+    assert rows1 == rows2
+
+    out1 = tmp_path / "m1.csv"
+    out2 = tmp_path / "m2.csv"
+    export_metrics_csv(rows1, out1)
+    export_metrics_csv(rows2, out2)
+    assert out1.read_bytes() == out2.read_bytes()
+
+
