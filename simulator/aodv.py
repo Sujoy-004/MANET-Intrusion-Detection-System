@@ -186,28 +186,30 @@ class AODVNode:
             and self.node_id != rreq.dest
             and rreq.originator != self.node_id
         ):
-            spoofed_seq, spoofed_hops = self.attack_behavior.get_spoofed_rrep_params(
+            spoofed_params = self.attack_behavior.get_spoofed_rrep_params(
                 rreq.dest, rreq.dest_seq
             )
-            rrep = RREP(
-                originator=rreq.originator,
-                dest=rreq.dest,
-                dest_seq=spoofed_seq,
-                hop_count=spoofed_hops,
-                lifetime=self.active_route_timeout,
-            )
-            self.log_event(
-                sim_time=now,
-                src=self.node_id,
-                dst=rreq.originator,
-                pkt_id=rreq.rreq_id,
-                pkt_type="RREP",
-                hop_count=spoofed_hops,
-            )
-            reverse_route = self.get_route(rreq.originator)
-            if reverse_route:
-                self.send_packet(reverse_route.next_hop, rrep)
-            return
+            if spoofed_params is not None:
+                spoofed_seq, spoofed_hops = spoofed_params
+                rrep = RREP(
+                    originator=rreq.originator,
+                    dest=rreq.dest,
+                    dest_seq=spoofed_seq,
+                    hop_count=spoofed_hops,
+                    lifetime=self.active_route_timeout,
+                )
+                self.log_event(
+                    sim_time=now,
+                    src=self.node_id,
+                    dst=rreq.originator,
+                    pkt_id=rreq.rreq_id,
+                    pkt_type="RREP",
+                    hop_count=spoofed_hops,
+                )
+                reverse_route = self.get_route(rreq.originator)
+                if reverse_route:
+                    self.send_packet(reverse_route.next_hop, rrep)
+                return
 
         # Check if this node is the destination
         if self.node_id == rreq.dest:

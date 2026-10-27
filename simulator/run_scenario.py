@@ -136,17 +136,31 @@ class SimulationRunner:
                 attackers_list = []
 
             self.attacker_ids = attackers_list
-            seq_offset = int(attack_cfg.get("seq_offset", 1000))
-            spoofed_hops = int(attack_cfg.get("spoofed_hops", 1))
             start_time_val = attack_cfg.get("start_time")
             start_time = float(start_time_val) if start_time_val is not None else None
             for aid in self.attacker_ids:
                 if aid in self.aodv_nodes:
-                    strategy = create_attack_strategy(attack_type, seq_offset=seq_offset, spoofed_hops=spoofed_hops)
+                    if attack_type.lower() == "grayhole":
+                        strategy = create_attack_strategy(
+                            attack_type,
+                            drop_prob=float(attack_cfg.get("drop_prob", 0.5)),
+                            target_flows=attack_cfg.get("target_flows"),
+                            target_dests=attack_cfg.get("target_dests"),
+                            seed=self.seed,
+                        )
+                    else:
+                        seq_offset = int(attack_cfg.get("seq_offset", 1000))
+                        spoofed_hops = int(attack_cfg.get("spoofed_hops", 1))
+                        strategy = create_attack_strategy(
+                            attack_type, seq_offset=seq_offset, spoofed_hops=spoofed_hops
+                        )
+
                     if start_time is None:
                         self.aodv_nodes[aid].attack_behavior = strategy
                         if attack_type.lower() == "blackhole":
                             self.aodv_nodes[aid].is_blackhole = True
+                        elif attack_type.lower() == "grayhole":
+                            self.aodv_nodes[aid].is_grayhole = True
                     else:
                         self.env.process(self._delayed_attack_activation(aid, strategy, start_time, attack_type))
 
@@ -163,6 +177,8 @@ class SimulationRunner:
             self.aodv_nodes[aid].attack_behavior = strategy
             if attack_type.lower() == "blackhole":
                 self.aodv_nodes[aid].is_blackhole = True
+            elif attack_type.lower() == "grayhole":
+                self.aodv_nodes[aid].is_grayhole = True
 
     def _periodic_status_logger(self, interval: float = 1.0) -> Generator[simpy.Event, None, None]:
         """Periodically log NODE_STATUS telemetry rows for all nodes."""

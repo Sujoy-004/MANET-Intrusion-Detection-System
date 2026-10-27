@@ -6,9 +6,11 @@ from typing import Any, Dict, Type
 
 from attacks.base import AttackStrategy
 from attacks.blackhole import BlackholeStrategy
+from attacks.grayhole import GrayholeStrategy
 
 _REGISTRY: Dict[str, Type[AttackStrategy]] = {
     "blackhole": BlackholeStrategy,
+    "grayhole": GrayholeStrategy,
 }
 
 

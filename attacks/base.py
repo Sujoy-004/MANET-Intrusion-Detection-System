@@ -8,15 +8,15 @@ the Python standard library.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Tuple
+from typing import Optional, Tuple
 
 
 class AttackStrategy(ABC):
     """Abstract base class for adversarial routing behavior strategies."""
 
     @abstractmethod
-    def get_spoofed_rrep_params(self, dest: int, rreq_dest_seq: int) -> Tuple[int, int]:
-        """Return spoofed (dest_seq, hop_count) for an intercepted RREQ."""
+    def get_spoofed_rrep_params(self, dest: int, rreq_dest_seq: int) -> Optional[Tuple[int, int]]:
+        """Return spoofed (dest_seq, hop_count) for an intercepted RREQ, or None if honest."""
         pass
 
     @abstractmethod
