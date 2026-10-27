@@ -94,11 +94,13 @@ Plans:
   2. Feature extractor captures nuanced behavioral degradation under subtle packet loss rates.
   3. Trained intrusion detection models are evaluated on unseen topologies, varying node speeds, and Grayhole variants.
 
-**Plans**: TBD
+**Plans**: 2 plans
 
-Plans:
-- [ ] 04-01: Selective and probabilistic Grayhole attack strategy
-- [ ] 04-02: Multi-scenario generalization benchmark across varying node speeds and densities
+**Wave 1**
+- [ ] 04-01: Grayhole attack strategy, honest routing hook, dynamic scenario & time-aware feature extraction
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 04-02: Zero-shot transfer, multi-attack dataset & model training, and generalization stress matrix
 
 ### Phase 5: Closed-Loop IDS Mitigation & Network Re-Evaluation
 
@@ -142,8 +144,8 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Pure-Python MANET Simulator Engine | 3/3 | Complete    | 2026-10-25 |
-| 2. Blackhole Attack, Trace Logging & Feature Pipeline | 0/3 | Not started | - |
-| 3. Machine Learning Classification Pipeline & Evaluation | 0/3 | Not started | - |
-| 4. Grayhole Attack & Generalization Testing | 0/2 | Not started | - |
+| 2. Blackhole Attack, Trace Logging & Feature Pipeline | 3/3 | Complete    | 2026-10-25 |
+| 3. Machine Learning Classification Pipeline & Evaluation | 3/3 | Complete    | 2026-10-27 |
+| 4. Grayhole Attack & Generalization Testing | 0/2 | In progress | - |
 | 5. Closed-Loop IDS Mitigation & Network Re-Evaluation | 0/2 | Not started | - |
 | 6. Visualization, Documentation & Project Deliverables | 0/2 | Not started | - |
