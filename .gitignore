@@ -25,6 +25,7 @@ Thumbs.db
 .vscode/
 
 # GSD local planning (commit_docs: false)
+.opencode/
 
 
 # Environment variables and secrets
