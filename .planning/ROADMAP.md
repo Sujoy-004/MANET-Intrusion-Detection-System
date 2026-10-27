@@ -7,10 +7,10 @@ This roadmap delivers an end-to-end Machine Learning-Based Intrusion Detection a
 ## Phases
 
 - [x] **Phase 1: Pure-Python MANET Simulator Engine** - Build deterministic discrete-event simulator with RWP mobility, radio range, RFC 3561 AODV routing, and CBR/UDP traffic. (completed 2026-10-25)
-- [ ] **Phase 2: Blackhole Attack, Trace Logging & Feature Pipeline** - Implement decoupled Blackhole attack, packet-level event trace logging, and non-leaking sliding-window feature extractor.
-- [ ] **Phase 3: Machine Learning Classification Pipeline & Evaluation** - Train classical ML classifiers (RF, DT, SVM) on scenario-held-out datasets with comprehensive security metrics.
-- [ ] **Phase 4: Grayhole Attack & Generalization Testing** - Implement selective/probabilistic Grayhole attack and validate cross-scenario detection across unseen seeds and topologies.
-- [ ] **Phase 5: Closed-Loop IDS Mitigation & Network Re-Evaluation** - Integrate ML predictions into AODV route selection and benchmark QoS recovery against unprotected AODV.
+- [x] **Phase 2: Blackhole Attack, Trace Logging & Feature Pipeline** - Implement decoupled Blackhole attack, packet-level event trace logging, and non-leaking sliding-window feature extractor. (completed 2026-10-25)
+- [x] **Phase 3: Machine Learning Classification Pipeline & Evaluation** - Train classical ML classifiers (RF, DT, SVM) on scenario-held-out datasets with comprehensive security metrics. (completed 2026-10-27)
+- [x] **Phase 4: Grayhole Attack & Generalization Testing** - Implement selective/probabilistic Grayhole attack and validate cross-scenario detection across unseen seeds and topologies. (completed 2026-10-27)
+- [x] **Phase 5: Closed-Loop IDS Mitigation & Network Re-Evaluation** - Integrate ML predictions into AODV route selection and benchmark QoS recovery against unprotected AODV. (completed 2026-10-28)
 - [ ] **Phase 6: Visualization, Documentation & Project Deliverables** - Generate publication-quality Matplotlib/Seaborn plots, confusion matrices, and final experimental handbook documentation.
 
 ## Phase Details
@@ -113,11 +113,13 @@ Plans:
   2. Closed-loop simulation re-routes traffic around compromised nodes without blacklisting benign nodes.
   3. Comparative QoS benchmarks quantify PDR, throughput, end-to-end delay, and routing overhead across Baseline AODV vs Attack AODV vs AODV+IDS under identical seeds.
 
-**Plans**: TBD
+**Plans**: 2 plans
 
-Plans:
-- [ ] 05-01: Closed-loop IDS response engine and AODV route exclusion integration
-- [ ] 05-02: Comparative QoS benchmarking pipeline (Baseline vs Attack vs AODV+IDS)
+**Wave 1**
+- [x] 05-01: Closed-loop IDS response engine and AODV route exclusion integration
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [x] 05-02: Comparative QoS benchmarking pipeline (Baseline vs Attack vs AODV+IDS)
 
 ### Phase 6: Visualization, Documentation & Project Deliverables
 

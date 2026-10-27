@@ -64,6 +64,34 @@ class SimulationRunner:
         self.loss_prob = float(self.scenario.get("radio", {}).get("loss_probability", 0.0))
         self.duration = float(self.scenario.get("duration", 300.0))
 
+        # Closed-loop IDS configuration
+        ids_cfg = self.scenario.get("ids", {})
+        if ids_cfg.get("enabled", False):
+            from ml.response import OnlineIDS
+
+            flow_endpoints = set(f["src"] for f in self.scenario.get("flows", [])) | set(
+                f["dst"] for f in self.scenario.get("flows", [])
+            )
+            isolation_log = ids_cfg.get("isolation_log_path")
+            log_path = Path(isolation_log) if isolation_log else None
+            self.online_ids: Optional[Any] = OnlineIDS(
+                env=self.env,
+                aodv_nodes=self.aodv_nodes,
+                nodes=self.nodes,
+                model_path=ids_cfg.get("model_path", "ml/models/best_model.joblib"),
+                window_size=float(ids_cfg.get("window_size", 5.0)),
+                eval_interval=float(ids_cfg.get("eval_interval", 1.0)),
+                threshold=float(ids_cfg.get("threshold", 0.50)),
+                quarantine_duration=float(ids_cfg.get("quarantine_duration", 30.0)),
+                strikes_required=int(ids_cfg.get("strikes_required", 2)),
+                flow_endpoints=flow_endpoints,
+                isolation_log_path=log_path,
+                scenario_name=self.scenario.get("name", "scenario"),
+                seed=self.seed,
+            )
+        else:
+            self.online_ids = None
+
     def next_pkt_id(self) -> int:
         """Generate unique monotonic packet ID."""
         pid = self._pkt_counter
@@ -113,6 +141,7 @@ class SimulationRunner:
                     dropped_by=dropped_by,
                     node_id=nid,
                 ),
+                is_blacklisted_cb=(self.online_ids.is_blacklisted if self.online_ids else None),
             )
             self.aodv_nodes[node_id] = aodv_node
 
@@ -167,6 +196,8 @@ class SimulationRunner:
         # Start periodic processes
         self.env.process(self._periodic_topology_refresh())
         self.env.process(self._periodic_status_logger())
+        if self.online_ids is not None:
+            self.env.process(self.online_ids._periodic_detection_loop())
 
     def _delayed_attack_activation(
         self, aid: int, strategy: Any, start_time: float, attack_type: str
@@ -487,6 +518,19 @@ class SimulationRunner:
             speed_str,
             nbr_str,
         ])
+        if self.online_ids is not None:
+            self.online_ids.ingest_event(
+                sim_time=sim_time,
+                src=src,
+                dst=dst,
+                pkt_id=pkt_id,
+                pkt_type=pkt_type,
+                hop_count=hop_count,
+                dropped_by=dropped_by,
+                node_id=acting_node,
+                speed=speed,
+                neighbor_count=neighbor_count,
+            )
 
     def write_traces(self) -> None:
         """Write collected trace events to CSV file."""
@@ -507,6 +551,8 @@ class SimulationRunner:
 
         self.env.run(until=sim_duration)
         self.write_traces()
+        if self.online_ids is not None and self.online_ids.isolation_log_path is not None:
+            self.online_ids.write_isolation_log()
 
         metrics = compute_metrics(self.trace_rows, sim_duration=sim_duration)
         return metrics

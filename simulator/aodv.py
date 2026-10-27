@@ -65,12 +65,14 @@ class AODVNode:
         send_packet_cb: Callable[[int, Any], None],
         log_event_cb: Callable[..., None],
         active_route_timeout: float = DEFAULT_ACTIVE_ROUTE_TIMEOUT,
+        is_blacklisted_cb: Optional[Callable[[int], bool]] = None,
     ):
         self.node_id = node_id
         self.get_time = get_time
         self.send_packet = send_packet_cb
         self.log_event = log_event_cb
         self.active_route_timeout = active_route_timeout
+        self.is_blacklisted_cb = is_blacklisted_cb
 
         self.seq_num: int = 1
         self.rreq_id: int = 0
@@ -85,11 +87,18 @@ class AODVNode:
         self.is_grayhole: bool = False
         self.grayhole_drop_prob: float = 0.5
 
+    def is_node_blacklisted(self, node_id: int) -> bool:
+        """Check whether a node ID is currently in the active quarantine blacklist."""
+        return bool(self.is_blacklisted_cb and self.is_blacklisted_cb(node_id))
+
     def get_route(self, dest: int) -> Optional[RouteEntry]:
         """Look up valid, unexpired route to destination."""
         now = self.get_time()
         entry = self.routing_table.get(dest)
         if entry is not None:
+            if self.is_node_blacklisted(entry.next_hop) or self.is_node_blacklisted(dest):
+                entry.is_valid = False
+                return None
             if entry.is_valid and entry.lifetime > now:
                 return entry
             else:
@@ -105,6 +114,9 @@ class AODVNode:
         lifetime: float,
     ) -> bool:
         """Update or insert route entry if more recent or shorter."""
+        if self.is_node_blacklisted(next_hop) or self.is_node_blacklisted(dest):
+            return False
+
         now = self.get_time()
         existing = self.routing_table.get(dest)
 
@@ -164,6 +176,9 @@ class AODVNode:
 
     def handle_rreq(self, rreq: RREQ, prev_hop: int) -> None:
         """Process incoming RREQ packet."""
+        if self.is_node_blacklisted(prev_hop) or self.is_node_blacklisted(rreq.originator):
+            return
+
         now = self.get_time()
         key = (rreq.originator, rreq.rreq_id)
         if key in self.seen_rreq:
@@ -262,6 +277,9 @@ class AODVNode:
 
     def handle_rrep(self, rrep: RREP, prev_hop: int) -> None:
         """Process incoming RREP packet."""
+        if self.is_node_blacklisted(prev_hop) or self.is_node_blacklisted(rrep.dest):
+            return
+
         now = self.get_time()
         self.update_route(
             dest=rrep.dest,
@@ -323,3 +341,13 @@ class AODVNode:
         if entry and entry.next_hop == prev_hop:
             entry.is_valid = False
             entry.dest_seq = rerr.unreachable_seq
+
+    def invalidate_routes_through(self, bad_node: int) -> List[int]:
+        """Invalidate all route entries that traverse or terminate at bad_node.
+        Returns list of unreachable destinations."""
+        severed: List[int] = []
+        for dest, entry in list(self.routing_table.items()):
+            if entry.is_valid and (entry.next_hop == bad_node or dest == bad_node):
+                entry.is_valid = False
+                severed.append(dest)
+        return severed

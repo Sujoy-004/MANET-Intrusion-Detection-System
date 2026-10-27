@@ -1,18 +1,19 @@
 ---
 gsd_state_version: "1.0"
-current_phase: 05
-current_phase_name: Closed-Loop IDS Mitigation & Network Re-Evaluation
-status: completed
-stopped_at: Phase 04 executed and verified (all 50 tests passing)
-last_updated: "2026-10-27T09:50:00.000Z"
-last_activity: 2026-10-27
-last_activity_desc: Phase 04 execution completed
+current_phase: 06
+current_phase_name: Visualization, Documentation & Project Deliverables
+status: ready_to_plan
+stopped_at: Phase 05 verification passed
+last_updated: "2026-10-28T00:23:00.000Z"
+last_activity: 2026-10-28
+last_activity_desc: Phase 05 execution & verification completed
+state_head: "phase-05-complete"
 progress:
   total_phases: 6
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 15
-  completed_plans: 11
-  percent: 73
+  completed_plans: 13
+  percent: 83
 ---
 
 # Project State
@@ -22,16 +23,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-23)
 
 **Core value:** Provide a reproducible end-to-end demonstration chain: from simulated normal and malicious MANET traffic traces and non-leaking feature extraction, to ML-based intrusion detection and active node exclusion, demonstrating measurable QoS recovery (Packet Delivery Ratio, throughput, end-to-end delay) over unprotected baseline AODV.  
-**Current focus:** Phase 04 completed — Ready for Phase 05: Closed-Loop IDS Mitigation & Network Re-Evaluation
+**Current focus:** Phase 05 completed — Ready for Phase 06: Visualization, Documentation & Project Deliverables
 
 ## Current Position
 
-Phase: 04 (Grayhole Attack & Generalization Testing) — COMPLETED
-Plan: 2 of 2 complete
-Status: Phase 04 complete
-Last activity: 2026-10-27 — Phase 04 execution completed
+Phase: 06 (Visualization, Documentation & Project Deliverables) — READY TO PLAN
+Plan: 0 of 2 complete
+Status: Ready to plan
+Last activity: 2026-10-28 — Phase 05 execution & verification completed
 
-Progress: [███████░░░] 73% (Phase 4 complete out of 6)
+Progress: [████████░░] 83% (Phase 5 complete out of 6)
+
+## Phase 5 Verification
+
+- **05-01 (Closed-Loop IDS Response Engine & AODV Route Exclusion):** Completed & verified. Implemented `is_blacklisted_cb`, `handle_rreq`/`handle_rrep` drop filtering, route insertion rejection, route lookup invalidation, and `invalidate_routes_through` in `simulator/aodv.py`. Built `OnlineIDS` controller (`ml/response.py`) with in-memory deque, feature assembly matching training scaler, 2-strike confirmation ($K=2$, $\tau=0.50$), 30s quarantine decay, route invalidation trigger, and flow endpoint protection. Wired into `simulator/run_scenario.py`.
+- **05-02 (Comparative QoS Benchmarking Pipeline & Triad Evaluation):** Completed & verified. Built `scripts/run_closed_loop_benchmark.py` running the 3-way triad matrix (`Baseline`, `Attack`, `AODV+IDS`) across Blackhole and Grayhole attacks on 30n and 50n topologies under identical seeds (`[42, 43, 44]`). Executed authoritative 36-run benchmark in 52.73s, exporting `results/closed_loop_metrics.csv`, `results/closed_loop_report.md`, and `results/isolation_events.csv`. Demonstrated 92.9% PDR recovery on Blackhole (+46.83% absolute $\Delta$PDR) and up to 118.6% recovery on Grayhole with minimal routing overhead penalty (+0.0307). All 59 repository tests pass.
 
 ## Phase 4 Verification
 
@@ -105,6 +111,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-25T09:21:41.994Z
-Stopped at: Phase 03 context gathered
-Resume file: .planning/phases/03-machine-learning-classification-pipeline-evaluation/03-CONTEXT.md
+Last session: 2026-10-27T17:48:15.455Z
+Stopped at: Phase 05 context gathered
+Resume file: .planning/phases/05-closed-loop-ids-mitigation-network-re-evaluation/05-CONTEXT.md
