@@ -6,6 +6,9 @@ data/
 results/*
 !results/plots/
 
+# Model binaries (regenerate deterministically from seeds; model_metadata.json stays tracked)
+ml/models/*.joblib
+
 # Python
 __pycache__/
 *.py[cod]

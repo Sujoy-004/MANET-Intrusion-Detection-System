@@ -37,6 +37,7 @@ def extract_features_from_trace(
     warmup: float = 10.0,
     min_packets: int = 0,
     attacker_ids: Optional[List[int]] = None,
+    attack_start_time: Optional[float] = None,
 ) -> pd.DataFrame:
     """Extract sliding-window tabular features from event trace DataFrame.
 
@@ -186,7 +187,10 @@ def extract_features_from_trace(
                     mob_speed = 0.0
 
             # 10: Ground truth label strictly from scenario metadata
-            label = "Blackhole" if nid in attacker_nodes else "Normal"
+            if attack_start_time is None:
+                label = "Blackhole" if nid in attacker_nodes else "Normal"
+            else:
+                label = "Blackhole" if (nid in attacker_nodes and t >= attack_start_time) else "Normal"
 
             rows.append({
                 "packet_forward_ratio": p_fwd_ratio,

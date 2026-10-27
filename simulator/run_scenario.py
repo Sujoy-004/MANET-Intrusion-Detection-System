@@ -138,16 +138,31 @@ class SimulationRunner:
             self.attacker_ids = attackers_list
             seq_offset = int(attack_cfg.get("seq_offset", 1000))
             spoofed_hops = int(attack_cfg.get("spoofed_hops", 1))
+            start_time_val = attack_cfg.get("start_time")
+            start_time = float(start_time_val) if start_time_val is not None else None
             for aid in self.attacker_ids:
                 if aid in self.aodv_nodes:
                     strategy = create_attack_strategy(attack_type, seq_offset=seq_offset, spoofed_hops=spoofed_hops)
-                    self.aodv_nodes[aid].attack_behavior = strategy
-                    if attack_type.lower() == "blackhole":
-                        self.aodv_nodes[aid].is_blackhole = True
+                    if start_time is None:
+                        self.aodv_nodes[aid].attack_behavior = strategy
+                        if attack_type.lower() == "blackhole":
+                            self.aodv_nodes[aid].is_blackhole = True
+                    else:
+                        self.env.process(self._delayed_attack_activation(aid, strategy, start_time, attack_type))
 
         # Start periodic processes
         self.env.process(self._periodic_topology_refresh())
         self.env.process(self._periodic_status_logger())
+
+    def _delayed_attack_activation(
+        self, aid: int, strategy: Any, start_time: float, attack_type: str
+    ) -> Generator[simpy.Event, None, None]:
+        """Delayed activation of attack behavior on attacker node at start_time."""
+        yield self.env.timeout(start_time)
+        if aid in self.aodv_nodes:
+            self.aodv_nodes[aid].attack_behavior = strategy
+            if attack_type.lower() == "blackhole":
+                self.aodv_nodes[aid].is_blackhole = True
 
     def _periodic_status_logger(self, interval: float = 1.0) -> Generator[simpy.Event, None, None]:
         """Periodically log NODE_STATUS telemetry rows for all nodes."""

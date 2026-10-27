@@ -1,6 +1,7 @@
 """Automated unit and anti-leakage invariance tests for feature engineering."""
 
 from pathlib import Path
+import copy
 import numpy as np
 import pandas as pd
 import pytest
@@ -87,3 +88,83 @@ def test_anti_leakage_invariance(sample_trace):
 
     # Labels must differ according to the scenario definition
     assert not df1["label"].equals(df2["label"]), "Labels did not change as expected"
+
+
+def test_pre_onset_attacker_window_labeled_normal(tmp_path):
+    """Assert at least one attacker-window row with window time below 8.0 carries label 'Normal',
+    and at least one row with window time >= 8.0 carries 'Blackhole'."""
+    scenario_path = Path("scenarios/e2_blackhole_30n.json")
+    scenario = copy.deepcopy(load_scenario(scenario_path))
+    scenario["duration"] = 20.0
+    scenario["attack"]["start_time"] = 8.0
+    trace_path = tmp_path / "onset_trace.csv"
+
+    runner = SimulationRunner(scenario_config=scenario, seed=42, out_path=trace_path)
+    runner.run(duration=20.0)
+
+    df = pd.read_csv(trace_path)
+    feats = extract_features_from_trace(
+        df,
+        scenario,
+        window_size=5.0,
+        step_size=1.0,
+        warmup=0.0,
+        attacker_ids=runner.attacker_ids,
+        attack_start_time=8.0,
+    )
+
+    aid = runner.attacker_ids[0]
+    num_nodes = int(scenario.get("nodes", 30))
+    time_steps = np.arange(0.0, float(df["time"].max()) + 1e-9, 1.0)
+
+    pre_onset_labels = []
+    post_onset_labels = []
+    for t_idx, t in enumerate(time_steps):
+        row_idx = t_idx * num_nodes + aid
+        if row_idx < len(feats):
+            lbl = feats.iloc[row_idx]["label"]
+            if t < 8.0:
+                pre_onset_labels.append(lbl)
+            else:
+                post_onset_labels.append(lbl)
+
+    assert "Normal" in pre_onset_labels, f"Expected Normal in pre-onset attacker windows, got {pre_onset_labels}"
+    assert "Blackhole" in post_onset_labels, f"Expected Blackhole in post-onset attacker windows, got {post_onset_labels}"
+
+
+def test_onset_time_changes_only_label_column(tmp_path):
+    """Run extraction twice from the same trace with start_time 8.0 vs 12.0;
+    assert the first 9 columns are identical (pandas .equals) and the label columns differ."""
+    scenario_path = Path("scenarios/e2_blackhole_30n.json")
+    scenario = copy.deepcopy(load_scenario(scenario_path))
+    scenario["duration"] = 20.0
+    scenario["attack"]["start_time"] = 8.0
+    trace_path = tmp_path / "onset_trace_invariance.csv"
+
+    runner = SimulationRunner(scenario_config=scenario, seed=42, out_path=trace_path)
+    runner.run(duration=20.0)
+
+    df = pd.read_csv(trace_path)
+    df1 = extract_features_from_trace(
+        df,
+        scenario,
+        window_size=5.0,
+        step_size=1.0,
+        warmup=0.0,
+        attacker_ids=runner.attacker_ids,
+        attack_start_time=8.0,
+    )
+    df2 = extract_features_from_trace(
+        df,
+        scenario,
+        window_size=5.0,
+        step_size=1.0,
+        warmup=0.0,
+        attacker_ids=runner.attacker_ids,
+        attack_start_time=12.0,
+    )
+
+    # The first 9 columns (feature matrix X) must be numerically identical
+    assert df1.iloc[:, :-1].equals(df2.iloc[:, :-1]), "Feature matrix X changed when attack_start_time changed!"
+    # Labels must differ
+    assert not df1["label"].equals(df2["label"]), "Labels did not change with different attack_start_time!"
