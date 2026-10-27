@@ -170,3 +170,93 @@ def test_split_deterministic_rebuild(tmp_path, dataset_artifacts):
 
     assert rebuilt_train.equals(dataset_artifacts["train"]), "Partitioned train does not match on-disk train.csv"
     assert rebuilt_test.equals(dataset_artifacts["test"]), "Partitioned test does not match on-disk test.csv"
+
+
+def test_train_class_weight_balanced():
+    """Verify every classifier pipeline step uses class_weight='balanced'."""
+    from ml.train import build_pipelines
+
+    pipelines = build_pipelines()
+    for name, (pipe, _) in pipelines.items():
+        clf = pipe.named_steps["clf"]
+        assert hasattr(clf, "class_weight"), f"{name} clf step missing class_weight attribute"
+        assert clf.class_weight == "balanced", f"{name} class_weight is not 'balanced'"
+
+
+def test_train_primary_scorer_orientation():
+    """Verify scorer strictly evaluates Blackhole as positive class (0.0 when predicting Normal)."""
+    from sklearn.dummy import DummyClassifier
+    from sklearn.pipeline import Pipeline
+    from sklearn.preprocessing import StandardScaler
+    from ml.train import build_scoring
+
+    feature_cols = [c for c in SCHEMA_COLUMNS if c != "label"]
+    # 20 Normal, 5 Blackhole rows
+    X_syn = pd.DataFrame(np.ones((25, len(feature_cols))), columns=feature_cols)
+    y_syn = pd.Series(["Normal"] * 20 + ["Blackhole"] * 5)
+
+    dummy = Pipeline([
+        ("scaler", StandardScaler()),
+        ("clf", DummyClassifier(strategy="constant", constant="Normal")),
+    ])
+    dummy.fit(X_syn, y_syn)
+
+    scorer = build_scoring()["f1_blackhole"]
+    score = scorer(dummy, X_syn, y_syn)
+    assert score == 0.0, f"Expected 0.0 for all-Normal prediction with Blackhole pos_label, got {score}"
+
+
+def test_train_smoke_deterministic(dataset_artifacts):
+    """Verify single-combo fits for all candidates succeed and are deterministic."""
+    from ml.train import (
+        build_pipelines,
+        fit_pipeline,
+        stratified_subsample,
+    )
+    from sklearn.svm import SVC
+
+    train_df = dataset_artifacts["train"]
+    feature_cols = [c for c in SCHEMA_COLUMNS if c != "label"]
+    X = train_df[feature_cols]
+    y = train_df["label"]
+
+    X_sub, y_sub = stratified_subsample(X, y, n=2000, random_state=0)
+    pipelines = build_pipelines()
+
+    single_combo_grids = {
+        "random_forest": {"clf__n_estimators": [50], "clf__max_depth": [8]},
+        "decision_tree": {"clf__max_depth": [8], "clf__min_samples_split": [2]},
+        "svm": {"clf__C": [10], "clf__gamma": [0.01]},
+    }
+
+    for name in ["random_forest", "decision_tree", "svm"]:
+        pipe, _ = pipelines[name]
+        grid_params = single_combo_grids[name]
+
+        if name == "svm":
+            assert isinstance(pipe.named_steps["clf"], SVC)
+            assert pipe.named_steps["clf"].kernel == "rbf"
+            assert pipe.named_steps["clf"].class_weight == "balanced"
+
+        grid1 = fit_pipeline(pipe, grid_params, X_sub, y_sub, cv=5)
+        grid2 = fit_pipeline(pipe, grid_params, X_sub, y_sub, cv=5)
+
+        assert grid1.best_score_ is not None
+        assert grid2.best_score_ is not None
+        np.testing.assert_allclose(
+            grid1.cv_results_["mean_test_f1_blackhole"],
+            grid2.cv_results_["mean_test_f1_blackhole"],
+            err_msg=f"Non-deterministic CV scores detected for {name}",
+        )
+
+
+def test_train_no_test_file_access():
+    """Structural guard for T-03-02: verify ml/train.py never accesses held-out or master files."""
+    train_source_path = Path("ml/train.py")
+    assert train_source_path.exists()
+    content = train_source_path.read_text(encoding="utf-8")
+
+    forbidden_files = ["test.csv", "master.csv"]
+    for f in forbidden_files:
+        assert f not in content, f"ml/train.py contains forbidden reference to '{f}'!"
+
