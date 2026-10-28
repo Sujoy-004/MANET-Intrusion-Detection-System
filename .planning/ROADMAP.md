@@ -135,7 +135,10 @@ Plans:
 **Plans**: TBD
 
 Plans:
+**Wave 1**
 - [ ] 06-01: Automated plotting suite for classification metrics and network QoS recovery
+
+**Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 06-02: Final project report synthesis, viva defense guide, and experiment handbook validation
 
 ## Progress
