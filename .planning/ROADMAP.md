@@ -11,7 +11,7 @@ This roadmap delivers an end-to-end Machine Learning-Based Intrusion Detection a
 - [x] **Phase 3: Machine Learning Classification Pipeline & Evaluation** - Train classical ML classifiers (RF, DT, SVM) on scenario-held-out datasets with comprehensive security metrics. (completed 2026-10-27)
 - [x] **Phase 4: Grayhole Attack & Generalization Testing** - Implement selective/probabilistic Grayhole attack and validate cross-scenario detection across unseen seeds and topologies. (completed 2026-10-27)
 - [x] **Phase 5: Closed-Loop IDS Mitigation & Network Re-Evaluation** - Integrate ML predictions into AODV route selection and benchmark QoS recovery against unprotected AODV. (completed 2026-10-28)
-- [ ] **Phase 6: Visualization, Documentation & Project Deliverables** - Generate publication-quality Matplotlib/Seaborn plots, confusion matrices, and final experimental handbook documentation.
+- [x] **Phase 6: Visualization, Documentation & Project Deliverables** - Generate publication-quality Matplotlib/Seaborn plots, confusion matrices, and final experimental handbook documentation. (completed 2026-10-28)
 
 ## Phase Details
 
@@ -136,10 +136,10 @@ Plans:
 
 Plans:
 **Wave 1**
-- [ ] 06-01: Automated plotting suite for classification metrics and network QoS recovery
+- [x] 06-01: Automated plotting suite for classification metrics and network QoS recovery
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 06-02: Final project report synthesis, viva defense guide, and experiment handbook validation
+- [x] 06-02: Final project report synthesis, viva defense guide, and experiment handbook validation
 
 ## Progress
 
@@ -153,4 +153,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 3. Machine Learning Classification Pipeline & Evaluation | 3/3 | Complete    | 2026-10-27 |
 | 4. Grayhole Attack & Generalization Testing | 2/2 | Complete    | 2026-10-27 |
 | 5. Closed-Loop IDS Mitigation & Network Re-Evaluation | 0/2 | Not started | - |
-| 6. Visualization, Documentation & Project Deliverables | 0/2 | Not started | - |
+| 6. Visualization, Documentation & Project Deliverables | 2/2 | Complete    | 2026-10-28 |

@@ -38,7 +38,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [ ] **RESP-01**: Dynamic malicious node isolation mechanism filtering out RREPs and route entries involving detected attacker nodes
 - [ ] **RESP-02**: Automated comparative QoS benchmark runner calculating PDR, throughput, end-to-end delay, and routing overhead across Baseline AODV, Attack AODV, and AODV+IDS under identical seeds
-- [ ] **RESP-03**: Automated visualization generator plotting confusion matrices and comparative QoS recovery charts (Matplotlib / Seaborn)
+- [x] **RESP-03**: Automated visualization generator plotting confusion matrices and comparative QoS recovery charts (Matplotlib / Seaborn)
 
 ## v2 Requirements
 
@@ -84,7 +84,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ATK-02 | Phase 4 | Complete |
 | RESP-01 | Phase 5 | Pending |
 | RESP-02 | Phase 5 | Pending |
-| RESP-03 | Phase 6 | Pending |
+| RESP-03 | Phase 6 | Complete |
 
 **Coverage:**
 - v1 requirements: 17 total
