@@ -13,7 +13,13 @@ from dataclasses import dataclass, field
 import json
 from pathlib import Path
 import random
+import sys
+from pathlib import Path
 from typing import Any, Dict, Generator, List, Optional, Tuple
+
+_repo_root = str(Path(__file__).resolve().parent.parent)
+if _repo_root not in sys.path:
+    sys.path.insert(0, _repo_root)
 
 import networkx as nx
 import simpy
@@ -564,6 +570,7 @@ def parse_args(args: Optional[List[str]] = None) -> argparse.Namespace:
     parser.add_argument("--scenario", type=str, required=True, help="Path to scenario JSON config")
     parser.add_argument("--seed", type=int, required=True, help="Explicit integer seed for determinism")
     parser.add_argument("--out", type=str, required=True, help="Output path for CSV trace log")
+    parser.add_argument("--ids", action="store_true", help="Enable closed-loop OnlineIDS response")
     return parser.parse_args(args)
 
 
@@ -580,6 +587,17 @@ def main(args: Optional[List[str]] = None) -> None:
     """CLI execution entrypoint."""
     parsed = parse_args(args)
     scenario_config = load_scenario(parsed.scenario)
+    if parsed.ids:
+        ids_cfg = scenario_config.setdefault("ids", {})
+        ids_cfg["enabled"] = True
+        if "model_path" not in ids_cfg:
+            ids_cfg["model_path"] = "ml/models/best_model.joblib"
+        if "threshold" not in ids_cfg:
+            ids_cfg["threshold"] = 0.50
+        if "quarantine_duration" not in ids_cfg:
+            ids_cfg["quarantine_duration"] = 30.0
+        if "strikes_required" not in ids_cfg:
+            ids_cfg["strikes_required"] = 2
     runner = SimulationRunner(
         scenario_config=scenario_config,
         seed=parsed.seed,
