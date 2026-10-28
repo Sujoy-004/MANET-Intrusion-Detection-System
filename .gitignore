@@ -27,6 +27,9 @@ Thumbs.db
 # GSD local planning (commit_docs: false)
 .opencode/
 
+# Personal / uncommitted tools & archify diagrams (Phase 6 personal artifacts)
+.archify/
+
 
 # Environment variables and secrets
 .env
