@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A complete software-based Intrusion Detection and Response System for Mobile Ad-Hoc Networks (MANET). It couples an in-repo, pure-Python discrete-event network simulator (SimPy + NetworkX) implementing AODV routing and controlled attack injections (Blackhole and Grayhole) with Scikit-learn machine learning classifiers and an active routing isolation mechanism. The system is designed for Windows-native execution and academic demonstration.
+A complete software-based Intrusion Detection and Response System for Mobile Ad-Hoc Networks (MANET). It couples an in-repo, pure-Python discrete-event network simulator (SimPy + NetworkX) implementing RFC 3561 AODV routing and controlled attack injections (Blackhole and Grayhole) with Scikit-learn machine learning classifiers and an active routing isolation mechanism. The system is designed for Windows-native execution, publication-grade visualization, and academic demonstration.
 
 ## Core Value
 
@@ -12,31 +12,35 @@ Provide a fully reproducible end-to-end demonstration chain: from simulated norm
 
 ### Validated
 
-(None yet — ship to validate)
+- ✓ Pure-Python discrete-event MANET simulator implementing Random Waypoint mobility, transmission range/neighbor topology, CBR/UDP traffic, and standard RFC 3561 AODV routing (RREQ, RREP, RERR, sequence numbers, hop counts) - v1.0
+- ✓ Attack injection strategies decoupled from core simulator: Blackhole (immediate false high-sequence RREP) and Grayhole (selective/probabilistic forwarding drops) - v1.0
+- ✓ Deterministic trace logging outputting discrete packet events to structured 10-column CSV with explicit seed reproducibility - v1.0
+- ✓ Sliding-window feature extraction pipeline computing node/flow behavioral metrics without label leakage - v1.0
+- ✓ Rigorous scenario- and seed-based dataset partitioning (zero random row splitting) - v1.0
+- ✓ Multi-classifier ML training pipeline (Random Forest, SVM, Decision Tree) evaluated on Precision, Recall, F1, FPR, and Confusion Matrix with locked FPR <= 1.0% champion gate - v1.0
+- ✓ Closed-loop IDS response mechanism dynamically isolating detected malicious nodes with 2-strike confirmation and quarantine decay in AODV route selection - v1.0
+- ✓ Comparative evaluation framework benchmarking Baseline AODV vs. Attack AODV vs. AODV + IDS across PDR, Throughput, Delay, and Routing Overhead (achieved 92.9% PDR recovery on Blackhole) - v1.0
+- ✓ Publication-grade figure generation suite (Matplotlib/Seaborn 300 DPI) and comprehensive 6-chapter monolithic B.Tech project thesis report (`docs/FINAL_PROJECT_REPORT.md`) - v1.0
 
-### Active
+### Active (Future v2.0 Scope)
 
-- [ ] Pure-Python discrete-event MANET simulator implementing Random Waypoint mobility, transmission range/neighbor topology, CBR/UDP traffic, and standard AODV routing (RREQ, RREP, RERR, sequence numbers, hop counts)
-- [ ] Attack injection strategies decoupled from core simulator: Blackhole (immediate false high-sequence RREP) and Grayhole (selective/probabilistic forwarding drops)
-- [ ] Deterministic trace logging outputting discrete packet events to structured CSV with explicit seed reproducibility
-- [ ] Sliding-window feature extraction pipeline computing node/flow behavioral metrics without label leakage
-- [ ] Rigorous scenario- and seed-based dataset partitioning (zero random row splitting)
-- [ ] Multi-classifier ML training pipeline (Random Forest, SVM, Decision Tree / Logistic Regression) evaluated on Precision, Recall, F1, FPR, and Confusion Matrix
-- [ ] Closed-loop IDS response mechanism dynamically blacklisting/penalizing detected malicious nodes in AODV route selection
-- [ ] Comparative evaluation framework benchmarking Baseline AODV vs. Attack AODV vs. AODV + IDS across PDR, Throughput, Delay, and Routing Overhead
+- [ ] RREQ Flooding / Denial-of-Service (DoS) attack strategy injection
+- [ ] Interactive web dashboard for topology animation and packet flow replay
+- [ ] Model explainability via SHAP (SHapley Additive exPlanations) feature attributions
 
 ### Out of Scope
 
 - NS-3, C++, Docker, WSL, or Linux VM dependencies — strictly pure-Python Windows-native architecture per AGENTS.md
-- Deep learning, federated learning, blockchain, or mobile apps — scope restricted to proven, interpretable ML models suitable for B.Tech project rigor
-- More than two initial attack classes (Flooding/DoS deferred) — Blackhole and Grayhole are the required primary targets
-- Real physical hardware testbeds — 100% software discrete-event simulation
+- Deep learning (LSTM, CNN, GNN), federated learning, blockchain, or mobile apps — scope restricted to proven, interpretable ML models suitable for B.Tech project rigor
+- More than two initial attack classes in v1.0 (Flooding/DoS deferred to v2.0) — Blackhole and Grayhole are the validated targets
+- Real physical hardware testbeds — 100% software discrete-event simulation with mathematical determinism
 
 ## Context
 
-- Target OS: Windows 10/11 native (Python 3.11.8, SimPy 4.1.2, NetworkX 3.6.1, Pandas 3.0.2, Scikit-learn 1.8.0).
+- Target OS: Windows 10/11 native (Python 3.11.8, SimPy 4.1.2, NetworkX 3.6.1, Pandas 3.0.2, Scikit-learn 1.8.0, Matplotlib 3.10.8, Seaborn 0.13.2).
 - Governing Specifications: `MANET_IDS_BTech_Execution_Guide.md` and `AGENTS.md` (contract takes precedence).
-- Codebase mapping documentation is pre-established in `.planning/codebase/`.
+- Codebase state: 6,645 lines of pure Python, 69 unit/integration/pipeline tests passing (100%), 15 publication figures generated, 78 KB thesis report completed.
+- Shipped Milestone: v1.0 MVP on 2026-10-28.
 
 ## Constraints
 
@@ -50,10 +54,13 @@ Provide a fully reproducible end-to-end demonstration chain: from simulated norm
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Pure-Python SimPy/NetworkX Simulator | Avoids brittle NS-3 C++ build issues on Windows; achieves ~70k events/sec with sub-second runs | — Pending |
-| Decoupled Attack Injection | Attack behaviors injected at scenario runtime to keep core AODV simulator clean for baseline runs | — Pending |
-| Scenario/Seed-Based Data Holdout | Prevents temporal correlation leakage inherent in random row splits of packet traces | — Pending |
-| Active Routing Isolation for Mitigation | Demonstrates tangible closed-loop network value rather than passive offline detection | — Pending |
+| Pure-Python SimPy/NetworkX Simulator | Avoids brittle NS-3 C++ build issues on Windows; achieves ~70k events/sec with sub-second runs | ✓ Good |
+| Decoupled Attack Injection | Attack behaviors injected at scenario runtime to keep core AODV simulator clean for baseline runs | ✓ Good |
+| Scenario/Seed-Based Data Holdout | Prevents temporal correlation leakage inherent in random row splits of packet traces | ✓ Good |
+| Locked FPR <= 1.0% Gate | Prevents benign node false-isolation cascades in closed-loop operation | ✓ Good |
+| OnlineIDS 2-Strike Confirmation | Two consecutive positive predictions required before node isolation; prevents false-alarm route teardowns | ✓ Good |
+| Active Routing Isolation for Mitigation | Demonstrates tangible closed-loop network value rather than passive offline detection (92.9% PDR recovery) | ✓ Good |
+| Monolithic LaTeX-Grade Markdown Thesis Report | Monolithic 6-chapter report with explicit provenance footnotes fulfilling all B.Tech degree requirements | ✓ Good |
 
 ## Evolution
 
@@ -73,4 +80,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-23 after initialization*
+*Last updated: 2026-10-28 after v1.0 milestone completion*

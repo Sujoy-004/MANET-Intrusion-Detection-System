@@ -23,7 +23,7 @@ covered_files:
   - scenarios/e4_grayhole_50n.json
   - tests/test_attacks_grayhole.py
   - tests/test_generalization.py
-covered_digest: "v4:sha256:7a4d5b2c89f1e03847291a5e3c8b9d0f"
+covered_digest: "v3:sha256:5014adabdf337f96fe5e8ef83a9fdf2b9586a207e1049c8ce5b2d9ac1005146d"
 behavior_unverified: 0
 behavior_unverified_items: []
 coincidental_reliance_items: []

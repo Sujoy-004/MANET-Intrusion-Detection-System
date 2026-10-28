@@ -1,105 +1,67 @@
 ---
 gsd_state_version: "1.0"
-current_phase: 06
-status: completed
-stopped_at: Phase 06 complete — all phases complete
-last_updated: "2026-10-28T06:28:57.967Z"
+status: Awaiting next milestone
+stopped_at: Milestone v1.0 complete — all 6 phases shipped
+last_updated: "2026-10-28T06:58:00.000Z"
 last_activity: 2026-10-28
-last_activity_desc: Phase 06 complete
-state_head: 06ec1070da3dbc0f003d832588d393b16f22a150
+last_activity_desc: Milestone v1.0 completed and archived
+state_head: 3abcee94319949f31bf6bf993ea4ae88943d4b6b
 progress:
   total_phases: 6
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 15
   completed_plans: 15
-  percent: 83
+  percent: 100
+current_phase: 06
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-23)
+See: .planning/PROJECT.md (updated 2026-10-28)
 
 **Core value:** Provide a reproducible end-to-end demonstration chain: from simulated normal and malicious MANET traffic traces and non-leaking feature extraction, to ML-based intrusion detection and active node exclusion, demonstrating measurable QoS recovery (Packet Delivery Ratio, throughput, end-to-end delay) over unprotected baseline AODV.  
-**Current focus:** Phase 05 completed — Ready for Phase 06: Visualization, Documentation & Project Deliverables
+**Current focus:** Milestone v1.0 shipped — Ready for next milestone or academic defense demonstration.
 
 ## Current Position
 
-Phase: 06
-Plan: Not started
-Status: All phases complete
-Last activity: 2026-10-28 — Phase 06 complete
-
-Progress: [████████░░] 83% (Phase 5 complete out of 6)
-
-## Phase 5 Verification
-
-- **05-01 (Closed-Loop IDS Response Engine & AODV Route Exclusion):** Completed & verified. Implemented `is_blacklisted_cb`, `handle_rreq`/`handle_rrep` drop filtering, route insertion rejection, route lookup invalidation, and `invalidate_routes_through` in `simulator/aodv.py`. Built `OnlineIDS` controller (`ml/response.py`) with in-memory deque, feature assembly matching training scaler, 2-strike confirmation ($K=2$, $\tau=0.50$), 30s quarantine decay, route invalidation trigger, and flow endpoint protection. Wired into `simulator/run_scenario.py`.
-- **05-02 (Comparative QoS Benchmarking Pipeline & Triad Evaluation):** Completed & verified. Built `scripts/run_closed_loop_benchmark.py` running the 3-way triad matrix (`Baseline`, `Attack`, `AODV+IDS`) across Blackhole and Grayhole attacks on 30n and 50n topologies under identical seeds (`[42, 43, 44]`). Executed authoritative 36-run benchmark in 52.73s, exporting `results/closed_loop_metrics.csv`, `results/closed_loop_report.md`, and `results/isolation_events.csv`. Demonstrated 92.9% PDR recovery on Blackhole (+46.83% absolute $\Delta$PDR) and up to 118.6% recovery on Grayhole with minimal routing overhead penalty (+0.0307). All 59 repository tests pass.
-
-## Phase 4 Verification
-
-- **04-01 (Grayhole Attack Strategy & Feature Pipeline Integration):** Completed & verified. Implemented `GrayholeStrategy` (`attacks/grayhole.py`) with honest AODV control routing seam and configurable Bernoulli / selective data dropping. Updated runner wiring in `simulator/run_scenario.py` and dynamic attack labeling in `feature_extraction/extract_features.py`. Created composite scenario `scenarios/e4_grayhole_onset_30n.json` and comprehensive test suite (`tests/test_attacks_grayhole.py`).
-- **04-02 (Zero-Shot Transfer, Multi-Attack Modeling & Generalization Matrix):** Completed & verified. Evaluated Phase 3 champion zero-shot on Grayhole (28.0% recall, 0.088% FPR). Extended dataset builder to multi-attack (52,200 total samples; train: 34,800 rows; test: 17,400 rows). Retrained classifiers under the locked FPR $\le$ 1.0% gate: Random Forest selected as champion (F1 0.7593, FPR 0.0099), serialized to `ml/models/best_model.joblib`. Implemented and executed 18-combination generalization matrix across speeds, drop rates, and densities (`scripts/run_generalization_matrix.py`), exporting `results/generalization_metrics.csv`, `results/generalization_report.md`, and boundary plots. All 50 tests pass.
-
-## Phase 3 Verification
-
-- **03-01 (Composite Attack Onset & Seed-Partitioned Dataset Builder):** Completed & verified. Runner delayed onset seam (`_delayed_attack_activation`), time-aware labeling, deterministic seed-holdout dataset builder (`scripts/build_dataset.py`, `ml/dataset.py`) generating `data/train.csv` (17,400 rows, seeds 42+43) and `data/test.csv` (8,700 rows, seed 44) with SHA-256 manifest.
-- **03-02 (Scikit-learn Classifier Pipelines & Focused Grid Search CV):** Completed & verified. Uniform Scikit-learn pipelines with `StandardScaler` and `class_weight='balanced'`. 5-fold CV tuned Random Forest (best CV F1 0.6746), Decision Tree (best CV F1 0.5497), and SVM (best CV F1 0.2477) serialized to `ml/models/`.
-- **03-03 (Seed-44 Evaluation, FPR Gate & Champion Model Persistence):** Completed & verified. Evaluated all models on untouched seed 44 data. Enforced locked FPR $\le$ 0.01 gate: Decision Tree selected as champion (F1 0.7040, FPR 0.0009), serialized to `ml/models/best_model.joblib`. Full export suite generated (`results/metrics.csv`, `results/plots/`, `results/feature_importance.csv`, `results/evaluation_report.md`).
-
-## Phase 2 Verification
-
-- **02-01 (Blackhole Strategy & Dynamic Placement):** Completed & verified. Decoupled strategy pattern, duck-typed `AODVNode` hook, dynamic flow-intercept placement.
-- **02-02 (Trace Logging & Gate 2 Benchmark):** Completed & verified. 10-column schema with periodic `NODE_STATUS` telemetry. Gate 2 multi-seed impact verified with 52.60%, 77.36%, and 87.62% relative PDR drops.
-- **02-03 (Feature Extractor & Dataset Pipeline):** Completed & verified. Sliding-window non-leaking tabular feature extractor with neutral zero-traffic fallbacks, anti-leakage invariance tested, 34,800-sample dataset assembled.
+Phase: Milestone v1.0 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-10-28 — Milestone v1.0 completed and archived
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 5
-- Average duration: ~15 min
-- Total execution time: ~1.5 hours
+- Total plans completed: 15
+- Total phases: 6
+- Total automated tests: 69 (100% pass)
 
 **By Phase:**
 
-| Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| 1. Pure-Python MANET Simulator Engine | 3/3 | Complete | - |
-| 2. Blackhole Attack, Trace Logging & Feature Pipeline | 3/3 | Complete | - |
-| 3. Machine Learning Classification Pipeline & Evaluation | 3/3 | Complete | ~15 min |
-| 4. Grayhole Attack & Generalization Testing | 0/2 | - | - |
-| 5. Closed-Loop IDS Mitigation & Network Re-Evaluation | 0/2 | - | - |
-| 6. Visualization, Documentation & Project Deliverables | 0/2 | - | - |
-| 01 | 3 | - | - |
-| 06 | 2 | - | - |
-
-**Recent Trend:**
-- Last 5 plans: None
-- Trend: Stable
-
-*Updated after each plan completion*
+| Phase | Plans | Status |
+|-------|-------|--------|
+| 1. Pure-Python MANET Simulator Engine | 3/3 | Complete |
+| 2. Blackhole Attack, Trace Logging & Feature Pipeline | 3/3 | Complete |
+| 3. Machine Learning Classification Pipeline & Evaluation | 3/3 | Complete |
+| 4. Grayhole Attack & Generalization Testing | 2/2 | Complete |
+| 5. Closed-Loop IDS Mitigation & Network Re-Evaluation | 2/2 | Complete |
+| 6. Visualization, Documentation & Project Deliverables | 2/2 | Complete |
 
 ## Accumulated Context
 
 ### Decisions
 
-Decisions are logged in PROJECT.md Key Decisions table.
-Recent decisions affecting current work:
-
-- [Init]: Pure-Python SimPy/NetworkX discrete-event architecture selected; NS-3/C++ eliminated for Windows reliability.
-- [Init]: Attack behavior strategies decoupled from core simulator logic.
-- [Init]: Scenario- and seed-based train/test partitioning enforced to prevent temporal autocorrelation leakage.
-- [Init]: Closed-loop routing penalty selected to demonstrate active network QoS recovery.
+All decisions logged in `.planning/PROJECT.md` Key Decisions table.
 
 ### Pending Todos
 
-None yet.
+None.
 
 ### Blockers/Concerns
 
-None yet.
+None.
 
 ## Deferred Items
 
@@ -109,8 +71,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 |----------|------|--------|-------------|-----------|
 | *(none)* | | | | |
 
-## Session Continuity
+## Operator Next Steps
 
-Last session: 2026-10-28T04:17:40.024Z
-Stopped at: Phase 06 complete — all phases complete
-Resume file: .planning/phases/06-visualization-documentation-project-deliverables/06-CONTEXT.md
+- Start the next milestone with `/gsd-new-milestone` (or run demo walkthrough scripts in `.archify/` for presentation)

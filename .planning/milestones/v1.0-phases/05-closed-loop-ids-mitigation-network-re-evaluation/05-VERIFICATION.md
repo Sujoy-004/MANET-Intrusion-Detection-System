@@ -18,7 +18,7 @@ covered_files:
   - results/closed_loop_report.md
   - results/isolation_events.csv
   - tests/test_closed_loop.py
-covered_digest: "v5:sha256:d8c4e5a9b3f2e1074819a6d4e2b8c0f5"
+covered_digest: "v3:sha256:303c75ffb0707de934b05d589bc9726673e7123769f7e01cdbaed3a46e69e25d"
 behavior_unverified: 0
 behavior_unverified_items: []
 coincidental_reliance_items: []

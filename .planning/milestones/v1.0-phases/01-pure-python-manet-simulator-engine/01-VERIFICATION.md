@@ -18,7 +18,7 @@ covered_files:
   - simulator/radio.py
   - simulator/run_scenario.py
   - simulator/traffic.py
-covered_digest: "v3:sha256:455e877f536da8e7fa5a3355779f6e8a53488363661a501a77d0369a08f9c9f1"
+covered_digest: "v3:sha256:e562bb49d90b2ab20fd6a57b884d8c3a65d7ef4b3bb88a6915c20d2317e5f4c5"
 behavior_unverified: 0
 behavior_unverified_items: []
 coincidental_reliance_items: []
