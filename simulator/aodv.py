@@ -52,11 +52,26 @@ class RERR:
     unreachable_seq: int
 
 
+@dataclass
+class DiscoveryState:
+    """State of an ongoing route discovery for a destination."""
+    dest: int
+    retries: int = 0
+    timeout: float = 2.0
+    timer_token: int = 0
+    last_attempt_time: float = 0.0
+
+
 class AODVNode:
     """AODV routing protocol engine for a single MANET node."""
 
     DEFAULT_ACTIVE_ROUTE_TIMEOUT = 10.0  # seconds
     DEFAULT_RREQ_TIMEOUT = 2.0  # seconds
+    DEFAULT_RREQ_RETRIES = 2
+    DEFAULT_DISCOVERY_COOLDOWN = 2.0  # seconds
+    DEFAULT_MAX_BUFFER_PER_DEST = 100
+    DEFAULT_MAX_BUFFER_TIME = 20.0  # seconds
+    DEFAULT_BACKOFF_MULT = 2.0
 
     def __init__(
         self,
@@ -66,6 +81,13 @@ class AODVNode:
         log_event_cb: Callable[..., None],
         active_route_timeout: float = DEFAULT_ACTIVE_ROUTE_TIMEOUT,
         is_blacklisted_cb: Optional[Callable[[int], bool]] = None,
+        schedule_timer_cb: Optional[Callable[[float, Callable[[], None]], Any]] = None,
+        rreq_timeout: float = DEFAULT_RREQ_TIMEOUT,
+        rreq_retries: int = DEFAULT_RREQ_RETRIES,
+        discovery_cooldown: float = DEFAULT_DISCOVERY_COOLDOWN,
+        max_buffer_per_dest: int = DEFAULT_MAX_BUFFER_PER_DEST,
+        max_buffer_time: float = DEFAULT_MAX_BUFFER_TIME,
+        backoff_mult: float = DEFAULT_BACKOFF_MULT,
     ):
         self.node_id = node_id
         self.get_time = get_time
@@ -73,6 +95,13 @@ class AODVNode:
         self.log_event = log_event_cb
         self.active_route_timeout = active_route_timeout
         self.is_blacklisted_cb = is_blacklisted_cb
+        self.schedule_timer_cb = schedule_timer_cb
+        self.rreq_timeout = rreq_timeout
+        self.rreq_retries = rreq_retries
+        self.discovery_cooldown = discovery_cooldown
+        self.max_buffer_per_dest = max_buffer_per_dest
+        self.max_buffer_time = max_buffer_time
+        self.backoff_mult = backoff_mult
 
         self.seq_num: int = 1
         self.rreq_id: int = 0
@@ -80,6 +109,10 @@ class AODVNode:
         self.seen_rreq: Set[Tuple[int, int]] = set()  # (originator, rreq_id)
         self.packet_buffer: Dict[int, List[Any]] = {}  # dest -> buffered data packets
         self.pending_rreqs: Set[int] = set()
+
+        self.discovery_states: Dict[int, DiscoveryState] = {}
+        self.discovery_cooldown_until: Dict[int, float] = {}
+        self._timer_token_counter: int = 0
 
         # Behavioral flags for attack simulation injection
         self.attack_behavior: Optional[Any] = None
@@ -90,6 +123,104 @@ class AODVNode:
     def is_node_blacklisted(self, node_id: int) -> bool:
         """Check whether a node ID is currently in the active quarantine blacklist."""
         return bool(self.is_blacklisted_cb and self.is_blacklisted_cb(node_id))
+
+    def is_discovery_in_cooldown(self, dest: int) -> bool:
+        """Check if destination is currently in discovery cooldown."""
+        return self.get_time() < self.discovery_cooldown_until.get(dest, 0.0)
+
+    def buffer_packet(self, pkt: Any) -> bool:
+        """Buffer data packet at source, enforcing expiration and capacity limits.
+        Returns True if packet was successfully buffered, False if dropped."""
+        now = self.get_time()
+        dest = pkt.dst
+        if dest not in self.packet_buffer:
+            self.packet_buffer[dest] = []
+        buf = self.packet_buffer[dest]
+
+        # 1. Prune expired packets
+        unexpired = []
+        for p in buf:
+            if now - p.timestamp > self.max_buffer_time:
+                self.log_event(
+                    sim_time=now,
+                    src=p.src,
+                    dst=p.dst,
+                    pkt_id=p.pkt_id,
+                    pkt_type="DATA_DROP",
+                    hop_count=p.hop_count,
+                    dropped_by=self.node_id,
+                )
+            else:
+                unexpired.append(p)
+        buf = unexpired
+
+        # 2. Check if packet itself is expired
+        if now - pkt.timestamp > self.max_buffer_time:
+            self.log_event(
+                sim_time=now,
+                src=pkt.src,
+                dst=pkt.dst,
+                pkt_id=pkt.pkt_id,
+                pkt_type="DATA_DROP",
+                hop_count=pkt.hop_count,
+                dropped_by=self.node_id,
+            )
+            self.packet_buffer[dest] = buf
+            return False
+
+        # 3. Queue size limit: drop oldest packet if full
+        if len(buf) >= self.max_buffer_per_dest:
+            old_pkt = buf.pop(0)
+            self.log_event(
+                sim_time=now,
+                src=old_pkt.src,
+                dst=old_pkt.dst,
+                pkt_id=old_pkt.pkt_id,
+                pkt_type="DATA_DROP",
+                hop_count=old_pkt.hop_count,
+                dropped_by=self.node_id,
+            )
+
+        buf.append(pkt)
+        self.packet_buffer[dest] = buf
+        return True
+
+    def get_buffered_packets(self, dest: int) -> List[Any]:
+        """Retrieve and remove eligible (unexpired) buffered packets for dest.
+        Expired packets are dropped with DATA_DROP logged."""
+        now = self.get_time()
+        buffered = self.packet_buffer.pop(dest, [])
+        eligible: List[Any] = []
+        for pkt in buffered:
+            if now - pkt.timestamp > self.max_buffer_time:
+                self.log_event(
+                    sim_time=now,
+                    src=pkt.src,
+                    dst=pkt.dst,
+                    pkt_id=pkt.pkt_id,
+                    pkt_type="DATA_DROP",
+                    hop_count=pkt.hop_count,
+                    dropped_by=self.node_id,
+                )
+            else:
+                eligible.append(pkt)
+        return eligible
+
+    def drop_buffered_packets(self, dest: int) -> List[Any]:
+        """Drop all buffered packets for dest, logging DATA_DROP."""
+        now = self.get_time()
+        dropped = self.packet_buffer.pop(dest, [])
+        for pkt in dropped:
+            self.log_event(
+                sim_time=now,
+                src=pkt.src,
+                dst=pkt.dst,
+                pkt_id=pkt.pkt_id,
+                pkt_type="DATA_DROP",
+                hop_count=pkt.hop_count,
+                dropped_by=self.node_id,
+            )
+        return dropped
 
     def get_route(self, dest: int) -> Optional[RouteEntry]:
         """Look up valid, unexpired route to destination."""
@@ -142,12 +273,31 @@ class AODVNode:
             return True
         return False
 
-    def initiate_route_discovery(self, dest: int) -> None:
-        """Start route discovery by broadcasting RREQ."""
+    def initiate_route_discovery(self, dest: int, force: bool = False) -> bool:
+        """Start route discovery by broadcasting RREQ with timeout scheduling."""
+        if self.is_node_blacklisted(dest):
+            return False
+        if dest in self.pending_rreqs:
+            return False
         now = self.get_time()
+        if not force and self.is_discovery_in_cooldown(dest):
+            return False
+        if self.get_route(dest) is not None:
+            return False
+
+        self._timer_token_counter += 1
+        state = DiscoveryState(
+            dest=dest,
+            retries=0,
+            timeout=self.rreq_timeout,
+            timer_token=self._timer_token_counter,
+            last_attempt_time=now,
+        )
+        self.discovery_states[dest] = state
+        self.pending_rreqs.add(dest)
+
         self.seq_num += 1
         self.rreq_id += 1
-
         existing = self.routing_table.get(dest)
         dest_seq = existing.dest_seq if existing else 0
 
@@ -160,7 +310,6 @@ class AODVNode:
             hop_count=0,
         )
         self.seen_rreq.add((self.node_id, self.rreq_id))
-        self.pending_rreqs.add(dest)
 
         self.log_event(
             sim_time=now,
@@ -173,6 +322,84 @@ class AODVNode:
 
         # Broadcast to 1-hop neighbors (indicated by dst=-1)
         self.send_packet(-1, rreq)
+
+        if self.schedule_timer_cb:
+            tok = state.timer_token
+            self.schedule_timer_cb(state.timeout, lambda d=dest, t=tok: self.handle_rreq_timeout(d, t))
+        return True
+
+    def handle_rreq_timeout(self, dest: int, token: int) -> None:
+        """Handle expiration of an RREQ discovery timer."""
+        state = self.discovery_states.get(dest)
+        if state is None or state.timer_token != token:
+            return  # Stale, cancelled, or superseding timer
+
+        # If destination was blacklisted in the meantime, abort discovery
+        if self.is_node_blacklisted(dest):
+            self.pending_rreqs.discard(dest)
+            self.discovery_states.pop(dest, None)
+            self.drop_buffered_packets(dest)
+            return
+
+        # Check if route already valid
+        if self.get_route(dest) is not None:
+            self.pending_rreqs.discard(dest)
+            self.discovery_states.pop(dest, None)
+            return
+
+        now = self.get_time()
+        if state.retries < self.rreq_retries:
+            # Retransmit RREQ with exponential backoff
+            state.retries += 1
+            state.timeout = state.timeout * self.backoff_mult
+            self._timer_token_counter += 1
+            state.timer_token = self._timer_token_counter
+            state.last_attempt_time = now
+
+            self.seq_num += 1
+            self.rreq_id += 1
+            existing = self.routing_table.get(dest)
+            dest_seq = existing.dest_seq if existing else 0
+
+            rreq = RREQ(
+                rreq_id=self.rreq_id,
+                originator=self.node_id,
+                originator_seq=self.seq_num,
+                dest=dest,
+                dest_seq=dest_seq,
+                hop_count=0,
+            )
+            self.seen_rreq.add((self.node_id, self.rreq_id))
+
+            self.log_event(
+                sim_time=now,
+                src=self.node_id,
+                dst=dest,
+                pkt_id=self.rreq_id,
+                pkt_type="RREQ",
+                hop_count=0,
+            )
+            self.send_packet(-1, rreq)
+
+            if self.schedule_timer_cb:
+                tok = state.timer_token
+                self.schedule_timer_cb(state.timeout, lambda d=dest, t=tok: self.handle_rreq_timeout(d, t))
+        else:
+            # Retries exhausted
+            self.pending_rreqs.discard(dest)
+            self.discovery_states.pop(dest, None)
+            self.discovery_cooldown_until[dest] = now + self.discovery_cooldown
+
+            # Drop all buffered packets waiting for dest
+            self.drop_buffered_packets(dest)
+
+            # Schedule check upon cooldown expiry: if new packets arrived during cooldown, restart discovery
+            if self.schedule_timer_cb:
+                def _check_cooldown_restart(d=dest):
+                    if d in self.packet_buffer and self.packet_buffer[d]:
+                        if d not in self.pending_rreqs and not self.is_node_blacklisted(d):
+                            self.initiate_route_discovery(d)
+                self.schedule_timer_cb(self.discovery_cooldown, _check_cooldown_restart)
 
     def handle_rreq(self, rreq: RREQ, prev_hop: int) -> None:
         """Process incoming RREQ packet."""
@@ -275,22 +502,29 @@ class AODVNode:
         )
         self.send_packet(-1, forward_rreq)
 
-    def handle_rrep(self, rrep: RREP, prev_hop: int) -> None:
-        """Process incoming RREP packet."""
+    def handle_rrep(self, rrep: RREP, prev_hop: int) -> bool:
+        """Process incoming RREP packet. Returns True if accepted and route established/forwarded."""
         if self.is_node_blacklisted(prev_hop) or self.is_node_blacklisted(rrep.dest):
-            return
+            return False
 
         now = self.get_time()
-        self.update_route(
+        updated = self.update_route(
             dest=rrep.dest,
             next_hop=prev_hop,
             hop_count=rrep.hop_count + 1,
             dest_seq=rrep.dest_seq,
             lifetime=rrep.lifetime,
         )
+        if not updated:
+            return False
 
         if self.node_id == rrep.originator:
             self.pending_rreqs.discard(rrep.dest)
+            if rrep.dest in self.discovery_states:
+                self.discovery_states[rrep.dest].timer_token += 1
+                del self.discovery_states[rrep.dest]
+            self.discovery_cooldown_until.pop(rrep.dest, None)
+
             self.log_event(
                 sim_time=now,
                 src=rrep.dest,
@@ -299,7 +533,7 @@ class AODVNode:
                 pkt_type="RREP_RECV",
                 hop_count=rrep.hop_count + 1,
             )
-            return
+            return True
 
         # Unicast forward towards originator
         reverse_route = self.get_route(rrep.originator)
@@ -312,9 +546,11 @@ class AODVNode:
                 lifetime=rrep.lifetime,
             )
             self.send_packet(reverse_route.next_hop, forward_rrep)
+            return True
         else:
             # Route broken - send RERR
             self.send_rerr(rrep.dest)
+            return False
 
     def send_rerr(self, unreachable_dest: int) -> None:
         """Broadcast Route Error for broken link."""
@@ -350,4 +586,11 @@ class AODVNode:
             if entry.is_valid and (entry.next_hop == bad_node or dest == bad_node):
                 entry.is_valid = False
                 severed.append(dest)
+
+        if bad_node in self.discovery_states:
+            self.discovery_states[bad_node].timer_token += 1
+            del self.discovery_states[bad_node]
+            self.pending_rreqs.discard(bad_node)
+            self.drop_buffered_packets(bad_node)
+
         return severed
