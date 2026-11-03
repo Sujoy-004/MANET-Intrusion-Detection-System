@@ -121,6 +121,20 @@ Adversarial injections are defined in the `attacks` array.
 - `strategy_params.target_flows`: (Optional) Array of flow tuples `[[src, dst], ...]` to drop selectively. If omitted, all intercepted flows are dropped with `drop_probability`.
 - `strategy_params.drop_control`: (Optional, boolean, default: `false`). If `true`, routing control packets (RREQs/RREPs) are dropped as well. Default `false` enforces honest AODV route participation with selective data plane dropping.
 
+## AODV Protocol & Route Discovery Recovery Hyperparameters
+
+Defined in [simulator/aodv.py](file:///C:/Users/KIIT0001/Documents/projects/Machine%20Learning-Based%20Intrusion%20Detection%20System%20for%20MANET/simulator/aodv.py):
+
+| Parameter | Default Value | Description |
+|---|---|---|
+| `DEFAULT_RREQ_TIMEOUT` | `2.0` s | Initial wait duration before retrying an unreplied Route Request (RREQ). |
+| `DEFAULT_RREQ_RETRIES` | `2` | Number of retries (2 retries, 3 total discovery attempts: 2s -> 4s -> 8s) before entering cooldown. |
+| `DEFAULT_BACKOFF_MULT` | `2.0` | Exponential backoff multiplier applied to discovery timeout per retry. |
+| `DEFAULT_DISCOVERY_COOLDOWN` | `2.0` s | Cooldown quiet period following exhausted retries before a fresh RREQ can be issued. |
+| `DEFAULT_MAX_BUFFER_PER_DEST` | `100` packets | Per-destination buffer queue capacity during discovery (oldest dropped first). |
+| `DEFAULT_MAX_BUFFER_TIME` | `20.0` s | Time-To-Live threshold after which buffered data packets expire and are dropped. |
+| `DEFAULT_ACTIVE_ROUTE_TIMEOUT` | `10.0` s | Active route lifetime before entry expiration without traffic refresh. |
+
 ## Feature Extraction & Machine Learning Hyperparameters
 
 Defined in [feature_extraction/extract_features.py](file:///C:/Users/KIIT0001/Documents/projects/Machine%20Learning-Based%20Intrusion%20Detection%20System%20for%20MANET/feature_extraction/extract_features.py) and [ml/dataset.py](file:///C:/Users/KIIT0001/Documents/projects/Machine%20Learning-Based%20Intrusion%20Detection%20System%20for%20MANET/ml/dataset.py):

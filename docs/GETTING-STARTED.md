@@ -40,14 +40,14 @@ Execute a baseline 30-node ad-hoc simulation with no active attacks:
 python -m simulator.run_scenario --scenario scenarios/e1_normal_30n.json --seed 42 --out traces/getting_started_baseline
 ```
 
-Expected output:
+Expected output (300-second Seed-42 reference benchmark):
 ```text
 Running scenario: scenarios/e1_normal_30n.json (seed=42)
-Simulation completed at time 100.0s.
-Packets Sent: 380
-Packets Received: 377
-Packet Delivery Ratio (PDR): 99.21%
-Throughput: 30.89 kbps
+Simulation completed at time 300.0s.
+Packets Sent: 6220
+Packets Received: 4098
+Packet Delivery Ratio (PDR): 65.88%
+Throughput: 55.95 kbps
 Trace written to: traces/getting_started_baseline/trace_seed42.csv
 ```
 
@@ -59,9 +59,10 @@ Run an identical network configuration, but with a malicious Blackhole node inje
 python -m simulator.run_scenario --scenario scenarios/e2_blackhole_30n.json --seed 42 --out traces/getting_started_blackhole
 ```
 
-Notice the immediate degradation in network quality:
+Notice the immediate degradation in network delivery:
 ```text
-Packet Delivery Ratio (PDR): ~48.74% (severe packet drop detected)
+Packet Delivery Ratio (PDR): 18.10% (severe packet drop: 1126 received / 6220 sent)
+Throughput: 15.37 kbps
 ```
 
 ### Step 3: Run with Closed-Loop Online IDS Active
@@ -74,20 +75,21 @@ python -m simulator.run_scenario --scenario scenarios/e2_blackhole_30n.json --se
 
 The online IDS detects the attacker within two sliding windows and purges it from routing tables:
 ```text
-[IDS] Time 25.0s: Strike 1 registered for node 12 (prob=0.89)
-[IDS] Time 30.0s: Strike 2 confirmed! Node 12 isolated from AODV routing.
-Packet Delivery Ratio (PDR): 95.57% (92.9% recovery of lost traffic)
+[IDS] Time 25.0s: Strike 1 registered for malicious node
+[IDS] Time 30.0s: Strike 2 confirmed! Malicious node isolated from AODV routing.
+Packet Delivery Ratio (PDR): 62.93% (restores 3914 received / 6220 sent; 95.5% baseline recovery)
+Throughput: 53.44 kbps
 ```
 
 ## Running the Automated Test Suite
 
-Verify complete system functionality by running the 69-test automated suite:
+Verify complete system functionality by running the 79-test automated suite:
 
 ```powershell
 python -m pytest
 ```
 
-All 69 unit and integration tests should pass in under 60 seconds.
+All 79 unit, integration, and recovery tests should pass in under 120 seconds.
 
 ## Common Setup Issues & Troubleshooting
 

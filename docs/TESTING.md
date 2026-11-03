@@ -17,7 +17,7 @@ python -m pip install pytest==9.0.2 pytest-cov==7.1.0
 
 ### 1. Run the Complete Test Suite
 
-Execute all 69 unit, integration, and architectural tests:
+Execute all 79 unit, integration, recovery, and architectural tests:
 
 ```powershell
 python -m pytest
@@ -25,7 +25,7 @@ python -m pytest
 
 Expected output:
 ```text
-======================= 69 passed in ~50s =======================
+================== 79 passed, 1 warning in ~115s ==================
 ```
 
 ### 2. Run a Specific Test Module
@@ -33,6 +33,9 @@ Expected output:
 Target individual subsystems:
 
 ```powershell
+# AODV route discovery recovery & quarantine guards
+python -m pytest tests/test_aodv_recovery.py
+
 # Attack behavior tests
 python -m pytest tests/test_attacks_blackhole.py
 python -m pytest tests/test_attacks_grayhole.py
@@ -58,15 +61,16 @@ python -m pytest tests/test_import_boundaries.py
 ### 3. Run with Test Filter or Verbose Output
 
 ```powershell
-python -m pytest -v -k "anti_leakage or isolation"
+python -m pytest -v -k "anti_leakage or isolation or recovery"
 ```
 
 ## Test Suite Architecture
 
-The repository contains 10 specialized test modules in `tests/` covering every architectural layer:
+The repository contains 11 specialized test modules in `tests/` covering every architectural layer:
 
 | Test Module | Test Count | Scope & Focus |
 |---|---|---|
+| `tests/test_aodv_recovery.py` | 10 | Bounded RREQ retries, exponential backoff, timer-generation protection, discovery cooldown, packet queue limit and buffer TTL expiration, partition recovery, late RREP handling, quarantine response guards, and elimination of RREP storm loop. |
 | `tests/test_attacks_blackhole.py` | 6 | RREP sequence spoofing, silent data packet drops, strategy registry factory. |
 | `tests/test_attacks_grayhole.py` | 8 | Honest AODV control routing, probabilistic data drops, selective flow targeting. |
 | `tests/test_closed_loop.py` | 9 | `OnlineIDS` controller, 2-strike confirmation, route invalidation, quarantine decay, and QoS recovery. |
@@ -102,7 +106,7 @@ The repository contains 10 specialized test modules in `tests/` covering every a
 
 ### Gate 6: Closed-Loop QoS Recovery (Gate 7 Non-Negotiable)
 - **Requirement:** The IDS must show statistically significant network recovery over unprotected AODV under attack.
-- **Verification:** `tests/test_closed_loop.py` and `scripts/run_closed_loop_benchmark.py` evaluate the 3-way triad, asserting substantial PDR recovery (measured 92.9% recovery on Blackhole).
+- **Verification:** `tests/test_closed_loop.py`, `tests/test_aodv_recovery.py`, and `scripts/run_closed_loop_benchmark.py` evaluate the 3-way triad. In the 300-second Seed-42 reference benchmark, PDR recovers from 18.10% (under Blackhole attack) back to 62.93% (restoring 95.51% of baseline delivery: 3,914 / 4,098 packets, +44.82 percentage points absolute PDR improvement). Across multi-seed historical benchmarks, the system achieved a 92.9% average recovery ratio on 30-node Blackhole attacks.
 
 ## Writing New Tests
 

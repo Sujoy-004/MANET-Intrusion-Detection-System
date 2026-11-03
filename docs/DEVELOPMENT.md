@@ -18,7 +18,7 @@ All development in this repository is strictly governed by the engineering contr
 
 | Command | Purpose |
 |---|---|
-| `python -m pytest` | Run the complete 69-test automated test suite. |
+| `python -m pytest` | Run the complete 79-test automated test suite. |
 | `python -m simulator.run_scenario --scenario <json> --seed <int> --out <dir>` | Run an individual simulation scenario. |
 | `python -m simulator.run_scenario --scenario <json> --seed <int> --out <dir> --ids` | Run a scenario with real-time Online IDS mitigation. |
 | `python scripts/build_dataset.py` | Generate seed-partitioned train (`data/train.csv`) and test (`data/test.csv`) datasets. |
@@ -97,7 +97,7 @@ Create `tests/test_attacks_my_attack.py` asserting:
 
 1. **Default Branch:** `main`.
 2. **Branch Naming:** Use feature branches (`feat/attack-rreq-flood`, `fix/quarantine-decay-timer`).
-3. **Pre-Commit Checks:** Run `python -m pytest` locally and ensure all 69 tests pass before opening a PR.
+3. **Pre-Commit Checks:** Run `python -m pytest` locally and ensure all 79 tests pass before opening a PR.
 4. **PR Guidelines:**
    - Clearly document scenario configurations and random seeds used for testing.
    - Attach side-by-side QoS comparison tables for any changes affecting routing protocols.

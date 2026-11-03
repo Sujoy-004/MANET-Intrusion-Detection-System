@@ -10,7 +10,7 @@ Mobile Ad-Hoc Networks (MANETs) lack centralized routing infrastructure, exposin
 2. Decoupled attack injection behaviors that manipulate routing tables and drop forwarded data packets.
 3. Sliding-window, non-leaking feature extraction deriving tabular traffic metrics from packet event traces.
 4. Cost-sensitive Scikit-learn classification models tuned under a strict False Positive Rate gate ($\text{FPR} \le 1.0\%$).
-5. A dynamic closed-loop Online IDS response engine that isolates confirmed malicious nodes, invalidates poisoned routing table entries, and restores packet delivery ratio (achieving 92.9% QoS recovery on Blackhole).
+5. A dynamic closed-loop Online IDS response engine that isolates confirmed malicious nodes, invalidates poisoned routing table entries, and restores packet delivery ratio (achieving 62.93% PDR vs. 18.10% under attack in the 300s Seed-42 benchmark).
 
 ## Prerequisites & Installation
 
@@ -58,20 +58,27 @@ The online IDS evaluates sliding-window node behavior every 5.0 seconds. Upon 2 
 ## Key Features & Results
 
 - **Sub-Second Execution:** Built with SimPy discrete-event processing, running 300 seconds of simulated network activity in ~0.83 seconds wall-clock time (~70,000 events/sec).
+- **Robust AODV Discovery Lifecycle:** Integrated RFC 3561 route discovery recovery featuring per-destination state machines, exponential backoff (2 retries, 3 total attempts: 2s -> 4s -> 8s), discovery timeouts with timer-generation protection, bounded packet buffering (queue limit 100 packets, TTL 20.0s), discovery cooldown (2.0s), and quarantine response guards to recover cleanly from temporary network partitions without broadcast storms.
 - **Anti-Leakage Data Partitioning:** Train and test datasets are partitioned strictly by simulation seed (Seeds 42 & 43 for training, Seed 44 for held-out testing), eliminating temporal autocorrelation leakage.
-- **Champion ML Classifier:** Random Forest and Decision Tree classifiers operating under an enforced $\text{FPR} \le 1.0\%$ threshold to prevent false-alarm network fragmentation.
-- **Measurable QoS Recovery:** 3-way benchmark evaluation proves PDR recovers from 48.74% (under attack) back to 95.57% (with IDS active), representing a 92.9% recovery of baseline network utility.
+- **Champion ML Classifier:** Random Forest classifier operating under an enforced $\text{FPR} \le 1.0\%$ threshold to prevent false-alarm network fragmentation.
+- **Measurable QoS Recovery:** Evaluated on the standardized 300-second, Seed-42 comparative triad benchmark (`scenarios/e1_normal_30n.json` vs. `scenarios/e2_blackhole_30n.json`). The online IDS restores PDR from 18.10% under unmitigated attack back to 62.93% (recovering 95.51% of baseline delivery: 3,914 / 4,098 packets, +44.82 percentage points absolute PDR improvement over attack).
 
-| Metric | Baseline AODV | Blackhole Attack | AODV + Online IDS | Net Recovery |
+### 300-Second Benchmark Results (Seed 42 Reference)
+
+> **Benchmark Provenance Note:** The table below documents the verified single-seed reference run (300 simulated seconds, Seed 42, 30 nodes, 6 CBR application flows). Metrics vary across mobility seeds and topologies; do not assume identical numerical results across unseeded configurations.
+
+| Metric | Baseline AODV (Normal) | Blackhole Attack (No IDS) | AODV + Online IDS | Net Mitigation Impact |
 |---|---|---|---|---|
-| **Packet Delivery Ratio (PDR)** | 99.2% | 48.7% | 95.6% | **+46.8% absolute (92.9% relative)** |
-| **Throughput (kbps)** | 42.1 kbps | 20.7 kbps | 40.5 kbps | **96.2% restored** |
-| **Average Delay (s)** | 0.012 s | 0.008 s | 0.018 s | Low rerouting penalty |
-| **Routing Overhead** | 0.041 | 0.019 | 0.049 | Minimal control overhead |
+| **Packet Delivery Ratio (PDR)** | 65.88% (4,098 / 6,220) | 18.10% (1,126 / 6,220) | 62.93% (3,914 / 6,220) | **+44.82 percentage points absolute PDR (+247.6% relative to attack; 95.51% baseline restored: 3,914 / 4,098)** |
+| **Throughput (kbps)** | 55.95 kbps | 15.37 kbps | 53.44 kbps | **+38.07 kbps (+247.7% relative to attack; 95.51% baseline restored)** |
+| **Average Delay (ms)** | 134.74 ms (4,098 delivered pkts) | 138.66 ms (1,126 delivered pkts) | 102.29 ms (3,914 delivered pkts) | **Cohort comparison: 36.37 ms vs. attack, 32.45 ms vs. baseline (delivered pkts only)** |
+| **Routing Overhead Ratio** | 0.0950 | 0.1055 | 0.1302 | **+0.0247 bounded control packet overhead** |
+
+> **Delay Measurement Note:** Average end-to-end delay is calculated in `simulator/metrics.py` exclusively across successfully delivered packets (inner join between `DATA_SENT` and `DATA_RECV` on packet ID). Packets dropped by attacks, buffer overflow, or topology partitions are excluded from delay computation. Latency comparisons between modes represent descriptive statistics across distinct delivered-packet populations rather than causal proof of path-level delay optimization.
 
 ## Running the Automated Test Suite
 
-Run the full automated test suite containing 69 unit, integration, and pipeline validation tests:
+Run the full automated test suite containing 79 unit, integration, recovery, and pipeline validation tests:
 
 ```bash
 python -m pytest
@@ -81,7 +88,7 @@ python -m pytest
 
 ```text
 ├── simulator/             # Pure-Python discrete-event network simulator (SimPy + NetworkX)
-│   ├── aodv.py            # RFC 3561 AODV protocol (RREQ, RREP, RERR, route table, blacklist hook)
+│   ├── aodv.py            # RFC 3561 AODV protocol (bounded retries/backoff, discovery lifecycle, buffer TTL, blacklist guards)
 │   ├── mobility.py        # 2D Random Waypoint mobility model
 │   ├── radio.py           # Unit-disk transmission range & dynamic neighbor discovery
 │   ├── traffic.py         # CBR/UDP application traffic generator
@@ -107,7 +114,7 @@ python -m pytest
 │   ├── build_dataset.py
 │   ├── run_generalization_matrix.py
 │   └── run_closed_loop_benchmark.py
-├── tests/                 # 69 pytest unit and integration tests
+├── tests/                 # 79 pytest unit, integration, and recovery tests
 ├── results/               # Metric CSVs and publication-grade plots (results/plots/)
 └── docs/                  # Detailed documentation and thesis report
 ```

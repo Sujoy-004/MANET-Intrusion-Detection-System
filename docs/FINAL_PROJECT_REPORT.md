@@ -129,7 +129,7 @@ The principal contributions delivered by this capstone thesis are:
 - **Empirically Proven Machine Learning Champion:** Rigorous benchmarking identifying Random Forest as the optimal detector, achieving $97.44\%$ accuracy, $75.93\%$ F1-score, and $0.99\%$ FPR on unseen simulation seeds (Seed 44).
 - **Demonstrable Closed-Loop QoS Recovery:** Experimental proof that active route invalidation recovers **$92.9\%$ of baseline PDR** on 30-node Blackhole attacks ($0.1418 \to 0.6101$), with routing overhead strictly bounded to $+0.0307$ packets per data packet.
 - **Publication-Grade Plot Portfolio & Interactive Diagrams:** A comprehensive suite of 15 high-resolution figures in `results/plots/` and standalone interactive HTML architecture and sequence diagrams rendered via Archify in `.archify/diagrams/`.
-- **Exhaustive Automated Verification Suite:** 59 passing unit and integration tests across 5 test suites validating simulator mechanics, attack efficacy, feature neutrality, ML pipeline contracts, and closed-loop isolation.
+- **Exhaustive Automated Verification Suite:** 79 passing unit, integration, and recovery tests across 11 test modules validating simulator mechanics, AODV route discovery recovery, attack efficacy, feature neutrality, ML pipeline contracts, and closed-loop isolation.
 
 ---
 
@@ -613,6 +613,29 @@ The decisive validation of this thesis is the **Comparative Triad Benchmark**. 3
 - **Grayhole 30-Node ($p=0.5$) Recovery:** Under $50\%$ Grayhole dropping, delivery drops to $56.34\%$. With active IDS, delivery recovers to **$69.35\%$** ($118.6\%$ recovery ratio). The delivery ratio exceeds the baseline because isolating the centrally placed, congested Grayhole node routed traffic through less congested peripheral paths, simultaneously reducing wireless contention and packet drop.
 - **50-Node Scalability:** In the denser 50-node topology, baseline PDR is higher ($73.33\%$). Grayhole dropping drops delivery to $52.56\%$. `AODV+IDS` recovers delivery to $59.69\%$ ($40.0\%$ recovery ratio), confirming that the mitigation scales effectively to larger topologies.
 
+#### 5.4.1 Standardized 300-Second Seed-42 Reference Benchmark (AODV Recovery Integration)
+
+Following the initial multi-seed campaign, a critical engineering enhancement was integrated into the simulator's RFC 3561 AODV protocol implementation: **Bounded Route Discovery Recovery & Quarantine Guards**. Earlier simulation runs suffered from persistent unrecovered discoveries when temporary network partitions occurred during initial flow setup, while early isolation prototypes risked blacklisted RREP storm loops.
+
+The validated production recovery engine introduces:
+1. **Per-Destination State Machines:** Scheduling initial discovery with `DEFAULT_RREQ_TIMEOUT = 2.0s`, bounded exponential backoff (`DEFAULT_BACKOFF_MULT = 2.0`: $2\text{s} \to 4\text{s} \to 8\text{s}$), and `DEFAULT_RREQ_RETRIES = 2` retries (3 total attempts; no separate `MAX_RREQ_TIMEOUT` constant is required).
+2. **Timer-Generation Stale Callback Protection:** Unique timer token IDs ensure that late RREPs or cancelled timers never fire stale callbacks against subsequent discovery lifecycles.
+3. **Discovery Cooldown:** A `DEFAULT_DISCOVERY_COOLDOWN = 2.0s` quiet period after retry exhaustion prevents broadcast storms during topological partitions.
+4. **Bounded Buffering & Packet TTL:** Per-destination buffers capped at `DEFAULT_MAX_BUFFER_PER_DEST = 100` packets with a strict `DEFAULT_MAX_BUFFER_TIME = 20.0s` TTL to eliminate memory bloat during partitions.
+5. **Strict RREP Ingress & Buffer Flush Guards:** Buffered packets are only flushed when a valid, non-blacklisted route is confirmed installed; blacklisted RREPs are rejected without mutating pending discoveries.
+6. **Quarantine Local Egress Guard:** `handle_rreq()` explicitly checks `self.is_node_blacklisted(self.node_id)`, preventing quarantined nodes from locally constructing or transmitting RREPs.
+
+*Table 5.4b: Verified 300-Second Seed-42 Reference Triad Benchmark (Post-Recovery)*
+
+| Metric | Baseline AODV (Normal) | Blackhole Attack (No IDS) | AODV + Online IDS | Net Impact |
+|---|---|---|---|---|
+| **Packet Delivery Ratio (PDR)** | **$65.88\%$** ($4,098 / 6,220$) | **$18.10\%$** ($1,126 / 6,220$) | **$62.93\%$** ($3,914 / 6,220$) | **$+44.82\text{ percentage points}$ absolute PDR (restores $95.51\%$ of baseline delivery: $3,914 / 4,098$)** |
+| **Throughput (kbps)** | **$55.95\text{ kbps}$** | **$15.37\text{ kbps}$** | **$53.44\text{ kbps}$** | **$+38.07\text{ kbps}$ restored ($95.51\%$ of baseline throughput)** |
+| **Average End-to-End Delay** | **$134.74\text{ ms}$** ($4,098\text{ delivered pkts}$) | **$138.66\text{ ms}$** ($1,126\text{ delivered pkts}$) | **$102.29\text{ ms}$** ($3,914\text{ delivered pkts}$) | **Cohort comparison: $36.37\text{ ms}$ vs. attack, $32.45\text{ ms}$ vs. baseline (delivered pkts only)** |
+| **Routing Overhead Ratio** | **$0.0950$** | **$0.1055$** | **$0.1302$** | **$+0.0247$ bounded routing overhead cost** |
+
+> *Provenance & Delay Measurement Note:* The numbers in Table 5.4b represent the single-seed reference benchmark (300 simulated seconds, Seed 42, `scenarios/e1_normal_30n.json` vs. `scenarios/e2_blackhole_30n.json`), distinct from the historical 3-seed averages reported in Table 5.4. Average end-to-end delay is calculated in `simulator/metrics.py` exclusively across successfully received packets (`DATA_SENT` matched with `DATA_RECV`). Dropped or undelivered packets are excluded from latency calculations. The 36.37 ms and 32.45 ms differences represent descriptive statistical comparisons between distinct delivered-packet populations rather than causal proof of path-level latency reduction.
+
 ### 5.5 Trade-Off Analysis: Routing Overhead and Latency
 
 *Table 5.5: Full Multi-Metric Triad Summary (Averaged across Seeds 42, 43, 44)*
@@ -777,18 +800,24 @@ Scenario configurations reside in `scenarios/` as declarative JSON files:
 
 ### Appendix B: Test Suite Verification Matrix
 
-The project enforces rigorous test automation via pytest. All 59 automated unit and integration tests pass cleanly:
+The project enforces rigorous test automation via pytest. All 79 automated unit, integration, and recovery tests pass cleanly:
 
 *Table B.1: Automated Test Suite Coverage Summary*
 
 | Test Suite File | Component Under Test | Test Count | Status | Key Properties Verified |
 |---|---|---|---|---|
-| `tests/test_simulator.py` | Core Simulator Engine | 12 | PASS | SimPy clock, RWP bounds, AODV RREQ/RREP, CBR flows, determinism |
-| `tests/test_attacks.py` | Adversarial Subsystem | 9 | PASS | Blackhole sequence spoofing, Grayhole drop rates, strategy decoupling |
-| `tests/test_features.py` | Feature Pipeline | 10 | PASS | Sliding window extraction, neutral defaults, zero label leakage |
-| `tests/test_ml.py` | Machine Learning Models | 14 | PASS | Scaler pipeline, RF/DT/SVM training, FPR gate enforcement, seed holdout |
-| `tests/test_closed_loop.py` | Online Response & Isolation | 14 | PASS | 2-strike filter, quarantine decay, route invalidation, triad benchmark |
-| **Total Test Suite** | **Complete System** | **59 / 59** | **PASS** | **100% Core Pipeline Test Coverage** |
+| `tests/test_aodv_recovery.py` | AODV Route Discovery Recovery | 10 | PASS | Bounded retries, exponential backoff, cooldown, buffer TTL, partition recovery, quarantine guards |
+| `tests/test_attacks_blackhole.py` | Adversarial Subsystem (Blackhole) | 6 | PASS | Sequence spoofing, silent data drops, strategy registry factory |
+| `tests/test_attacks_grayhole.py` | Adversarial Subsystem (Grayhole) | 8 | PASS | Honest AODV control routing, probabilistic data drops, selective flow targeting |
+| `tests/test_closed_loop.py` | Online Response & Isolation | 9 | PASS | 2-strike filter, quarantine decay, route invalidation, triad benchmark |
+| `tests/test_feature_pipeline.py` | Feature Pipeline | 7 | PASS | Sliding window extraction, neutral defaults, zero label leakage |
+| `tests/test_gate2_benchmark.py` | Attack Impact Benchmark | 1 | PASS | Gate 2 multi-seed degradation benchmark asserting >= 25% PDR drop |
+| `tests/test_generalization.py` | Generalization Evaluation | 4 | PASS | Zero-shot attack transfer, multi-attack dataset integrity, parameter matrix |
+| `tests/test_import_boundaries.py` | Architectural Boundaries | 3 | PASS | AST-based verification asserting simulator never imports attacks |
+| `tests/test_ml_pipeline.py` | Machine Learning Models | 18 | PASS | Scaler pipeline, RF/DT/SVM training, FPR <= 1% gate enforcement, seed holdout |
+| `tests/test_plots.py` | Visualization Generation | 10 | PASS | Headless figure rendering, Seaborn palette application, PNG export |
+| `tests/test_trace_logging.py` | Telemetry & Tracing | 3 | PASS | 10-column CSV trace schema enforcement, node attribution, status frequency |
+| **Total Test Suite** | **Complete System** | **79 / 79** | **PASS** | **100% Core Pipeline Test Coverage** |
 
 ### Appendix C: Complete CLI Reproduction Playbook
 

@@ -94,6 +94,16 @@ A fundamental architectural constraint is the strict decoupling between the simu
    - Active sources immediately trigger route rediscoveries, steering data packets along honest alternative multi-hop paths.
 5. **Quarantine Decay:** Quarantined nodes remain isolated for a configurable decay window (default: 30.0 s), allowing transient congestion to clear without permanent network fragmentation.
 
+### 4. AODV Route Discovery & Recovery Lifecycle
+To ensure robust, deterministic recovery after temporary network partitions while preventing broadcast storms and buffer bloat:
+1. **Per-Destination Discovery State Machine:** Each node maintains structured discovery state (`DiscoveryState` in `simulator/aodv.py`) tracking active status, current retry count ($0 \le r \le 2$), dynamic timeout interval, and scheduled timer token generation IDs.
+2. **Bounded Retries with Exponential Backoff:** Initial discovery timeout is scheduled at `DEFAULT_RREQ_TIMEOUT = 2.0` seconds. Upon timeout without an RREP, retries back off exponentially (`DEFAULT_BACKOFF_MULT = 2.0`). With `DEFAULT_RREQ_RETRIES = 2`, the timeout progression is deterministically bounded to $2.0\text{s} \to 4.0\text{s} \to 8.0\text{s}$ across 3 total attempts (1 initial attempt + 2 retries; no separate `MAX_RREQ_TIMEOUT` constant is required).
+3. **Timer-Generation Stale Callback Protection:** Each scheduled timeout callback carries a unique `timer_token`. If an RREP arrives or retries are cancelled before the timer fires, the token mismatch ensures stale callbacks are discarded harmlessly without aborting subsequent discoveries.
+4. **Discovery Cooldown:** If discovery retries are exhausted without an RREP, the destination enters a `DEFAULT_DISCOVERY_COOLDOWN = 2.0` second quiet period. Subsequent packet arrivals buffer within limits but do not trigger repetitive RREQ floods.
+5. **Bounded Packet Buffering & TTL Expiration:** Data packets awaiting route establishment are enqueued in `packet_buffer[dest]`. Queues are capped at `DEFAULT_MAX_BUFFER_PER_DEST = 100` packets (oldest dropped first) and enforce `DEFAULT_MAX_BUFFER_TIME = 20.0` seconds TTL. Stale packets that exceed TTL during partitions are pruned automatically.
+6. **Strict RREP Ingress & Buffer Flush Guards:** Upon receiving an RREP, nodes verify the sender is not blacklisted before updating routes. Valid RREPs establish the route and flush eligible buffered packets; rejected blacklisted RREPs leave legitimate pending discoveries untouched and never flush buffers into the black hole.
+7. **Quarantine Local Egress Guard:** `handle_rreq()` explicitly checks `self.is_node_blacklisted(self.node_id)`. Quarantined nodes are completely silenced from generating or transmitting local RREPs, eliminating rogue control packets at the point of origin.
+
 ## Key Abstractions
 
 | Class / Component | Module Path | Responsibility |
