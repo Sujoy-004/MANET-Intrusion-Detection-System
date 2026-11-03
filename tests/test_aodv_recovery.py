@@ -364,3 +364,33 @@ def test_blackhole_ids_quarantine_no_rreq_storm_integration():
     total_buffered = sum(sum(len(q) for q in node.packet_buffer.values()) for node in runner.aodv_nodes.values())
     assert total_pending == 0, f"Stale pending discoveries remain: {total_pending}"
     assert total_buffered == 0, f"Buffered packets leaked: {total_buffered}"
+
+
+def test_quarantined_node_cannot_locally_generate_rrep():
+    """Verify that a quarantined node drops incoming RREQs and does not generate RREPs."""
+    sent: List[Any] = []
+    events: List[Any] = []
+    blacklisted: Set[int] = {21}
+
+    # Quarantined node 21
+    node = AODVNode(
+        node_id=21,
+        get_time=lambda: 10.0,
+        send_packet_cb=lambda target, msg: sent.append((target, msg)),
+        log_event_cb=lambda **kwargs: events.append(kwargs),
+        is_blacklisted_cb=lambda nid: nid in blacklisted,
+    )
+
+    # 1. When quarantined, node must not process incoming RREQ or respond
+    rreq = RREQ(rreq_id=1, originator=8, originator_seq=1, dest=1, dest_seq=0)
+    node.handle_rreq(rreq, prev_hop=8)
+
+    assert len(sent) == 0, "Quarantined node generated packet during handle_rreq"
+    assert (8, 1) not in node.seen_rreq
+    assert 8 not in node.routing_table
+
+    # 2. When un-quarantined (e.g. quarantine expired), benign processing works normally
+    blacklisted.clear()
+    node.handle_rreq(rreq, prev_hop=8)
+    assert (8, 1) in node.seen_rreq
+    assert 8 in node.routing_table

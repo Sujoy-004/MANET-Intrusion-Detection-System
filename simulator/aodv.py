@@ -403,7 +403,11 @@ class AODVNode:
 
     def handle_rreq(self, rreq: RREQ, prev_hop: int) -> None:
         """Process incoming RREQ packet."""
-        if self.is_node_blacklisted(prev_hop) or self.is_node_blacklisted(rreq.originator):
+        if (
+            self.is_node_blacklisted(self.node_id)
+            or self.is_node_blacklisted(prev_hop)
+            or self.is_node_blacklisted(rreq.originator)
+        ):
             return
 
         now = self.get_time()
