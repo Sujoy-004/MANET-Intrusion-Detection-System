@@ -148,6 +148,7 @@ class SimulationRunner:
                     node_id=nid,
                 ),
                 is_blacklisted_cb=(self.online_ids.is_blacklisted if self.online_ids else None),
+                schedule_timer_cb=self._schedule_timer,
             )
             self.aodv_nodes[node_id] = aodv_node
 
@@ -312,6 +313,13 @@ class SimulationRunner:
             yield self.env.timeout(interval)
             self.update_topology()
 
+    def _schedule_timer(self, delay: float, callback: Callable[[], None]) -> Any:
+        """Schedule a timer callback in the SimPy environment."""
+        def _timer_proc() -> Generator[simpy.Event, None, None]:
+            yield self.env.timeout(delay)
+            callback()
+        return self.env.process(_timer_proc())
+
     def send_network_message(self, src: int, target: int, msg: Any) -> None:
         """Schedule message transmission across the wireless medium."""
         self.env.process(self._transmit_process(src, target, msg))
@@ -332,10 +340,11 @@ class SimulationRunner:
             # Unicast
             if target in self.nodes[src].neighbors:
                 if isinstance(msg, RREP):
-                    self.aodv_nodes[target].handle_rrep(msg, prev_hop=src)
+                    accepted = self.aodv_nodes[target].handle_rrep(msg, prev_hop=src)
                     # Check if destination reached and pending buffered data packets can now be sent
-                    if msg.originator == target:
-                        self._flush_packet_buffer(target, msg.dest)
+                    if accepted and msg.originator == target:
+                        if self.aodv_nodes[target].get_route(msg.dest) is not None:
+                            self._flush_packet_buffer(target, msg.dest)
                 elif isinstance(msg, RREQ):
                     self.aodv_nodes[target].handle_rreq(msg, prev_hop=src)
                 elif isinstance(msg, RERR):
@@ -427,11 +436,10 @@ class SimulationRunner:
         if route is None:
             # Buffer packet at source if route not yet discovered
             if current_hop == pkt.src:
-                if pkt.dst not in aodv_node.packet_buffer:
-                    aodv_node.packet_buffer[pkt.dst] = []
-                aodv_node.packet_buffer[pkt.dst].append(pkt)
-                if pkt.dst not in aodv_node.pending_rreqs:
-                    aodv_node.initiate_route_discovery(pkt.dst)
+                buffered = aodv_node.buffer_packet(pkt)
+                if buffered and pkt.dst not in aodv_node.pending_rreqs:
+                    if not aodv_node.is_discovery_in_cooldown(pkt.dst):
+                        aodv_node.initiate_route_discovery(pkt.dst)
             else:
                 # Intermediate node lost route
                 self.log_event(
@@ -478,9 +486,9 @@ class SimulationRunner:
             aodv_node.send_rerr(pkt.dst)
 
     def _flush_packet_buffer(self, node_id: int, dest: int) -> None:
-        """Send all packets waiting for route discovery to destination."""
+        """Send all eligible unexpired packets waiting for route discovery to destination."""
         aodv_node = self.aodv_nodes[node_id]
-        buffered = aodv_node.packet_buffer.pop(dest, [])
+        buffered = aodv_node.get_buffered_packets(dest)
         for pkt in buffered:
             self.env.process(self._route_and_forward_data(pkt, current_hop=node_id))
 
