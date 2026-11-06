@@ -25,6 +25,26 @@ python -m pip install simpy==4.1.2 networkx==3.6.1 scikit-learn==1.8.0 pandas==3
 
 ## Quick Start
 
+> **Simulator-only workflows need no ML prep.** Steps 1–2 (baseline and blackhole runs without `--ids`) depend only on the simulator dependencies and are fully independent of the ML pipeline. Only Step 3 (`--ids`) and the ML/evaluation workflows require the first-time model preparation from §0 below.
+
+### 0. First-Time Model Preparation (After Fresh Clone)
+
+The trained model artifacts (`ml/models/*.joblib`, including `ml/models/best_model.joblib`) are intentionally excluded from version control via the `.gitignore` rule `ml/models/*.joblib`. They are deterministic products of seeded simulations, so they are regenerated locally with three commands — this keeps the repository small and keeps every result reproducible. `ml/models/model_metadata.json` is tracked, while `data/` and `traces/` are generated locally only.
+
+Run the following canonical sequence from the repository root in PowerShell:
+
+```powershell
+python scripts/build_dataset.py --multi-attack
+python -m ml.train
+python -m ml.evaluate
+```
+
+Expected outputs (verified reference run): the dataset totals 52,200 rows, with a training split of 34,800 rows (seeds 42 & 43) and a held-out test split of 17,400 rows (seed 44). Training writes candidate models to `ml/models/`, and evaluation selects the FPR-gated champion — Random Forest with F1 0.7593 and FPR 0.0099 (0.99%) — persisted to `ml/models/best_model.joblib` alongside `ml/models/model_metadata.json`.
+
+**Expected artifacts:** `data/train.csv`, `data/test.csv`, `ml/models/random_forest.joblib`, `ml/models/decision_tree.joblib`, `ml/models/svm.joblib`, `ml/models/best_model.joblib`, `ml/models/model_metadata.json`.
+
+**FPR acceptance gate:** `ml/evaluate.py` enforces a locked gate of `FPR <= 1.0%` (`FPR_GATE = 0.01`). Any candidate classifier exceeding 1.0% FPR is disqualified from champion selection, and evaluation aborts if no candidate passes. The verified champion (Random Forest, F1 0.7593, FPR 0.0099 = 0.99%) sits under the gate.
+
 ### 1. Run Baseline Normal Simulation
 
 Execute a 30-node normal MANET simulation with Random Waypoint mobility:
@@ -46,6 +66,8 @@ python -m simulator.run_scenario --scenario scenarios/e2_blackhole_30n.json --se
 The Blackhole attacker intercepts RREQ broadcasts, advertises an inflated sequence number, and silently drops all intercepted application data.
 
 ### 3. Run Closed-Loop IDS Mitigation
+
+The `--ids` flag loads the trained champion from `ml/models/best_model.joblib` (see §0) and fails with a missing-file error if that artifact does not yet exist.
 
 Run the simulation with active closed-loop machine learning detection and route isolation enabled:
 
@@ -127,6 +149,14 @@ python -m pytest
 - [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md): Architectural contracts, guidelines for extending attacks, and coding conventions.
 - [docs/TESTING.md](docs/TESTING.md): Test suite organization, Gate 2 impact verification, and benchmark validation.
 - [docs/FINAL_PROJECT_REPORT.md](docs/FINAL_PROJECT_REPORT.md): Complete B.Tech project thesis report with mathematical models and full experimental results.
+
+## Troubleshooting
+
+### 1. Missing ml/models/best_model.joblib
+
+- **Symptom:** Running any `--ids` command (or `python -m ml.evaluate`, `python scripts/run_closed_loop_benchmark.py`) fails with a file-not-found / invalid-load error on `ml/models/best_model.joblib`.
+- **Cause:** Model artifacts are excluded from the repository (`.gitignore` rule `ml/models/*.joblib`) and must be regenerated locally.
+- **Fix:** Run the §0 sequence from the repository root: `python scripts/build_dataset.py --multi-attack`, then `python -m ml.train`, then `python -m ml.evaluate`.
 
 ## License
 

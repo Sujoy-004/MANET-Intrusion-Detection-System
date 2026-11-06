@@ -20,13 +20,29 @@ All development in this repository is strictly governed by the engineering contr
 |---|---|
 | `python -m pytest` | Run the complete 79-test automated test suite. |
 | `python -m simulator.run_scenario --scenario <json> --seed <int> --out <dir>` | Run an individual simulation scenario. |
-| `python -m simulator.run_scenario --scenario <json> --seed <int> --out <dir> --ids` | Run a scenario with real-time Online IDS mitigation. |
-| `python scripts/build_dataset.py` | Generate seed-partitioned train (`data/train.csv`) and test (`data/test.csv`) datasets. |
-| `python -m ml.train` | Train Random Forest, Decision Tree, and SVM pipelines with 5-fold Stratified CV. |
-| `python -m ml.evaluate` | Evaluate trained models on the held-out test split and export metrics. |
+| `python scripts/build_dataset.py` | **Run FIRST** — generate seed-partitioned train (`data/train.csv`) and test (`data/test.csv`) CSVs into `data/`; add `--multi-attack` for the canonical Blackhole+Grayhole dataset (52,200 rows: train 34,800 from seeds 42 & 43; test 17,400 from seed 44). Must precede `ml.train`. |
+| `python -m ml.train` | Train Random Forest, Decision Tree, and SVM pipelines with 5-fold Stratified CV; writes candidate pipelines to `ml/models/<name>.joblib`. Requires `data/train.csv` from `build_dataset.py` (run above). |
+| `python -m ml.evaluate` | Evaluate trained models on the held-out test split and export metrics; selects the champion under the FPR gate (`FPR_GATE = 0.01` in `ml/evaluate.py` — candidates above the gate are disqualified; evaluation aborts if none pass) and writes `ml/models/best_model.joblib` + `ml/models/model_metadata.json`. Requires candidate joblibs from `ml.train` (run above). |
+| `python -m simulator.run_scenario --scenario <json> --seed <int> --out <dir> --ids` | Run a scenario with real-time Online IDS mitigation. Requires `ml/models/best_model.joblib` (regenerated via the dataset → `ml.train` → `ml.evaluate` rows above). |
 | `python scripts/run_generalization_matrix.py` | Run the 18-combination cross-scenario generalization benchmark. |
-| `python scripts/run_closed_loop_benchmark.py` | Run the authoritative 36-run 3-way comparative QoS benchmark triad. |
+| `python scripts/run_closed_loop_benchmark.py` | Run the authoritative 36-run 3-way comparative QoS benchmark triad. Requires `ml/models/best_model.joblib`. |
 | `python -m ml.plots` | Generate all publication-grade 300 DPI figures in `results/plots/`. |
+
+## Model Artifact Regeneration
+
+The trained model binaries (`ml/models/*.joblib`, including the champion `ml/models/best_model.joblib`) are excluded from version control by the `.gitignore` key `ml/models/*.joblib`. Because every stochastic component is explicitly seeded (Engineering Contract 2), regeneration is lossless and equivalent: identical seeds reproduce identical artifacts. Fresh-clone readers should use the Step-0 walkthrough in [docs/GETTING-STARTED.md](GETTING-STARTED.md) or the README.md Quick Start before attempting any `--ids` or ML workflow.
+
+Regenerate with the three-command sequence from the repository root:
+
+```powershell
+python scripts/build_dataset.py --multi-attack
+python -m ml.train
+python -m ml.evaluate
+```
+
+Expected artifacts: `data/train.csv` and `data/test.csv` from the dataset builder (52,200 rows: train 34,800 from seeds 42 & 43; test 17,400 from seed 44), candidate pipelines `ml/models/{random_forest,decision_tree,svm}.joblib` from `python -m ml.train`, and the FPR-gated champion `ml/models/best_model.joblib` + `ml/models/model_metadata.json` from `python -m ml.evaluate`. The gate is `FPR <= 1.0%` (`FPR_GATE = 0.01` in `ml/evaluate.py`): any candidate exceeding 1.0% FPR is disqualified from champion selection, and evaluation aborts if no candidate passes. Verified reference champion: Random Forest, F1 0.7593, FPR 0.0099 (0.99%).
+
+Caution: never commit generated `data/`, `traces/`, bulk `results/` records, or `ml/models/*.joblib` — this is already enforced by `.gitignore`. Keep `ml/models/model_metadata.json` diffs small and commit them only when intentional.
 
 ## Adding a New Attack Strategy
 

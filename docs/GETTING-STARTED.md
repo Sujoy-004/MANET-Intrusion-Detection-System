@@ -30,6 +30,22 @@ python -m pip install simpy==4.1.2 networkx==3.6.1 scikit-learn==1.8.0 pandas==3
 
 > **Note:** Always invoke `python -m pip` rather than bare `pip` to ensure packages are installed directly into your active Python environment.
 
+## Step 0: Generate the Trained IDS Model (First Time Only)
+
+On a fresh clone, the IDS model does not exist yet. The `.gitignore` rule `ml/models/*.joblib` excludes the trained model binaries from version control because they are deterministic products of seeded simulations — the IDS model is a build-time artifact, not a source asset, and it can be regenerated losslessly from the canonical seeds.
+
+Run the following sequence from the repository root in PowerShell:
+
+```powershell
+python scripts/build_dataset.py --multi-attack
+python -m ml.train
+python -m ml.evaluate
+```
+
+Expected outputs (verified reference run): the dataset totals 52,200 rows — a training split of 34,800 rows from seeds 42 & 43 and a held-out test split of 17,400 rows from seed 44. `python -m ml.train` writes candidate pipelines to `ml/models/`. `python -m ml.evaluate` selects the champion under the FPR <= 1.0% gate (verified reference: Random Forest, F1 0.7593, FPR 0.0099) and writes `ml/models/best_model.joblib` together with `ml/models/model_metadata.json`.
+
+The full chain fits comfortably in a standard terminal session. When it finishes, confirm the model exists — `Test-Path ml/models/best_model.joblib` in PowerShell should return `True`.
+
 ## First Run: Running Your First Simulation
 
 ### Step 1: Run a Baseline Simulation
@@ -66,6 +82,8 @@ Throughput: 15.37 kbps
 ```
 
 ### Step 3: Run with Closed-Loop Online IDS Active
+
+This step requires the model generated in Step 0 (`ml/models/best_model.joblib`); the `--ids` runtime loads it on startup.
 
 Re-run the Blackhole scenario with the `--ids` flag enabled:
 
@@ -105,8 +123,14 @@ All 79 unit, integration, and recovery tests should pass in under 120 seconds.
 - **Cause:** Specifying a custom `--out` directory that does not exist.
 - **Solution:** The simulator automatically creates destination directories via `pathlib.Path.mkdir(parents=True, exist_ok=True)`. Ensure your user account has write permissions in the project directory.
 
+### 4. Missing `ml/models/best_model.joblib`
+- **Symptom:** Running `--ids` (or `python -m ml.evaluate`, `scripts/run_closed_loop_benchmark.py`) fails with a missing-file / invalid-load error for `ml/models/best_model.joblib`.
+- **Cause:** Model binaries are excluded from the repo (`ml/models/*.joblib` in `.gitignore`) and must be regenerated locally.
+- **Solution:** Execute the Step 0 sequence from the repository root: `python scripts/build_dataset.py --multi-attack`, then `python -m ml.train`, then `python -m ml.evaluate`.
+
 ## Next Steps
 
+- **Fresh clone?** Complete the full model preparation starting at [Step 0](#step-0-generate-the-trained-ids-model-first-time-only) before continuing with any `--ids` or ML workflow below.
 - Explore the architecture and protocol implementation in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 - Learn how to configure custom scenarios in [docs/CONFIGURATION.md](docs/CONFIGURATION.md).
 - Understand coding standards and how to add new attacks in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
