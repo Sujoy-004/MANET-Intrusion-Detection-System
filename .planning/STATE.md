@@ -1,3 +1,19 @@
+---
+gsd_state_version: "1.0"
+milestone: v2.0
+milestone_name: Interactive TUI Application
+status: unknown
+stopped_at: Phase 7 context gathered
+last_updated: "2026-11-06T05:51:02.829Z"
+state_head: 2704ffce7511aba27249404263087954b105af01
+progress:
+  total_phases: 6
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
+---
+
 # STATE: Machine Learning-Based Intrusion Detection System for MANET
 
 ## Project Reference
@@ -37,6 +53,7 @@
 ## Accumulated Context
 
 ### Decisions
+
 - v2.0 phases continue v1.0 numbering (start at Phase 7), no `--reset-phase-numbers`
 - Framework locked: Textual 8.2.8 (pure Python, built-in command palette, Windows terminal support) — Rich not depended on directly
 - Advanced ML/data-lab/IDS-admin/reporting screens DEFERRED out of v2.0 — modular placeholders only
@@ -44,6 +61,7 @@
 - `.manet-workspace/` is the only new write target; never overwrite `traces/`, `data/`, `models/`, `results/`
 
 ### Research Flags
+
 - Never block the Textual loop — `SimulationRunner` must run in a worker, never inside a blocking UI callback
 - Bounded telemetry required: bounded queue, drop-oldest, capped live rows (unbounded retention forbidden)
 - Honest capability states mandatory: model metadata Grayhole F1 = 0.0 must be surfaced as not-effective detection
@@ -51,12 +69,18 @@
 - Pause/resume presented as disabled — runner has no safe checkpointing
 
 ### Blockers
+
 - None
 
 ### Todos
+
 - [/gsd-plan-phase 7] plan the TUI shell phase
 
 ## Session Continuity
+
+**Last session:** 2026-11-06T05:51:02.801Z
+**Stopped at:** Phase 7 context gathered
+**Resume file:** .planning/phases/07-tui-shell-application-frame/07-CONTEXT.md
 
 - **Last action:** Created v2.0 roadmap (ROADMAP.md, STATE.md, REQUIREMENTS.md traceability)
 - **Next up:** `/gsd-plan-phase 7`
