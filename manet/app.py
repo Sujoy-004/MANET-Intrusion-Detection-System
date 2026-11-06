@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from textual.app import App
 
+from manet.commands.palette_provider import ManetCommands
 from manet.runtime.theme import SOC
 from manet.screens.main_workspace import MainWorkspace
 
@@ -16,6 +17,7 @@ class ManetApp(App):
     """Main application frame for MANET Intrusion Detection System."""
 
     TITLE = "MANET IDS"
+    COMMANDS = App.COMMANDS | {ManetCommands}
     SCREENS = {
         "workspace": MainWorkspace,
     }
