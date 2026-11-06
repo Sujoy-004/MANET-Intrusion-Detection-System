@@ -14,7 +14,8 @@ from textual.binding import Binding
 from manet.commands.console_driver import ConsoleDriver
 from manet.commands.palette_provider import ManetCommands
 from manet.runtime.keymap import BINDING_CONSOLE, BINDING_HELP, BINDING_QUIT
-from manet.runtime.theme import SOC
+from manet.runtime.settings import SessionSettings
+from manet.runtime.theme import SOC, SOC_HIGH_CONTRAST
 from manet.screens.console import ConsoleScreen
 from manet.screens.help_about import HelpAboutScreen
 from manet.screens.main_workspace import MainWorkspace
@@ -37,13 +38,15 @@ class ManetApp(App):
     ]
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        """Initialize ManetApp and in-memory console driver."""
+        """Initialize ManetApp, console driver, and in-memory session settings."""
         super().__init__(*args, **kwargs)
         self.console_driver = ConsoleDriver(self)
+        self.settings = SessionSettings()
 
     def on_mount(self) -> None:
         """Register themes and mount the primary workspace screen."""
         self.register_theme(SOC)
+        self.register_theme(SOC_HIGH_CONTRAST)
         self.theme = "manet-soc"
         self.push_screen("workspace")
 
@@ -58,6 +61,15 @@ class ManetApp(App):
     def action_show_help(self) -> None:
         """Switch to the contextual help screen."""
         self.switch_screen("help")
+
+    def action_toggle_high_contrast(self) -> None:
+        """Toggle between standard SOC and high-contrast themes."""
+        self.settings.high_contrast = not self.settings.high_contrast
+        self.theme = "manet-soc-high-contrast" if self.settings.high_contrast else "manet-soc"
+
+    def action_toggle_reduced_motion(self) -> None:
+        """Toggle UI motion and animation effects."""
+        self.settings.reduced_motion = not self.settings.reduced_motion
 
 
 __all__ = ["ManetApp"]

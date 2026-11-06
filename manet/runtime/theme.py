@@ -7,6 +7,9 @@ Implements the D-06 cybersecurity/SOC semantic color contract:
 - Amber (#f59e0b): Warnings, threshold alerts, and degraded operations
 - Red (#ef4444): Critical alerts, attack detections, and intrusion errors
 
+Also provides SOC_HIGH_CONTRAST for enhanced visual contrast and accessibility (D-08, TUI-05),
+featuring pitch-black background, ultra-high-contrast panels, and saturated indicators.
+
 Semantic colors are defined both in standard framework slots and custom variables
 to ensure TCSS references theme variables ($variable) rather than hardcoded hex values.
 """
@@ -38,4 +41,27 @@ SOC = Theme(
     },
 )
 
-__all__ = ["SOC"]
+SOC_HIGH_CONTRAST = Theme(
+    name="manet-soc-high-contrast",
+    dark=True,
+    background="#000000",
+    surface="#05080c",
+    panel="#0d1520",
+    foreground="#ffffff",
+    primary="#00e5ff",
+    secondary="#60a5fa",
+    accent="#4ade80",
+    success="#4ade80",
+    warning="#fbbf24",
+    error="#f87171",
+    variables={
+        "navigation-cyan": "#00e5ff",
+        "info-blue": "#60a5fa",
+        "healthy-green": "#4ade80",
+        "warning-amber": "#fbbf24",
+        "critical-red": "#f87171",
+        "footer-key-foreground": "#00e5ff",
+    },
+)
+
+__all__ = ["SOC", "SOC_HIGH_CONTRAST"]

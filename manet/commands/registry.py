@@ -40,6 +40,20 @@ _COMMANDS: tuple[AppCommand, ...] = (
         parameters=(),
         action="action_show_workspace",
     ),
+    AppCommand(
+        name="theme-toggle",
+        display="Toggle High Contrast",
+        help="Toggle between standard SOC and high-contrast themes",
+        parameters=(),
+        action="action_toggle_high_contrast",
+    ),
+    AppCommand(
+        name="motion-toggle",
+        display="Toggle Reduced Motion",
+        help="Toggle UI motion and animation effects",
+        parameters=(),
+        action="action_toggle_reduced_motion",
+    ),
 )
 
 
