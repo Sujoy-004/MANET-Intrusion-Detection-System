@@ -26,5 +26,10 @@ class ManetApp(App):
         self.theme = "manet-soc"
         self.push_screen("workspace")
 
+    def action_show_workspace(self) -> None:
+        """Switch to the primary workspace screen."""
+        self.switch_screen("workspace")
+
+
 
 __all__ = ["ManetApp"]
