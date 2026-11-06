@@ -99,7 +99,7 @@
   },
   "telemetry": {
     "file_size_bytes": 663930,
-    "latency_ms": 61.58850000065286
+    "latency_ms": 43.17310000010366
   },
   "test_metrics": {
     "accuracy": 0.974367816091954,
