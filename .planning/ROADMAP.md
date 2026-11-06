@@ -2,25 +2,110 @@
 
 ## Milestones
 
-- 🏁 **v1.0 MVP / Initial Release** - Phases 1-6 (shipped 2026-10-28)
+- 🏁 **v1.0 MVP / Initial Release** - Phases 1-6 (shipped 2026-10-28, archived in `.planning/milestones/v1.0-phases`)
+- 🚧 **v2.0 Interactive TUI Application** - Phases 7-12 (current)
 
 ## Phases
 
-<details>
-<summary>🏁 v1.0 MVP (Phases 1-6) - SHIPPED 2026-10-28</summary>
+- [ ] **Phase 7: TUI Shell & Application Frame** - Textual package, launcher, keyboard-first navigation, command palette/console, cybersecurity theming
+- [ ] **Phase 8: Operational Dashboard** - Real capability diagnostics, workload/experiment snapshots, honest capability states
+- [ ] **Phase 9: Simulation Workflow** - Preset/custom run configuration, seed selection, IDS gating, review/confirm, workspace allocation
+- [ ] **Phase 10: Background Execution & Live Feedback** - Non-blocking worker, bounded telemetry, safe interruption and stop
+- [ ] **Phase 11: Results & Experiment Records** - Real metrics display, atomic manifests with checksums, session history
+- [ ] **Phase 12: Quality, Testing & Delivery** - Unweakened suite + new feature tests, CLI compatibility, README/CHANGELOG, honest completion report
 
-- [x] Phase 1: Pure-Python MANET Simulator Engine (3/3 plans) - completed 2026-10-25
-- [x] Phase 2: Blackhole Attack, Trace Logging & Feature Pipeline (3/3 plans) - completed 2026-10-25
-- [x] Phase 3: Machine Learning Classification Pipeline & Evaluation (3/3 plans) - completed 2026-10-27
-- [x] Phase 4: Grayhole Attack & Generalization Testing (2/2 plans) - completed 2026-10-27
-- [x] Phase 5: Closed-Loop IDS Mitigation & Network Re-Evaluation (2/2 plans) - completed 2026-10-28
-- [x] Phase 6: Visualization, Documentation & Project Deliverables (2/2 plans) - completed 2026-10-28
+## Phase Details
 
-</details>
+### Phase 7: TUI Shell & Application Frame
+**Goal**: User can launch and navigate a full-screen, keyboard-first `MANET IDS` terminal application built entirely in a new `manet/` package
+**Depends on**: Nothing (first phase of v2.0)
+**Requirements**: TUI-01, TUI-02, TUI-03, TUI-04, TUI-05
+**Success Criteria** (what must be TRUE):
+  1. `python -m manet` from the repository root opens the full-screen "MANET IDS" application with no required flags and no internet access
+  2. Every screen is navigable keyboard-first (arrows, Enter, Esc) with visible keyboard focus and visible shortcut hints, and the layout remains usable after terminal resizing including a compact mode for small windows
+  3. A searchable command palette and a structured command console open from anywhere; the console exposes only application commands and performs no operating-system shell execution
+  4. The dark cybersecurity palette (cyan navigation, blue info, green healthy, amber warning, red critical) is applied, with reduced-motion and high-contrast options the framework supports, session-only (no persistent profiles)
+  5. All TUI code lives under `manet/` with clean separation of screens, widgets, commands, adapters, and runtime — no simulation, routing, feature-extraction, or IDS logic duplicated
+**Plans**: TBD
+**UI hint**: yes
 
-## Next Milestones
+### Phase 8: Operational Dashboard
+**Goal**: User sees the real project state at launch — honest capability diagnostics with no mock values
+**Depends on**: Phase 7
+**Requirements**: TUI-06, TUI-07, TUI-08
+**Success Criteria** (what must be TRUE):
+  1. Dashboard shows startup diagnostics detected at runtime: Python version, availability of required dependencies, and presence of scenario files, datasets, and model artifacts
+  2. Dashboard shows active workload state and recent experiment summaries when they exist, with quick navigation to simulation, results, logs, and help
+  3. Every capability carries an explicit state — verified, experimental, partial, or unavailable — with no mock values and no claim of model or dataset existence when files are missing
+  4. Model metadata is reported with its timestamp/version context, and a Grayhole F1 of 0.0 is presented as not-effective detection rather than a working detector
+**Plans**: TBD
+**UI hint**: yes
 
-See `.planning/PROJECT.md` for candidate features for v2.0 (RREQ Flooding/DoS injection, web replay dashboard, SHAP explainability).
+### Phase 9: Simulation Workflow
+**Goal**: User can configure, validate, review, and confirm a simulation run that matches the real runner's capabilities and allocates a safe workspace
+**Depends on**: Phase 8
+**Requirements**: TUI-09, TUI-10, TUI-11, TUI-12, TUI-13, TUI-14
+**Success Criteria** (what must be TRUE):
+  1. Preset mode lists real `scenarios/*.json` files with their actual names, descriptions, and parameters read from the real file schema (not documented examples)
+  2. Custom mode exposes only parameters the actual runner supports, with validation errors for invalid node counts, flow endpoints, durations, and numeric ranges; seed is explicitly selectable for any run
+  3. The IDS option is enabled only when the champion model artifact exists and is disabled (with an explanatory reason) otherwise
+  4. A review screen summarizes the full run configuration before launch, and confirming a run targets a unique experiment directory under `.manet-workspace/` without overwriting existing traces, datasets, models, or experiment records
+  5. At launch, the experiment record captures scenario, seed, configuration, software version, and start time, and execution goes through the existing `SimulationRunner`, scenario loader, and metric functions with output compatible with the current trace schema and legacy CLI behavior
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 10: Background Execution & Live Feedback
+**Goal**: Simulation runs execute in the background with honest live feedback and safe stop/cancel, without freezing the UI or corrupting results
+**Depends on**: Phase 9
+**Requirements**: TUI-15, TUI-16, TUI-17, TUI-18
+**Success Criteria** (what must be TRUE):
+  1. The TUI remains interactive (navigation and repaints work) while a simulation runs in the background; the architecture supports one simulation workload and one ML workload at a time, with the simulation path implemented and verified in this delivery
+  2. The run view shows status, elapsed time, measurable progress, and current stage, with bounded live event/log streaming that never blocks the simulator and never retains unbounded telemetry in memory
+  3. Ctrl+C, Esc, or application shutdown leaves result files uncorrupted; simulation event ordering and results are identical regardless of UI interaction, and UI callbacks cannot change simulation or IDS decisions
+  4. Stop ends the run safely with partial traces preserved on disk and the run marked interrupted; worker exceptions surface actionable diagnostics with no silent retries and no mislabeling of partial runs as completed; pause/resume is visible but disabled (the runner does not support it)
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 11: Results & Experiment Records
+**Goal**: Completed runs produce honest, verifiable experiment records the user can browse and reopen
+**Depends on**: Phase 10
+**Requirements**: TUI-19, TUI-20, TUI-21
+**Success Criteria** (what must be TRUE):
+  1. The results view shows actual PDR, throughput, delay, and routing overhead computed via the existing `simulator.metrics.compute_metrics`, plus sent/received packet counts and the generated trace location
+  2. Each experiment stores a manifest (experiment ID, configuration, seed, software version, run status, timestamps, logs, trace paths, available metrics) written atomically, with SHA-256 checksums for completed artifacts
+  3. A session history list lets the user browse past experiments and open a completed result; completed experiment metadata is read-only — reruns create new runs
+  4. Workspace artifacts are ignored by Git without unintentionally changing `.gitignore` semantics, and any safe-cleanup path requires a preview plus explicit confirmation before deleting anything
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 12: Quality, Testing & Delivery
+**Goal**: The v2.0 TUI ships verified against an unweakened test suite, with documented behavior and an honest completion report
+**Depends on**: Phases 7-11
+**Requirements**: DELV-01, DELV-02, DELV-03
+**Success Criteria** (what must be TRUE):
+  1. The full existing test suite passes unweakened alongside new feature tests covering launcher/command parsing, capability detection (including missing artifacts), scenario discovery/validation, worker success/failure/cancel/partial paths, manifest atomicity/checksums/history, CLI compatibility, import boundaries, and bounded telemetry under load
+  2. `python -m simulator.run_scenario`, `scripts/*`, and `python -m ml.train` / `ml.evaluate` behave exactly as before the TUI was added
+  3. Updated README documents the launch command, TUI dependency installation, supported terminals, limitations, and keyboard shortcuts; CHANGELOG.md records the feature; no untested cross-platform claims appear
+  4. A completion report lists changed files, architecture and framework rationale, commands run with exact test results, and clearly enumerated known limitations and deferred features
+**Plans**: TBD
+
+## Progress
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 7. TUI Shell & Application Frame | 0/? | Not started | - |
+| 8. Operational Dashboard | 0/? | Not started | - |
+| 9. Simulation Workflow | 0/? | Not started | - |
+| 10. Background Execution & Live Feedback | 0/? | Not started | - |
+| 11. Results & Experiment Records | 0/? | Not started | - |
+| 12. Quality, Testing & Delivery | 0/? | Not started | - |
+
+## Deferred (out of v2.0 scope)
+
+- TUI-ADV advanced research/administration screens (ML training workflow, data lab, advanced IDS monitoring, reporting) — modular placeholders only
+- TUI-MLWORK one-ML-workload execution path (architecture prepared in Phase 10; runner integration deferred)
+- TUI-PAUSE run pause/resume pending safe simulator checkpointing
+- Project-level future features: ATK-04 (RREQ Flooding/DoS), VIZ-01 (web replay dashboard), XAI-01 (SHAP explainability)
 
 ---
-*Roadmap updated: 2026-10-28 after v1.0 milestone release*
+*Roadmap updated: 2026-11-06 — v2.0 Interactive TUI milestone (phases 7-12)*
