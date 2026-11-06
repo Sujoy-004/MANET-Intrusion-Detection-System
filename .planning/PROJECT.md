@@ -22,11 +22,12 @@ Provide a fully reproducible end-to-end demonstration chain: from simulated norm
 - ✓ Comparative evaluation framework benchmarking Baseline AODV vs. Attack AODV vs. AODV + IDS across PDR, Throughput, Delay, and Routing Overhead (achieved 92.9% PDR recovery on Blackhole) - v1.0
 - ✓ Publication-grade figure generation suite (Matplotlib/Seaborn 300 DPI) and comprehensive 6-chapter monolithic B.Tech project thesis report (`docs/FINAL_PROJECT_REPORT.md`) - v1.0
 
-### Active (Future v2.0 Scope)
+### Active (Future Scope)
 
 - [ ] RREQ Flooding / Denial-of-Service (DoS) attack strategy injection
 - [ ] Interactive web dashboard for topology animation and packet flow replay
 - [ ] Model explainability via SHAP (SHapley Additive exPlanations) feature attributions
+- [ ] TUI advanced research/administration screens: ML training workflow, data lab, advanced IDS monitoring, reporting (deferred from v2.0 TUI — modular placeholders only)
 
 ### Out of Scope
 
@@ -34,6 +35,18 @@ Provide a fully reproducible end-to-end demonstration chain: from simulated norm
 - Deep learning (LSTM, CNN, GNN), federated learning, blockchain, or mobile apps — scope restricted to proven, interpretable ML models suitable for B.Tech project rigor
 - More than two initial attack classes in v1.0 (Flooding/DoS deferred to v2.0) — Blackhole and Grayhole are the validated targets
 - Real physical hardware testbeds — 100% software discrete-event simulation with mathematical determinism
+
+## Current Milestone: v2.0 Interactive TUI Application
+
+**Goal:** Add a full-screen, keyboard-first terminal application (`python -m manet`, app name `MANET IDS`) as a presentation layer over the existing simulator/IDS stack — dashboard, simulation workflow, background execution, and honest experiment records — without touching existing CLI behavior or business logic.
+
+**Target features:**
+- `manet/` TUI package launched via `python -m manet` (local-first, no flags, no internet)
+- Operational dashboard with real capability detection (Python version, dependencies, scenario/dataset/model-artifact availability)
+- Simulation workflow: preset (scenario JSON) + validated custom mode, review/confirm screen, seed selection, IDS gating on champion model artifact
+- Background simulation worker (one simulation + one ML workload max architecturally; simulation executed first), bounded live telemetry, safe stop/cancel
+- Experiment records in dedicated `.manet-workspace/`: manifest, atomic writes, SHA-256 checksums, session history
+- Audit of prior-project instructions (AGENTS.md via environment; CHANGELOG.md is authoritative history), testing, README/CHANGELOG updates, no commits
 
 ## Context
 
@@ -80,4 +93,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-28 after v1.0 milestone completion*
+*Last updated: 2026-11-06 after v2.0 milestone start (Interactive TUI)*
