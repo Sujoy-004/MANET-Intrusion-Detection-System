@@ -41,6 +41,8 @@ from manet.adapters.status import (
 from manet.adapters.workspace import (
     ExperimentSummary,
     WorkspaceAdapter,
+    record_launch_manifest,
+    sanitize_run_tag,
 )
 
 __all__ = [
@@ -62,6 +64,8 @@ __all__ = [
     "WorkloadStatus",
     "WorkspaceAdapter",
     "build_custom_configuration",
+    "record_launch_manifest",
+    "sanitize_run_tag",
     "validate_duration",
     "validate_loss_probability",
     "validate_node_count",
