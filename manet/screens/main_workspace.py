@@ -16,11 +16,12 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Container
 from textual.screen import Screen
-from textual.widgets import Footer, Header, Static
+from textual.widgets import Footer, Header, Input, Static
 
 from manet.adapters.diagnostics import DiagnosticsProbe
 from manet.adapters.status import StatusAdapter
 from manet.adapters.workspace import WorkspaceAdapter
+from manet.runtime.keymap import BINDING_RESULTS, BINDING_SIMULATION
 from manet.widgets.cta_hero import CtaHeroPanel
 from manet.widgets.dashboard_cards import (
     ActiveWorkloadCard,
@@ -39,8 +40,8 @@ class MainWorkspace(Screen):
     HORIZONTAL_BREAKPOINTS = [(0, "-compact"), (80, "-normal")]
 
     BINDINGS = [
-        Binding("s", "new_simulation", "New Simulation", show=True),
-        Binding("r", "show_results", "Results", show=True),
+        Binding(BINDING_SIMULATION, "simulation", "Simulation", show=True),
+        Binding(BINDING_RESULTS, "results", "Results", show=True),
         Binding("escape", "dismiss_notification", "Dismiss", show=False),
     ]
 
@@ -262,21 +263,36 @@ class MainWorkspace(Screen):
         except Exception:
             pass
 
-    def action_new_simulation(self) -> None:
+    def action_simulation(self) -> None:
         """Display informative notice that simulation workflow is pending in Phase 9."""
+        if self.app.screen is not self:
+            return
+        if self.app.focused is not None and isinstance(self.app.focused, Input):
+            return
         try:
             rail = self.query_one("#notification-rail", NotificationRail)
-            rail.notify_user("Simulation workflow will be available in Phase 9 (TUI-09)")
+            rail.notify_user(
+                "Simulation Workflow: Phase 9 will enable scenario selection and custom parameter configuration (TUI-07, TUI-09)"
+            )
         except Exception:
             pass
 
-    def action_show_results(self) -> None:
+    def action_results(self) -> None:
         """Display informative notice that results browser is pending in Phase 11."""
+        if self.app.screen is not self:
+            return
+        if self.app.focused is not None and isinstance(self.app.focused, Input):
+            return
         try:
             rail = self.query_one("#notification-rail", NotificationRail)
-            rail.notify_user("Experiment results browser will be available in Phase 11 (TUI-19)")
+            rail.notify_user(
+                "Results & History: Phase 11 will enable experiment browsing and QoS metric exploration (TUI-07, TUI-19)"
+            )
         except Exception:
             pass
+
+    action_new_simulation = action_simulation
+    action_show_results = action_results
 
     def action_dismiss_notification(self) -> None:
         """Dismiss active notification banner."""

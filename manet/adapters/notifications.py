@@ -42,6 +42,10 @@ class NotificationAdapter:
         """Return all notice messages in chronological order."""
         return [item.text for item in self._queue]
 
+    def get_history(self) -> list[str]:
+        """Return all notice messages in chronological order (alias for get_all_notices)."""
+        return self.get_all_notices()
+
     def clear(self) -> None:
         """Clear all notices from the queue."""
         self._queue.clear()

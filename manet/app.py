@@ -13,7 +13,12 @@ from textual.binding import Binding
 
 from manet.commands.console_driver import ConsoleDriver
 from manet.commands.palette_provider import ManetCommands
-from manet.runtime.keymap import BINDING_CONSOLE, BINDING_HELP, BINDING_QUIT
+from manet.runtime.keymap import (
+    BINDING_CONSOLE,
+    BINDING_HELP,
+    BINDING_PALETTE,
+    BINDING_QUIT,
+)
 from manet.runtime.settings import SessionSettings
 from manet.runtime.theme import SOC, SOC_HIGH_CONTRAST
 from manet.screens.console import ConsoleScreen
@@ -34,6 +39,7 @@ class ManetApp(App):
     BINDINGS = [
         Binding(BINDING_CONSOLE, "show_console", "Console", show=True),
         Binding(BINDING_HELP, "show_help", "Help", show=True),
+        Binding(BINDING_PALETTE, "command_palette", "Palette", show=True),
         Binding(BINDING_QUIT, "quit", "Quit", show=True),
     ]
 
@@ -61,6 +67,19 @@ class ManetApp(App):
     def action_show_help(self) -> None:
         """Switch to the contextual help screen."""
         self.switch_screen("help")
+
+    def action_simulation(self) -> None:
+        """Forward simulation shortcut to active MainWorkspace screen."""
+        if isinstance(self.screen, MainWorkspace):
+            self.screen.action_simulation()
+
+    def action_results(self) -> None:
+        """Forward results shortcut to active MainWorkspace screen."""
+        if isinstance(self.screen, MainWorkspace):
+            self.screen.action_results()
+
+    action_new_simulation = action_simulation
+    action_show_results = action_results
 
     def action_toggle_high_contrast(self) -> None:
         """Toggle between standard SOC and high-contrast themes."""

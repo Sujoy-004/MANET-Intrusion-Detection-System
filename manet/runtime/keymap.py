@@ -11,12 +11,16 @@ BINDING_CONSOLE = "ctrl+o"
 BINDING_HELP = "f1"
 BINDING_QUIT = "ctrl+q"
 BINDING_PALETTE = "ctrl+p"
+BINDING_SIMULATION = "s"
+BINDING_RESULTS = "r"
 
 SHORTCUT_HINTS: dict[str, str] = {
     BINDING_CONSOLE: "Open command console",
     BINDING_HELP: "Help and about",
     BINDING_PALETTE: "Command palette",
     BINDING_QUIT: "Quit",
+    BINDING_SIMULATION: "Simulation notice (Phase 9 pending)",
+    BINDING_RESULTS: "Results notice (Phase 11 pending)",
 }
 
 __all__ = [
@@ -24,5 +28,7 @@ __all__ = [
     "BINDING_HELP",
     "BINDING_PALETTE",
     "BINDING_QUIT",
+    "BINDING_SIMULATION",
+    "BINDING_RESULTS",
     "SHORTCUT_HINTS",
 ]

@@ -19,6 +19,7 @@ from manet.app import ManetApp
 from manet.screens.console import ConsoleScreen
 from manet.screens.help_about import HelpAboutScreen
 from manet.screens.main_workspace import MainWorkspace
+from manet.widgets.notification_rail import NotificationRail
 
 
 @pytest.mark.asyncio
@@ -215,3 +216,108 @@ async def test_console_hostile_markup_input_does_not_crash():
             await pilot.pause()
             # Verify screen is still healthy and app has not crashed
             assert isinstance(app.screen, ConsoleScreen)
+
+
+@pytest.mark.asyncio
+async def test_simulation_shortcut_triggers_notice():
+    """Verify pressing 's' on MainWorkspace triggers simulation notice in NotificationRail."""
+    app = ManetApp()
+    async with app.run_test() as pilot:
+        assert isinstance(app.screen, MainWorkspace)
+        rail = app.screen.query_one("#notification-rail", NotificationRail)
+        assert rail.get_active_notice() is None
+
+        await pilot.press("s")
+        await pilot.pause()
+        assert rail.display is True
+        notice = rail.get_active_notice()
+        assert notice is not None
+        assert "Phase 9" in notice
+        assert "Simulation" in notice
+
+
+@pytest.mark.asyncio
+async def test_results_shortcut_triggers_notice():
+    """Verify pressing 'r' on MainWorkspace triggers results notice in NotificationRail."""
+    app = ManetApp()
+    async with app.run_test() as pilot:
+        assert isinstance(app.screen, MainWorkspace)
+        rail = app.screen.query_one("#notification-rail", NotificationRail)
+        assert rail.get_active_notice() is None
+
+        await pilot.press("r")
+        await pilot.pause()
+        assert rail.display is True
+        notice = rail.get_active_notice()
+        assert notice is not None
+        assert "Phase 11" in notice
+        assert "Results" in notice
+
+
+@pytest.mark.asyncio
+async def test_command_palette_shortcut_opens_palette():
+    """Verify pressing ctrl+p opens the command palette modal."""
+    app = ManetApp()
+    async with app.run_test() as pilot:
+        assert isinstance(app.screen, MainWorkspace)
+        await pilot.press("ctrl+p")
+        await pilot.pause()
+        assert app.screen.__class__.__name__ == "CommandPalette"
+
+
+@pytest.mark.asyncio
+async def test_console_typing_does_not_trigger_s_r_actions():
+    """Verify typing words with 's' and 'r' in ConsoleScreen input does not trigger workspace notices."""
+    app = ManetApp()
+    async with app.run_test() as pilot:
+        assert isinstance(app.screen, MainWorkspace)
+        workspace = app.screen
+        rail = workspace.query_one("#notification-rail", NotificationRail)
+
+        # Open ConsoleScreen
+        await pilot.press("ctrl+o")
+        await pilot.pause()
+        assert isinstance(app.screen, ConsoleScreen)
+
+        input_widget = app.screen.query_one("#console-input", Input)
+        assert input_widget.has_focus
+
+        # Type words containing 's' and 'r'
+        test_strings = ["status", "scenario", "reset"]
+        for word in test_strings:
+            for char in word:
+                await pilot.press(char)
+            await pilot.pause()
+            assert input_widget.value == word
+            # Clear for next word
+            input_widget.value = ""
+
+        # Return to workspace and verify no notification notices were fired
+        await pilot.press("escape")
+        await pilot.pause()
+        assert isinstance(app.screen, MainWorkspace)
+        assert rail.get_active_notice() is None
+        assert rail.display is False
+
+
+@pytest.mark.asyncio
+async def test_repeated_shortcut_presses_bounded_queue():
+    """Verify rapid repeated pressing of 's' and 'r' stays within bounded queue and does not crash."""
+    app = ManetApp()
+    async with app.run_test() as pilot:
+        assert isinstance(app.screen, MainWorkspace)
+        rail = app.screen.query_one("#notification-rail", NotificationRail)
+
+        # Press 's' and 'r' rapidly 25 times
+        for _ in range(25):
+            await pilot.press("s")
+            await pilot.press("r")
+        await pilot.pause()
+
+        # Check notification rail is still healthy and visible
+        assert rail.display is True
+        assert rail.get_active_notice() is not None
+        # Verify adapter queue is bounded (maxlen=20)
+        adapter = rail.adapter
+        assert len(adapter.get_history()) <= 20
+
