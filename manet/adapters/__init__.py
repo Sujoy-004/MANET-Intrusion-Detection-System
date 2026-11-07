@@ -16,6 +16,10 @@ from manet.adapters.notifications import (
     NoticeItem,
     NotificationAdapter,
 )
+from manet.adapters.scenario import (
+    ScenarioAdapter,
+    ScenarioPreset,
+)
 from manet.adapters.status import (
     StatusAdapter,
     WorkloadStatus,
@@ -35,6 +39,8 @@ __all__ = [
     "NoticeItem",
     "NotificationAdapter",
     "QUICK_ACTIONS",
+    "ScenarioAdapter",
+    "ScenarioPreset",
     "StatusAdapter",
     "WorkloadStatus",
     "WorkspaceAdapter",
