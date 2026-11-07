@@ -24,6 +24,7 @@ from manet.runtime.theme import AI_STUDIO_WARM, SOC, SOC_HIGH_CONTRAST
 from manet.screens.console import ConsoleScreen
 from manet.screens.help_about import HelpAboutScreen
 from manet.screens.main_workspace import MainWorkspace
+from manet.screens.simulation_workflow import SimulationWorkflowScreen
 
 
 class ManetApp(App):
@@ -35,6 +36,7 @@ class ManetApp(App):
         "workspace": MainWorkspace,
         "console": ConsoleScreen,
         "help": HelpAboutScreen,
+        "simulation": SimulationWorkflowScreen,
     }
     BINDINGS = [
         Binding(BINDING_CONSOLE, "show_console", "Console", show=True),
@@ -70,9 +72,8 @@ class ManetApp(App):
         self.switch_screen("help")
 
     def action_simulation(self) -> None:
-        """Forward simulation shortcut to active MainWorkspace screen."""
-        if isinstance(self.screen, MainWorkspace):
-            self.screen.action_simulation()
+        """Switch to simulation workflow wizard screen."""
+        self.switch_screen("simulation")
 
     def action_results(self) -> None:
         """Forward results shortcut to active MainWorkspace screen."""

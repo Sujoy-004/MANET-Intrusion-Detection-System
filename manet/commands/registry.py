@@ -41,6 +41,13 @@ _COMMANDS: tuple[AppCommand, ...] = (
         action="action_show_workspace",
     ),
     AppCommand(
+        name="sim:start",
+        display="Start Simulation Workflow",
+        help="Open the 3-step simulation configuration wizard",
+        parameters=(),
+        action="action_simulation",
+    ),
+    AppCommand(
         name="theme-toggle",
         display="Toggle High Contrast",
         help="Toggle between standard SOC and high-contrast themes",

@@ -2,13 +2,19 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import pytest
 from textual.app import App, ComposeResult
-from textual.widgets import Collapsible, DataTable, Input, RadioButton, RadioSet, Select, Switch
+from textual.widgets import Button, Collapsible, DataTable, Input, RadioButton, RadioSet, Select, Static, Switch
 
 from manet.adapters.scenario import ScenarioAdapter, ScenarioPreset
+from manet.adapters.workspace import WorkspaceAdapter
+from manet.screens.simulation_workflow import SimulationWorkflowScreen
 from manet.widgets.wizard_step_mode import StepModeSelectWidget
 from manet.widgets.wizard_step_params import StepParamsWidget
+from manet.widgets.wizard_step_review import StepReviewWidget
 
 
 class DummyStep1App(App[None]):
@@ -184,3 +190,158 @@ async def test_wizard_steps_step2_submission_and_back():
         await pilot.pause()
 
         assert len(app.back_msgs) == 1
+
+
+class DummyStep3App(App[None]):
+    """Test harness app for Step 3 Pre-Flight Review widget."""
+
+    def __init__(self, model_path: Path | None = None, workspace_root: Path | None = None) -> None:
+        super().__init__()
+        self.model_path = model_path
+        self.workspace_root = workspace_root
+        self.confirmed_msgs: list[StepReviewWidget.ReviewConfirmed] = []
+        self.back_msgs: list[StepReviewWidget.ReviewBack] = []
+
+    def compose(self) -> ComposeResult:
+        yield StepReviewWidget(
+            model_path=self.model_path,
+            workspace_root=self.workspace_root,
+            id="step-preflight-review",
+        )
+
+    def on_step_review_widget_review_confirmed(self, event: StepReviewWidget.ReviewConfirmed) -> None:
+        self.confirmed_msgs.append(event)
+
+    def on_step_review_widget_review_back(self, event: StepReviewWidget.ReviewBack) -> None:
+        self.back_msgs.append(event)
+
+
+class DummyWorkflowScreenApp(App[None]):
+    """Test harness app for full SimulationWorkflowScreen."""
+
+    def __init__(self, screen_instance: SimulationWorkflowScreen) -> None:
+        super().__init__()
+        self.screen_instance = screen_instance
+
+    def compose(self) -> ComposeResult:
+        yield self.screen_instance
+
+
+@pytest.mark.asyncio
+async def test_ids_gating(tmp_path: Path):
+    """Verify IDS toggle is visually and operationally gated on champion model existence (TUI-12)."""
+    missing_model = tmp_path / "missing_model.joblib"
+    app = DummyStep3App(model_path=missing_model)
+
+    async with app.run_test() as pilot:
+        step3 = app.query_one("#step-preflight-review", StepReviewWidget)
+        btn_launch = step3.query_one("#btn-review-launch", Button)
+
+        # 1. Test when IDS is enabled and champion model is missing
+        config_with_ids = {
+            "scenario_id": "test_ids_sim",
+            "nodes": 30,
+            "duration": 100.0,
+            "seed": 42,
+            "flows": [{"src": 0, "dst": 29, "rate_pps": 4.0}],
+            "ids": {"enabled": True},
+        }
+        step3.update_review(
+            config=config_with_ids,
+            run_tag="test_tag",
+            scenario_name="test_ids_sim",
+            mode="custom",
+            model_path=missing_model,
+        )
+        await pilot.pause()
+
+        # Launch button must be strictly disabled
+        assert btn_launch.disabled is True
+        model_content = step3.query_one("#review-model-content", Static)
+        errors_display = step3.query_one("#review-errors-display", Static)
+        assert "CHAMPION MODEL MISSING" in str(model_content.render())
+        assert "python scripts/build_dataset.py" in str(model_content.render())
+        assert "Launch Blocked" in str(errors_display.render())
+
+        # 2. Test when champion model exists on disk
+        present_model = tmp_path / "best_model.joblib"
+        present_model.write_bytes(b"mock_joblib_model_content_12345")
+
+        step3.update_review(
+            config=config_with_ids,
+            run_tag="test_tag",
+            scenario_name="test_ids_sim",
+            mode="custom",
+            model_path=present_model,
+        )
+        await pilot.pause()
+
+        # Launch button must now be enabled
+        assert btn_launch.disabled is False
+        assert "CHAMPION MODEL PRESENT" in str(model_content.render())
+        assert str(errors_display.render()) == ""
+
+        # 3. Test when IDS is disabled
+        config_no_ids = dict(config_with_ids)
+        config_no_ids["ids"] = {"enabled": False}
+        step3.update_review(
+            config=config_no_ids,
+            run_tag="test_tag",
+            scenario_name="test_no_ids_sim",
+            mode="custom",
+            model_path=missing_model,
+        )
+        await pilot.pause()
+
+        # Launch button must be enabled even if model is missing when IDS is disabled
+        assert btn_launch.disabled is False
+        assert "not active" in str(model_content.render())
+
+
+@pytest.mark.asyncio
+async def test_review_confirmation(tmp_path: Path):
+    """Verify pre-flight review confirmation allocates directory and writes manifest (TUI-13, TUI-14)."""
+    ws_root = tmp_path / ".manet-workspace"
+    ws_adapter = WorkspaceAdapter(workspace_root=ws_root)
+    workflow_screen = SimulationWorkflowScreen(workspace_adapter=ws_adapter)
+    app = DummyWorkflowScreenApp(workflow_screen)
+
+    async with app.run_test() as pilot:
+        # Step 1: Mode Select -> Click Next
+        btn_mode_next = app.query_one("#btn-mode-next", Button)
+        btn_mode_next.press()
+        await pilot.pause()
+
+        # Step 2: Params Config -> Set custom run tag and click Next
+        input_tag = app.query_one("#input-run-tag", Input)
+        input_tag.value = "pilot_run"
+        btn_params_next = app.query_one("#btn-params-next", Button)
+        btn_params_next.press()
+        await pilot.pause()
+
+        # Step 3: Review Screen -> Click Confirm & Allocate Run
+        btn_launch = app.query_one("#btn-review-launch", Button)
+        assert btn_launch.disabled is False
+        btn_launch.press()
+        await pilot.pause()
+
+        # Verify launch request populated on screen
+        assert workflow_screen.launch_request is not None
+        req = workflow_screen.launch_request
+        assert req.scenario_name != ""
+        assert req.seed == 42
+        assert "pilot_run" in req.experiment_id
+        assert req.workspace_dir.is_dir()
+
+        # Verify manifest.json written
+        manifest_path = req.workspace_dir / "manifest.json"
+        assert manifest_path.is_file()
+        with open(manifest_path, "r", encoding="utf-8") as f:
+            manifest = json.load(f)
+
+        assert manifest["experiment_id"] == req.experiment_id
+        assert manifest["seed"] == 42
+        assert manifest["status"] == "CONFIGURED"
+        assert manifest["software_version"] == "2.0.0-dev"
+        assert "configuration" in manifest
+

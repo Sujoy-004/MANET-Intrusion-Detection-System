@@ -264,18 +264,12 @@ class MainWorkspace(Screen):
             pass
 
     def action_simulation(self) -> None:
-        """Display informative notice that simulation workflow is pending in Phase 9."""
+        """Switch to SimulationWorkflowScreen."""
         if self.app.screen is not self:
             return
         if self.app.focused is not None and isinstance(self.app.focused, Input):
             return
-        try:
-            rail = self.query_one("#notification-rail", NotificationRail)
-            rail.notify_user(
-                "Simulation Workflow: Phase 9 will enable scenario selection and custom parameter configuration (TUI-07, TUI-09)"
-            )
-        except Exception:
-            pass
+        self.app.switch_screen("simulation")
 
     def action_results(self) -> None:
         """Display informative notice that results browser is pending in Phase 11."""

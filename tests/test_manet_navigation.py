@@ -19,6 +19,7 @@ from manet.app import ManetApp
 from manet.screens.console import ConsoleScreen
 from manet.screens.help_about import HelpAboutScreen
 from manet.screens.main_workspace import MainWorkspace
+from manet.screens.simulation_workflow import SimulationWorkflowScreen
 from manet.widgets.notification_rail import NotificationRail
 
 
@@ -220,20 +221,18 @@ async def test_console_hostile_markup_input_does_not_crash():
 
 @pytest.mark.asyncio
 async def test_simulation_shortcut_triggers_notice():
-    """Verify pressing 's' on MainWorkspace triggers simulation notice in NotificationRail."""
+    """Verify pressing 's' on MainWorkspace opens SimulationWorkflowScreen, and escape dismisses."""
     app = ManetApp()
     async with app.run_test() as pilot:
         assert isinstance(app.screen, MainWorkspace)
-        rail = app.screen.query_one("#notification-rail", NotificationRail)
-        assert rail.get_active_notice() is None
 
         await pilot.press("s")
         await pilot.pause()
-        assert rail.display is True
-        notice = rail.get_active_notice()
-        assert notice is not None
-        assert "Phase 9" in notice
-        assert "Simulation" in notice
+        assert isinstance(app.screen, SimulationWorkflowScreen)
+
+        await pilot.press("escape")
+        await pilot.pause()
+        assert isinstance(app.screen, MainWorkspace)
 
 
 @pytest.mark.asyncio
@@ -308,9 +307,8 @@ async def test_repeated_shortcut_presses_bounded_queue():
         assert isinstance(app.screen, MainWorkspace)
         rail = app.screen.query_one("#notification-rail", NotificationRail)
 
-        # Press 's' and 'r' rapidly 25 times
+        # Press 'r' rapidly 25 times
         for _ in range(25):
-            await pilot.press("s")
             await pilot.press("r")
         await pilot.pause()
 
