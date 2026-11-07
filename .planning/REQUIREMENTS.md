@@ -14,9 +14,9 @@ Locale note: REQ-IDs follow the v1.0 convention ([CATEGORY]-[NN]). New category 
 
 ### Dashboard
 
-- [ ] **TUI-06**: User can view a real operational dashboard showing startup diagnostics: Python version, required dependency availability, and availability of scenario files, datasets, and model artifacts
-- [ ] **TUI-07**: User can view active workload state and recent experiment summaries (when available) on the dashboard, with quick navigation to simulation, results, logs, and help
-- [ ] **TUI-08**: User sees explicit capability states — verified, experimental, partial, unavailable — with no mock values displayed and no claim of model or dataset existence when files are missing; model metadata is reported with its timestamp/version context and current Grayhole F1 of 0.0 is presented as not-effective detection
+- [x] **TUI-06**: User can view a real operational dashboard showing startup diagnostics: Python version, required dependency availability, and availability of scenario files, datasets, and model artifacts
+- [x] **TUI-07**: User can view active workload state and recent experiment summaries (when available) on the dashboard, with quick navigation to simulation, results, logs, and help
+- [x] **TUI-08**: User sees explicit capability states — verified, experimental, partial, unavailable — with no mock values displayed and no claim of model or dataset existence when files are missing; model metadata is reported with its timestamp/version context and current Grayhole F1 of 0.0 is presented as not-effective detection
 
 ### Simulation Workflow
 
@@ -72,9 +72,9 @@ Locale note: REQ-IDs follow the v1.0 convention ([CATEGORY]-[NN]). New category 
 | TUI-03 | Phase 7 — TUI Shell & Application Frame | Satisfied |
 | TUI-04 | Phase 7 — TUI Shell & Application Frame | Satisfied |
 | TUI-05 | Phase 7 — TUI Shell & Application Frame | Satisfied |
-| TUI-06 | Phase 8 — Operational Dashboard | Pending |
-| TUI-07 | Phase 8 — Operational Dashboard | Pending |
-| TUI-08 | Phase 8 — Operational Dashboard | Pending |
+| TUI-06 | Phase 8 — Operational Dashboard | Satisfied |
+| TUI-07 | Phase 8 — Operational Dashboard | Satisfied |
+| TUI-08 | Phase 8 — Operational Dashboard | Satisfied |
 | TUI-09 | Phase 9 — Simulation Workflow | Pending |
 | TUI-10 | Phase 9 — Simulation Workflow | Pending |
 | TUI-11 | Phase 9 — Simulation Workflow | Pending |

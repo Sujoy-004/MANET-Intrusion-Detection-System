@@ -8,7 +8,7 @@
 ## Phases
 
 - [x] **Phase 7: TUI Shell & Application Frame** - Textual package, launcher, keyboard-first navigation, command palette/console, cybersecurity theming (completed 2026-11-07)
-- [ ] **Phase 8: Operational Dashboard** - Real capability diagnostics, workload/experiment snapshots, honest capability states
+- [x] **Phase 8: Operational Dashboard** - Real capability diagnostics, workload/experiment snapshots, honest capability states (completed 2026-11-07)
 - [ ] **Phase 9: Simulation Workflow** - Preset/custom run configuration, seed selection, IDS gating, review/confirm, workspace allocation
 - [ ] **Phase 10: Background Execution & Live Feedback** - Non-blocking worker, bounded telemetry, safe interruption and stop
 - [ ] **Phase 11: Results & Experiment Records** - Real metrics display, atomic manifests with checksums, session history
@@ -42,13 +42,13 @@
 
 Plans:
 **Wave 1**
-- [ ] 08-01-PLAN.md — Deliver foundational adapter layer and tracer slice for zero-mock diagnostics and decoupled interfaces
+- [x] 08-01-PLAN.md — Deliver foundational adapter layer and tracer slice for zero-mock diagnostics and decoupled interfaces
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 08-02-PLAN.md — Build full Executive Grid layout, responsive breakpoints, lower split body, and periodic background polling
+- [x] 08-02-PLAN.md — Build full Executive Grid layout, responsive breakpoints, lower split body, and periodic background polling
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 08-03-PLAN.md — Wire quick action navigation shortcuts, verify regression safety, and harden test validation
+- [x] 08-03-PLAN.md — Wire quick action navigation shortcuts, verify regression safety, and harden test validation
 **UI hint**: yes
 
 ### Phase 9: Simulation Workflow
