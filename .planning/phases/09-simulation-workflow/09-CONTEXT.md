@@ -98,7 +98,7 @@ Phase 9 delivers the simulation configuration, parameter validation, review, and
 
 - The simulation workflow screen replaces the Phase 8 "Phase 9 Notice" on pressing `[S]`.
 - Preset scenario list loads all `.json` files from `scenarios/`, extracting scenario name, node count, duration, attack strategy, and description from the actual file.
-- IDS Toggle must be visually disabled with an explanatory tooltip or inline badge if `ml/models/best_model.joblib` is missing from disk, referencing `python scripts/build_dataset.py --multi-attack && python -m ml.train`.
+- IDS Toggle must be visually disabled with an explanatory tooltip or inline badge if `ml/models/best_model.joblib` is missing from disk, referencing `python scripts/build_dataset.py --multi-attack && python -m ml.train && python -m ml.evaluate`.
 - Custom configuration pre-fills safe default values (e.g. 30 nodes, 100s duration, seed 42) to minimize typing required for standard test runs.
 - Review screen clearly displays the target workspace path (e.g. `.manet-workspace/exp_20261107_141500_e1_42/`) before asking for final launch confirmation.
 

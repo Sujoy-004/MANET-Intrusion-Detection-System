@@ -26,7 +26,7 @@
   3. A searchable command palette and a structured command console open from anywhere; the console exposes only application commands and performs no operating-system shell execution
   4. The dark cybersecurity palette (cyan navigation, blue info, green healthy, amber warning, red critical) is applied, with reduced-motion and high-contrast options the framework supports, session-only (no persistent profiles)
   5. All TUI code lives under `manet/` with clean separation of screens, widgets, commands, adapters, and runtime — no simulation, routing, feature-extraction, or IDS logic duplicated
-**Plans**: TBD
+**Plans**: 5 plans
 **UI hint**: yes
 
 ### Phase 8: Operational Dashboard
@@ -113,9 +113,9 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 7. TUI Shell & Application Frame | 0/? | Not started | - |
-| 8. Operational Dashboard | 0/? | Not started | - |
-| 9. Simulation Workflow | 0/? | Not started | - |
+| 7. TUI Shell & Application Frame | 5/5 | Complete | 2026-11-07 |
+| 8. Operational Dashboard | 3/3 | Complete | 2026-11-07 |
+| 9. Simulation Workflow | 0/3 | Ready to execute | - |
 | 10. Background Execution & Live Feedback | 0/? | Not started | - |
 | 11. Results & Experiment Records | 0/? | Not started | - |
 | 12. Quality, Testing & Delivery | 0/? | Not started | - |
