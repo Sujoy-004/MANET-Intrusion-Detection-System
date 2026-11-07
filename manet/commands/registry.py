@@ -54,6 +54,13 @@ _COMMANDS: tuple[AppCommand, ...] = (
         parameters=(),
         action="action_toggle_reduced_motion",
     ),
+    AppCommand(
+        name="help",
+        display="Help",
+        help="Open the help/about screen with app identity and keyboard shortcuts",
+        parameters=(),
+        action="action_show_help",
+    ),
 )
 
 

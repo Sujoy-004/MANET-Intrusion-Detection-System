@@ -4,6 +4,8 @@ Verifies:
 - ctrl+o switches to ConsoleScreen and escape / ctrl+o dismisses back to MainWorkspace.
 - f1 switches to HelpAboutScreen and escape / f1 dismisses back to MainWorkspace.
 - Submitting 'workspace' command in ConsoleScreen executes cleanly.
+- Submitting 'exit' meta-command dismisses ConsoleScreen back to MainWorkspace.
+- Submitting 'help' command switches from ConsoleScreen to HelpAboutScreen.
 - Up/Down arrow history cycling functions in console input when focused.
 - Visible focus indicator exists on active interactive widgets.
 """
@@ -160,3 +162,38 @@ async def test_console_input_history_key_navigation():
         await pilot.press("down")
         await pilot.pause()
         assert input_widget.value == ""
+
+
+@pytest.mark.asyncio
+async def test_console_typed_exit_returns_to_workspace():
+    """Verify typing 'exit' into console input line dismisses to MainWorkspace."""
+    app = ManetApp()
+    async with app.run_test() as pilot:
+        await pilot.press("ctrl+o")
+        await pilot.pause()
+        assert isinstance(app.screen, ConsoleScreen)
+
+        input_widget = app.screen.query_one("#console-input", Input)
+        input_widget.value = "exit"
+        await pilot.press("enter")
+        await pilot.pause()
+
+        assert isinstance(app.screen, MainWorkspace)
+        assert list(app.console_driver.history) == ["exit"]
+
+
+@pytest.mark.asyncio
+async def test_console_typed_help_opens_help_about():
+    """Verify typing 'help' into console input line switches to HelpAboutScreen."""
+    app = ManetApp()
+    async with app.run_test() as pilot:
+        await pilot.press("ctrl+o")
+        await pilot.pause()
+        assert isinstance(app.screen, ConsoleScreen)
+
+        input_widget = app.screen.query_one("#console-input", Input)
+        input_widget.value = "help"
+        await pilot.press("enter")
+        await pilot.pause()
+
+        assert isinstance(app.screen, HelpAboutScreen)

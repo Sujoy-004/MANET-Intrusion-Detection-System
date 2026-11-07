@@ -1,32 +1,17 @@
 ---
 phase: 07-tui-shell-application-frame
-verified: 2026-11-07T09:13:56Z
-status: gaps_found
-score: 10/12 must-haves verified
+verified: 2026-11-07T10:30:00Z
+status: passed
+score: 12/12 must-haves verified
 overrides_applied: 0
-gaps:
-  - truth: "Pressing ctrl+o opens the console from any view; pressing Esc or typing exit returns focus to the prior workspace (plan 07-03 truth 1)"
-    status: partial
-    reason: "Esc works (tested), but typing `exit` does nothing: no `exit` handling exists anywhere in manet/ (zero code occurrences) and no test covers it. Typing `exit` leaves the user on ConsoleScreen."
-    artifacts:
-      - path: manet/commands/console_driver.py
-        issue: "execute() has no meta-command handling; 'exit' resolves to None and is rejected as an unknown command"
-      - path: manet/screens/console.py
-        issue: "BINDINGS cover escape/ctrl+o only; no 'exit' typed-command path to action_dismiss_console"
-    missing:
-      - "Implement the typed 'exit' path (driver meta-command or screen-level handling) that returns to the workspace"
-      - "Add a test in tests/test_manet_navigation.py asserting typing 'exit' returns to MainWorkspace"
-  - truth: "The console displays syntax help or suggestions on invalid input — 'help' must not dead-end (plan 07-03 truth 2; D-20 honesty)"
-    status: partial
-    reason: "Console copy actively advertises a nonexistent command: banner says 'Type application commands or help' and the unknown-command output says \"Type 'help' or check command palette.\" — but typing 'help' returns \"Unknown command 'help'. Type 'help'...\" (infinite dead-end loop). Empirically confirmed via headless probe. Violates D-20 honest-capability wording."
-    artifacts:
-      - path: manet/screens/console.py
-        issue: "line 74 banner text references 'help' as a usable command"
-      - path: manet/commands/console_driver.py
-        issue: "line 133 unknown-command output references 'help' as a usable command; no 'help' command exists in the registry"
-    missing:
-      - "Either add a backed 'help' command (e.g. action_show_help to the HelpAboutScreen) to the registry, or make the banner/error copy reference real paths only (e.g. 'check command palette, ctrl+p')"
-      - "Add tests asserting the advertised path works (type 'help' produces help) or that copy no longer mentions it"
+gaps: []
+gap_closure_summary:
+  plan: "07-05"
+  closed_at: 2026-11-07T10:30:00Z
+  details:
+    - "Row 9 resolved: 'exit' meta-command added to ConsoleDriver.execute(), returning to MainWorkspace (verified via test_console_exit_meta_command and test_console_typed_exit_returns_to_workspace)"
+    - "Row 10 resolved: 'help' AppCommand registered in commands/registry.py dispatching action_show_help (verified via test_console_executes_help_command and test_console_typed_help_opens_help_about)"
+    - "T-7-04 invariant restored: silent 'except Exception: return' removed from ConsoleScreen.on_key, bringing except count to 0 in console.py"
 deferred:  # Items addressed in later phases — not actionable gaps
   - truth: "D-03 session-shell mounting contract (StatusBar/NotificationRail/NavRail noop adapters in manet/widgets/ + manet/adapters/) recorded as approved option-a but never built"
     addressed_in: "Phase 8"
@@ -46,9 +31,9 @@ human_verification:
 # Phase 7: TUI Shell & Application Frame — Verification Report
 
 **Phase Goal:** User can launch and navigate a full-screen, keyboard-first `MANET IDS` terminal application built entirely in a new `manet/` package
-**Verified:** 2026-11-07T09:13:56Z
-**Status:** gaps_found
-**Re-verification:** No — initial verification
+**Verified:** 2026-11-07T10:30:00Z
+**Status:** passed
+**Re-verification:** Yes — gap closure via Plan 07-05 (12/12 must-haves verified)
 
 ## Goal Achievement
 
@@ -64,12 +49,12 @@ human_verification:
 | 6   | All TUI code under `manet/`, clean separation screens/commands/runtime, no business logic duplicated (SC5/TUI-02) | ✓ VERIFIED | AST test walks every `manet/**/*.py` — zero imports of `simulator|attacks|feature_extraction|ml`; separation real (4 packages); widgets/adapters packages deferred to Phase 8 mounting contract (deferred table) |
 | 7   | 79-test baseline passes unchanged under new root pytest.ini with asyncio auto mode (plan 01 truth 3 / Wave-0 gate) | ✓ VERIFIED | `pytest.ini` contains exactly `asyncio_mode = auto` + `asyncio_default_fixture_loop_scope = function`; full suite **116 passed** (79 baseline + 37 Phase 7), zero skip/fail |
 | 8   | Single command registry is the one source of truth, consumed by palette provider; deterministic insertion order (plan 02 truths) | ✓ VERIFIED | `manet/commands/registry.py` `AppCommand`/`iter_known`/`resolve`; provider discover/search source exclusively from `iter_known()`; registry-fidelity + determinism tests pass; no second command list in codebase |
-| 9   | ctrl+o opens console from any view; **Esc or typing `exit` returns to workspace** (plan 03 truth 1) | ✗ FAILED (partial) | ctrl+o/Esc work and are tested; **typing `exit` does nothing** — no `exit` handling exists anywhere in `manet/` (grep: zero occurrences), typing `exit` stays on ConsoleScreen (probe: `screen_after_exit=ConsoleScreen`) |
-| 10  | Console executes strictly via `registry.resolve()`, no OS execution, **displays syntax help/suggestions on invalid input** (plan 03 truth 2) | ✗ FAILED (partial) | Execution path and rejections verified (tests + AST). But the console *advertises* `help` (banner line 74; unknown-command output line 133) and typing `help` yields "Unknown command 'help'. Type 'help' or check command palette." — a self-referential dead-end (probe: `help_result_success=False`). D-20 honesty violation |
+| 9   | ctrl+o opens console from any view; **Esc or typing `exit` returns to workspace** (plan 03 truth 1) | ✓ VERIFIED | ctrl+o/Esc work and are tested; typing `exit` dispatches action_show_workspace via driver meta-command (verified by test_console_exit_meta_command and test_console_typed_exit_returns_to_workspace) |
+| 10  | Console executes strictly via `registry.resolve()`, no OS execution, **displays syntax help/suggestions on invalid input** (plan 03 truth 2) | ✓ VERIFIED | Execution path and rejections verified (tests + AST). 'help' is registered in registry.py and dispatches action_show_help opening HelpAboutScreen; banner line 74 and driver line 133 are truthful (verified by test_console_executes_help_command and test_console_typed_help_opens_help_about). |
 | 11  | In-memory session history deque traversable with up/down; never persisted to disk (plan 03 truth 3) | ✓ VERIFIED | `deque(maxlen=100)`, `history_prev/next`; tested (`test_console_in_memory_history_navigation`, zero-disk-persistence test, up/down pilot test) |
-| 12  | Dual themes registered in on_mount, runtime-switchable via command/action; settings strictly session-only, AST-verified zero disk write (plan 04 truths) | ✓ VERIFIED | `on_mount` registers `SOC` + `SOC_HIGH_CONTRAST`; toggle actions tested both directions; registry exposes backed `theme-toggle`/`motion-toggle` commands; AST zero-disk test passes |
+| 12  | Dual themes registered in on_mount, runtime-switchable via command/action; settings strictly session-only, AST-verified zero disk write (plan 04 truths) | ✓ VERIFIED | `on_mount` registers `SOC` + `SOC_HIGH_CONTRAST`; toggle actions tested both directions; registry exposes backed `theme-toggle`/`motion-toggle`/`help` commands; AST zero-disk test passes |
 
-**Score:** 10/12 truths verified (rows 9–10 fail as one root-cause group)
+**Score:** 12/12 truths verified (100% must-haves verified)
 
 ### Deferred Items
 

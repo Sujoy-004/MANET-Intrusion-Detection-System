@@ -7,7 +7,7 @@
 
 ## Phases
 
-- [ ] **Phase 7: TUI Shell & Application Frame** - Textual package, launcher, keyboard-first navigation, command palette/console, cybersecurity theming
+- [x] **Phase 7: TUI Shell & Application Frame** - Textual package, launcher, keyboard-first navigation, command palette/console, cybersecurity theming (completed 2026-11-07)
 - [ ] **Phase 8: Operational Dashboard** - Real capability diagnostics, workload/experiment snapshots, honest capability states
 - [ ] **Phase 9: Simulation Workflow** - Preset/custom run configuration, seed selection, IDS gating, review/confirm, workspace allocation
 - [ ] **Phase 10: Background Execution & Live Feedback** - Non-blocking worker, bounded telemetry, safe interruption and stop

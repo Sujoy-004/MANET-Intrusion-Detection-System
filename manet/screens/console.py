@@ -113,11 +113,7 @@ class ConsoleScreen(Screen):
     def on_key(self, event: events.Key) -> None:
         """Intercept Up/Down arrow keys in input for history navigation."""
         if event.key in ("up", "down"):
-            try:
-                input_widget = self.query_one("#console-input", Input)
-            except Exception:
-                return
-
+            input_widget = self.query_one("#console-input", Input)
             if input_widget.has_focus:
                 driver: ConsoleDriver | None = getattr(self.app, "console_driver", None)
                 if driver is None:

@@ -29,6 +29,7 @@ Thumbs.db
 
 # Personal / uncommitted tools & archify diagrams (Phase 6 personal artifacts)
 .archify/
+.open-design/
 
 
 # Environment variables and secrets

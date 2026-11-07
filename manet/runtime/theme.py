@@ -1,14 +1,14 @@
 """Theme definitions for MANET IDS TUI.
 
-Implements the D-06 cybersecurity/SOC semantic color contract:
-- Cyan (#00b8d4): Navigation emphasis and active key shortcuts
-- Blue (#3b82f6): Informational surfaces and status displays
-- Green (#22c55e): Healthy system state and normal operations
-- Amber (#f59e0b): Warnings, threshold alerts, and degraded operations
-- Red (#ef4444): Critical alerts, attack detections, and intrusion errors
+Implements sky-blue dark minimalist design complying with D-06 semantic color contract:
+- Sky-Blue / Cyan (#38bdf8): Navigation emphasis, focus indicators, and active key shortcuts
+- Sky / Light Blue (#7dd3fc): Informational surfaces, borders, and status displays
+- Emerald / Green (#34d399): Healthy system state and normal operations
+- Amber (#fbbf24): Warnings, threshold alerts, and degraded operations
+- Coral / Red (#f87171): Critical alerts, attack detections, and intrusion errors
 
 Also provides SOC_HIGH_CONTRAST for enhanced visual contrast and accessibility (D-08, TUI-05),
-featuring pitch-black background, ultra-high-contrast panels, and saturated indicators.
+featuring pitch-black background, ultra-high-contrast panels, and high-visibility sky-blue indicators.
 
 Semantic colors are defined both in standard framework slots and custom variables
 to ensure TCSS references theme variables ($variable) rather than hardcoded hex values.
@@ -21,23 +21,23 @@ from textual.theme import Theme
 SOC = Theme(
     name="manet-soc",
     dark=True,
-    background="#0a0f14",
-    surface="#101820",
-    panel="#152230",
-    foreground="#dbe4ed",
-    primary="#00b8d4",
-    secondary="#3b82f6",
-    accent="#22c55e",
-    success="#22c55e",
-    warning="#f59e0b",
-    error="#ef4444",
+    background="#0a0f18",
+    surface="#101726",
+    panel="#182338",
+    foreground="#f0f6fc",
+    primary="#38bdf8",
+    secondary="#7dd3fc",
+    accent="#38bdf8",
+    success="#34d399",
+    warning="#fbbf24",
+    error="#f87171",
     variables={
-        "navigation-cyan": "#00b8d4",
-        "info-blue": "#3b82f6",
-        "healthy-green": "#22c55e",
-        "warning-amber": "#f59e0b",
-        "critical-red": "#ef4444",
-        "footer-key-foreground": "#00b8d4",
+        "navigation-cyan": "#38bdf8",
+        "info-blue": "#7dd3fc",
+        "healthy-green": "#34d399",
+        "warning-amber": "#fbbf24",
+        "critical-red": "#f87171",
+        "footer-key-foreground": "#38bdf8",
     },
 )
 
@@ -45,22 +45,22 @@ SOC_HIGH_CONTRAST = Theme(
     name="manet-soc-high-contrast",
     dark=True,
     background="#000000",
-    surface="#05080c",
-    panel="#0d1520",
+    surface="#070c14",
+    panel="#0f1d33",
     foreground="#ffffff",
-    primary="#00e5ff",
-    secondary="#60a5fa",
+    primary="#7dd3fc",
+    secondary="#38bdf8",
     accent="#4ade80",
     success="#4ade80",
-    warning="#fbbf24",
-    error="#f87171",
+    warning="#fde047",
+    error="#fca5a5",
     variables={
-        "navigation-cyan": "#00e5ff",
-        "info-blue": "#60a5fa",
+        "navigation-cyan": "#7dd3fc",
+        "info-blue": "#bae6fd",
         "healthy-green": "#4ade80",
-        "warning-amber": "#fbbf24",
-        "critical-red": "#f87171",
-        "footer-key-foreground": "#00e5ff",
+        "warning-amber": "#fde047",
+        "critical-red": "#fca5a5",
+        "footer-key-foreground": "#7dd3fc",
     },
 )
 

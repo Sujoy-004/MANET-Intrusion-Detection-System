@@ -12,6 +12,20 @@ from textual.screen import Screen
 from textual.widgets import Footer, Header, Static
 
 
+WORKSPACE_CONTENT = (
+    "[bold $primary]MANET INTRUSION DETECTION SYSTEM[/]\n"
+    "[dim]Session Control & Operational Workspace[/]\n\n"
+    "[dim]───────────────────────────────────────────────[/]\n\n"
+    "[bold]Topology State:[/]       [green]Online (AODV Active)[/]\n"
+    "[bold]IDS Monitoring:[/]       [cyan]Ready[/]\n"
+    "[bold]Active Threat Level:[/]  [green]Nominal[/]\n\n"
+    "[dim]───────────────────────────────────────────────[/]\n\n"
+    "[dim]Press [bold $primary]Ctrl+P[/] for Command Palette[/]\n"
+    "[dim]Press [bold $primary]Ctrl+O[/] for Interactive Console[/]\n"
+    "[dim]Press [bold $primary]F1[/] for Shortcuts & System Help[/]"
+)
+
+
 class MainWorkspace(Screen):
     """Primary workspace screen hosting the MANET IDS session shell."""
 
@@ -23,11 +37,12 @@ class MainWorkspace(Screen):
 
     MainWorkspace {
         align: center middle;
+        background: $background;
     }
 
     #workspace-box {
         width: 90%;
-        max-width: 60;
+        max-width: 64;
         height: auto;
         border: solid $info-blue;
         color: $foreground;
@@ -58,7 +73,7 @@ class MainWorkspace(Screen):
         """Compose the primary shell layout."""
         yield Header()
         yield Static(
-            "MANET IDS\nSession shell workspace",
+            WORKSPACE_CONTENT,
             id="workspace-box",
         )
         yield Footer()

@@ -34,8 +34,9 @@ class ConsoleDriver:
     """In-memory driver and execution dispatcher for the command console.
 
     Maintains a bounded session history deque and dispatches verified application
-    commands to the active application instance. Never writes history to disk and
-    contains zero OS process execution primitives (D-10, T-7-01, Pitfall 5).
+    commands to the active application instance. Handles the 'exit' meta-command to
+    dismiss the console and return to the primary workspace. Never writes history to disk
+    and contains zero OS process execution primitives (D-10, T-7-01, Pitfall 5).
     """
 
     def __init__(self, app: Any, max_history: int = 100) -> None:
@@ -54,7 +55,8 @@ class ConsoleDriver:
         """Parse, validate, and dispatch a command line.
 
         Trims input, tokenizes with shlex, resolves against the application command
-        registry, and invokes the matching action on the app instance.
+        registry, and invokes the matching action on the app instance. Supports the
+        case-sensitive 'exit' first-token meta-command to return to the workspace.
 
         Args:
             line: Raw input string from the console.
@@ -76,6 +78,16 @@ class ConsoleDriver:
 
         name = tokens[0]
         args = tokens[1:]
+
+        if name == "exit":
+            self.history.append(stripped)
+            self._history_index = len(self.history)
+            self.app.action_show_workspace()
+            return ConsoleResult(
+                success=True,
+                output="Returned to workspace.",
+                command=None,
+            )
 
         resolved = resolve(name, args)
         if resolved is not None:

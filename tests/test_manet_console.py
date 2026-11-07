@@ -1,7 +1,9 @@
 """Unit tests for ConsoleDriver execution, parameter validation, and in-memory history.
 
 Verifies:
-- Execution of registered application commands (e.g. 'workspace').
+- Execution of registered application commands (e.g. 'workspace', 'help').
+- Handling of 'exit' meta-command dispatching to action_show_workspace.
+- Adjacency and case sensitivity of meta-command token matching.
 - Rejection of OS shell commands (ls, dir, rm, cat) and unknown commands.
 - Parameter mismatch detection and usage formatting.
 - In-memory bounded history navigation (prev / next).
@@ -20,9 +22,13 @@ class DummyApp:
 
     def __init__(self) -> None:
         self.workspace_invoked = False
+        self.help_invoked = False
 
     def action_show_workspace(self) -> None:
         self.workspace_invoked = True
+
+    def action_show_help(self) -> None:
+        self.help_invoked = True
 
 
 def test_console_executes_workspace_command():
@@ -133,3 +139,49 @@ def test_console_driver_has_no_os_execution_imports():
     assert "shutil" not in source
     assert "os." not in source
     assert "import os" not in source
+
+
+def test_console_exit_meta_command():
+    """Verify typed 'exit' dispatches directly to action_show_workspace."""
+    app = DummyApp()
+    driver = ConsoleDriver(app=app)
+    res = driver.execute("exit")
+    assert res.success is True
+    assert res.output == "Returned to workspace."
+    assert res.command is None
+    assert app.workspace_invoked is True
+    assert list(driver.history) == ["exit"]
+    assert driver._history_index == len(driver.history)
+
+
+def test_console_exit_meta_command_adjacency():
+    """Verify first-token match for exit with whitespace/flags, but rejection of uppercase variants."""
+    for cmd in ["exit ", " exit", "exit --flag", "'exit'"]:
+        app = DummyApp()
+        driver = ConsoleDriver(app=app)
+        res = driver.execute(cmd)
+        assert res.success is True
+        assert res.output == "Returned to workspace."
+        assert app.workspace_invoked is True
+
+    # Case sensitive: EXIT is treated as unknown
+    app = DummyApp()
+    driver = ConsoleDriver(app=app)
+    res = driver.execute("EXIT")
+    assert res.success is False
+    assert "Unknown command 'EXIT'" in res.output
+    assert app.workspace_invoked is False
+    assert len(driver.history) == 0
+
+
+def test_console_executes_help_command():
+    """Verify executing registered 'help' command dispatches to action_show_help."""
+    app = DummyApp()
+    driver = ConsoleDriver(app=app)
+    res = driver.execute("help")
+    assert res.success is True
+    assert "Executed: Help" in res.output
+    assert res.command is not None
+    assert res.command.name == "help"
+    assert app.help_invoked is True
+    assert list(driver.history) == ["help"]
