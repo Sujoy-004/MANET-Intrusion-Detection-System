@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from rich.text import Text
 from textual import events
 from textual.app import ComposeResult
 from textual.binding import Binding
@@ -96,19 +97,21 @@ class ConsoleScreen(Screen):
             return
 
         log = self.query_one("#console-log", RichLog)
-        log.write(f"> [bold cyan]{command_line}[/]")
+        echo_line = Text("> ", style="bold cyan")
+        echo_line.append(command_line)
+        log.write(echo_line)
 
         driver: ConsoleDriver | None = getattr(self.app, "console_driver", None)
         if driver is None:
-            log.write("[red]Error: Console driver is not available on application.[/]")
+            log.write(Text("Error: Console driver is not available on application.", style="red"))
             return
 
         result = driver.execute(command_line)
         if result.success:
             if result.output:
-                log.write(f"[green]{result.output}[/]")
+                log.write(Text(result.output, style="green"))
         else:
-            log.write(f"[red]{result.output}[/]")
+            log.write(Text(result.output, style="red"))
 
     def on_key(self, event: events.Key) -> None:
         """Intercept Up/Down arrow keys in input for history navigation."""

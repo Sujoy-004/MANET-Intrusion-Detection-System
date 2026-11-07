@@ -41,13 +41,13 @@ human_verification:
 
 | #   | Truth   | Status     | Evidence       |
 | --- | ------- | ---------- | -------------- |
-| 1   | `python -m manet` from repo root opens full-screen "MANET IDS", no required flags, no internet (SC1/TUI-01) | ✓ VERIFIED | `manet/__main__.py` body is exactly `ManetApp().run()`; `main` callable with zero required params (probe); offline by design; headless launch verified in suite (116 passed). Real-terminal rendering is a human item below |
+| 1   | `python -m manet` from repo root opens full-screen "MANET IDS", no required flags, no internet (SC1/TUI-01) | ✓ VERIFIED | `manet/__main__.py` body is exactly `ManetApp().run()`; `main` callable with zero required params (probe); offline by design; headless launch verified in suite (122 passed). Real-terminal rendering is a human item below |
 | 2   | Headless launch mounts default screen with title "MANET IDS" + theme "manet-soc" + `MainWorkspace` + Footer (plan 01 truth 2) | ✓ VERIFIED | `tests/test_manet_app_launch.py::test_manet_app_headless_launch` asserts all four; passing |
 | 3   | Every screen keyboard-first (arrows/Enter/Esc), visible focus on interactive widgets, visible shortcut hints, layout adapts on resize incl. compact mode (SC2/TUI-03) | ✓ VERIFIED | Navigation pilot tests (ctrl+o/Esc/f1 cycles, up/down history); `Input`/`DataTable` focused on mount; `Footer` shows bindings; compact tests at 60×20 (`-compact`, Header/Footer mounted+visible) and 120×40 (`-normal`). Workspace-screen interactivity arrives Phase 8 (deferred, see below) |
 | 4   | Palette + console open from anywhere; console exposes app commands only; no OS shell execution (SC3/TUI-04) | ✓ VERIFIED | ctrl+p/ctrl+o are app-level bindings (fire on any screen; console toggle overrides tested); console/help navigation pilot tests pass; AST boundary test walks all of `manet/commands/**` proving zero `subprocess|shutil|os` imports; console execution strictly resolves via `registry.resolve()` |
 | 5   | Dark SOC cybersecurity palette applied; high-contrast + reduced-motion options; session-only prefs, no persistent profiles (SC4/TUI-05) | ✓ VERIFIED | Both themes registered in `on_mount` (code verified); `action_toggle_high_contrast` swaps `app.theme` (tested); `SessionSettings` in-memory dataclass; AST test proves zero disk I/O in settings.py. Note: `reduced_motion` toggle has zero consumers (warning below); palette correctness is a human item |
 | 6   | All TUI code under `manet/`, clean separation screens/commands/runtime, no business logic duplicated (SC5/TUI-02) | ✓ VERIFIED | AST test walks every `manet/**/*.py` — zero imports of `simulator|attacks|feature_extraction|ml`; separation real (4 packages); widgets/adapters packages deferred to Phase 8 mounting contract (deferred table) |
-| 7   | 79-test baseline passes unchanged under new root pytest.ini with asyncio auto mode (plan 01 truth 3 / Wave-0 gate) | ✓ VERIFIED | `pytest.ini` contains exactly `asyncio_mode = auto` + `asyncio_default_fixture_loop_scope = function`; full suite **116 passed** (79 baseline + 37 Phase 7), zero skip/fail |
+| 7   | 79-test baseline passes unchanged under new root pytest.ini with asyncio auto mode (plan 01 truth 3 / Wave-0 gate) | ✓ VERIFIED | `pytest.ini` contains exactly `asyncio_mode = auto` + `asyncio_default_fixture_loop_scope = function`; full suite **122 passed** (79 baseline + 43 Phase 7), zero skip/fail |
 | 8   | Single command registry is the one source of truth, consumed by palette provider; deterministic insertion order (plan 02 truths) | ✓ VERIFIED | `manet/commands/registry.py` `AppCommand`/`iter_known`/`resolve`; provider discover/search source exclusively from `iter_known()`; registry-fidelity + determinism tests pass; no second command list in codebase |
 | 9   | ctrl+o opens console from any view; **Esc or typing `exit` returns to workspace** (plan 03 truth 1) | ✓ VERIFIED | ctrl+o/Esc work and are tested; typing `exit` dispatches action_show_workspace via driver meta-command (verified by test_console_exit_meta_command and test_console_typed_exit_returns_to_workspace) |
 | 10  | Console executes strictly via `registry.resolve()`, no OS execution, **displays syntax help/suggestions on invalid input** (plan 03 truth 2) | ✓ VERIFIED | Execution path and rejections verified (tests + AST). 'help' is registered in registry.py and dispatches action_show_help opening HelpAboutScreen; banner line 74 and driver line 133 are truthful (verified by test_console_executes_help_command and test_console_typed_help_opens_help_about). |
@@ -113,35 +113,36 @@ No DB/fetch sources expected at this phase; no hardcoded-empty props found at ca
 
 | Behavior | Command | Result | Status |
 | -------- | ------- | ------ | ------ |
-| Phase-7 TUI test suite | `python -m pytest tests/test_manet_*.py -q` | 37 passed | ✓ PASS |
-| Full suite incl. 79 baseline | `python -m pytest tests/ -q` | 116 passed (79+37), 0 failures, 0 skips | ✓ PASS |
+| Phase-7 TUI test suite | `python -m pytest -k "manet" -q` | 43 passed | ✓ PASS |
+| Full suite incl. 79 baseline | `python -m pytest tests/ -q` | 122 passed (79 baseline + 43 Phase 7), 0 failures, 0 skips | ✓ PASS |
 | Entry point callable, no required params | `python -c "from manet.__main__ import main; ..."` | `main callable: True`, params `[]` | ✓ PASS |
-| Typing `exit` in console returns to workspace | headless probe (submit "exit") | screen stayed `ConsoleScreen`, history unaffected | ✗ FAIL |
-| Typing `help` in console works | headless probe (driver.execute("help")) | `Unknown command 'help'. Type 'help' or check command palette.` — dead-end loop | ✗ FAIL |
-| Markup-shaped invalid input renders error, no crash | headless probe (submit "echo [browser", "ls [x") | both echo + error lines rendered; `app._exit: False`, `is_running: True`, no exception | ✓ PASS |
+| Typing `exit` in console returns to workspace | headless probe (submit "exit") | Dispatches action_show_workspace and returns to MainWorkspace | ✓ PASS (closed by 07-05) |
+| Typing `help` in console works | headless probe (driver.execute("help")) | Dispatches action_show_help and opens HelpAboutScreen | ✓ PASS (closed by 07-05) |
+| Hostile markup input renders without crash | headless probe (submit "[/red]", "[/]", "[/x] ls") | Handled safely via rich.text.Text objects, no MarkupError crash | ✓ PASS (CR-01 fixed + tested) |
 
-Note: the code-review report's CR-01 ("user-triggerable application crash" from markup injection) **did not reproduce** under the actual Textual 8.2.8 stack — the app stays alive and the console still renders the unknown-command error. Not counted as a gap; findings CR-02/CR-03 are handled above (deferred/gap), WR-01/WR-02 as warnings below.
+Note: The code-review finding CR-01 ("user-triggerable application crash" from unmatched Rich closing tags like `[/red]` and `[/]`) was reproduced and confirmed; it has been resolved by writing plain unparsed `Text` objects directly to `RichLog` in `manet/screens/console.py` and covered with regression test `test_console_hostile_markup_input_does_not_crash`. Findings CR-03 and WR-02 were fully resolved in Plan 07-05; CR-02 and WR-03 are explicitly deferred to Phase 8.
 
 ### Requirements Coverage
 
 | Requirement | Source Plan | Description | Status | Evidence |
 | ----------- | ---------- | ----------- | ------ | -------- |
 | TUI-01 | 07-01 | Launch via `python -m manet`, no flags, offline | SATISFIED | entry wired + headless launch verified; real-terminal render → human item |
-| TUI-02 | 07-01, 02, 03, 04 | All TUI in `manet/` with clean separation, no duplicated logic | SATISFIED | AST boundary tests (business imports + OS primitives) walk all files; separation real |
+| TUI-02 | 07-01, 02, 03, 04, 05 | All TUI in `manet/` with clean separation, no duplicated logic | SATISFIED | AST boundary tests (business imports + OS primitives) walk all files; separation real |
 | TUI-03 | 07-03, 04 | Keyboard-first navigation, visible focus, shortcut hints, resize/compact | SATISFIED | pilot navigation tests, compact/normal breakpoint tests, Footer hints, focused Input/DataTable; workspace interactivity deferred to Phase 8 |
-| TUI-04 | 07-02, 03 | Palette + console; app-commands only; no OS shell execution | SATISFIED with honesty gap | registry-strict execution + AST no-OS proof; gap: console copy advertises nonexistent `help`/`exit` (CR-03 + plan-03 truths) |
-| TUI-05 | 07-04 | Dark SOC palette, high-contrast + reduced-motion, session-only prefs | SATISFIED with note | both themes + toggles tested; session-only AST-proven; `reduced_motion` toggle has zero consumers (nothing animates yet) |
+| TUI-04 | 07-02, 03, 05 | Palette + console; app-commands only; no OS shell execution | SATISFIED | registry-strict execution + AST no-OS proof; honest exit meta-command and registered help command verified |
+| TUI-05 | 07-04 | Dark SOC palette, high-contrast + reduced-motion, session-only prefs | SATISFIED with note | both themes + toggles tested; session-only AST-proven; `reduced_motion` toggle has zero consumers (deferred to Phase 10) |
 
-All 5 requirement IDs mapped to Phase 7 in REQUIREMENTS.md (lines 9–13, 70–74) are claimed across plan frontmatter (01: TUI-01,02; 02: TUI-04,02; 03: TUI-03,04,02; 04: TUI-05,02). **No orphaned requirements.**
+All 5 requirement IDs mapped to Phase 7 in REQUIREMENTS.md (lines 9–13, 70–74) are claimed across plan frontmatter (01: TUI-01,02; 02: TUI-04,02; 03: TUI-03,04,02; 04: TUI-05,02; 05: TUI-04,02). **No orphaned requirements.**
 
 ### Anti-Patterns Found
 
 | File | Line | Pattern | Severity | Impact |
 | ---- | ---- | ------- | -------- | ------ |
-| `manet/screens/console.py` | 74 | Banner advertises `help` command that does not exist | 🛑 Blocker (part of gap #2) | User told to type a command that dead-ends |
-| `manet/commands/console_driver.py` | 133 | Unknown-command output advertises `help` that does not exist | 🛑 Blocker (part of gap #2) | Self-referential dead-end loop |
-| `manet/screens/console.py`, `drivers` (absent) | — | Typed `exit` promised by plan-03 must-have but unimplemented | 🛑 Blocker (gap #1) | Users cannot type-exit the console |
-| `manet/screens/console.py` | 117–119 | `except Exception: return` — silent swallow violating T-7-04 "zero exception handlers" mitigation declared in plan 01 threat register | ⚠️ Warning | Hides internal query errors; replaces visible-traceback rule |
+| `manet/screens/console.py` | 74 | Banner advertises `help` command | ✅ RESOLVED | Resolved in Plan 07-05: registered honest 'help' AppCommand in registry.py |
+| `manet/commands/console_driver.py` | 133 | Unknown-command output advertises `help` | ✅ RESOLVED | Resolved in Plan 07-05: 'help' AppCommand dispatches to action_show_help |
+| `manet/screens/console.py`, `drivers` | — | Typed `exit` promised by plan-03 must-have | ✅ RESOLVED | Resolved in Plan 07-05: exit meta-command dispatches to action_show_workspace |
+| `manet/screens/console.py` | 117–119 | `except Exception: return` | ✅ RESOLVED | Resolved in Plan 07-05: removed silent exception swallow, restoring T-7-04 visible traceback invariant |
+| `manet/screens/console.py` | 99, 111 | Raw user text into markup=True RichLog (CR-01) | ✅ RESOLVED | Resolved: Text objects emitted directly into RichLog, preventing MarkupError |
 | `manet/runtime/settings.py` consumed by `app.py` | — | `reduced_motion` (and `compact_density`) toggles have zero consumers — advertised palette commands with no observable effect | ⚠️ Warning | Borderline D-20: toggle flips state but changes nothing visible; defensible until animations exist (Phase 10 live feedback) |
 | `manet/commands/palette_provider.py` | 7–12 docstring | Docstring claims plan-03 will surface recency at top of discover() — never delivered; doc/code drift | ℹ️ Info | Misleading comment only |
 | `manet/screens/help_about.py` | 80 | Version literal "2.0.0-dev" duplicated instead of referencing `manet.__version__` | ℹ️ Info | Divergence risk on version bump |
@@ -161,13 +162,16 @@ All 5 requirement IDs mapped to Phase 7 in REQUIREMENTS.md (lines 9–13, 70–7
 
 ### Gaps Summary
 
-The phase's structural goal is largely achieved: the `manet/` package contains a real, wired, well-tested TUI application — 116 tests pass (79 baseline unweakened + 37 new), AST boundary proofs exist, the registry/palette/console/help/theme/settings architecture is substantive and interconnected. The launch/navigate/frame goals (TUI-01, TUI-02, TUI-03, most of TUI-04/05) hold on evidence.
+Phase 7 is fully verified and complete across 5 plans (07-01 through 07-05). 12/12 must-haves are satisfied. All 122 tests (79 baseline unweakened + 43 Phase 7 tests) pass with zero skips or failures.
 
-The residual gap is one root cause with a single fix surface: **the console advertises commands that were never implemented** — banner and error copy tell users to type `help`, and the plan's own must-have text requires a typed `exit` path back to the workspace, but no `exit` or `help` handling exists anywhere in `manet/` (empirically confirmed by headless probes; tests cover neither). This is a D-20 honesty violation on the primary interactive surface (review findings CR-03 + open disposition), and it partially fails plan-03 must-have truths 1 and 2.
-
-Suggested closure (single focused plan): (a) implement a typed `exit` path returning to workspace, (b) back the advertised `help` with a real action (`action_show_help` → HelpAboutScreen) or rewrite the console copy to reference only real paths, (c) update tests to assert both behaviors, (d) opportunistically remove the `except Exception: return` swallow in `console.on_key` while the file is open (T-7-04 invariant).
+All actionable code review blockers have been closed:
+- **CR-01:** Hostile Rich markup tags (`[/red]`, `[/]`) now bypass markup parsing via `rich.text.Text`, with regression test coverage.
+- **CR-03:** The self-referential dead-end on `help` was eliminated in Plan 07-05 by registering `help` as an AppCommand that opens `HelpAboutScreen`.
+- **Exit meta-command:** Plan 07-05 implemented the `exit` meta-command in `ConsoleDriver.execute()`, returning to `MainWorkspace`.
+- **T-7-04 Invariant:** Plan 07-05 removed the silent `except Exception: return` block in `ConsoleScreen.on_key()`.
+- **CR-02 & WR-03:** The D-03 mounting contract (`manet/widgets/` and `manet/adapters/`) and interactive workspace content were explicitly deferred to Phase 8.
 
 ---
 
-_Verified: 2026-11-07T09:13:56Z_
+_Verified: 2026-11-07T10:30:00Z_
 _Verifier: OpenCode (gsd-verifier)_

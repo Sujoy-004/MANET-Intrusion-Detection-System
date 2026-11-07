@@ -1,12 +1,43 @@
 {
   "contract": "1.0.0",
   "flavor": "core",
-  "milestone": "v2.0",
-  "phases": [],
+  "milestone": "v2.0 — Interactive TUI Application",
+  "phases": [
+    {
+      "number": "7",
+      "name": "TUI Shell & Application Frame",
+      "status": "pending"
+    },
+    {
+      "number": "8",
+      "name": "Operational Dashboard",
+      "status": "pending"
+    },
+    {
+      "number": "9",
+      "name": "Simulation Workflow",
+      "status": "pending"
+    },
+    {
+      "number": "10",
+      "name": "Background Execution & Live Feedback",
+      "status": "pending"
+    },
+    {
+      "number": "11",
+      "name": "Results & Experiment Records",
+      "status": "pending"
+    },
+    {
+      "number": "12",
+      "name": "Quality, Testing & Delivery",
+      "status": "pending"
+    }
+  ],
   "next": {
-    "command": "/gsd-discuss-phase",
-    "label": "Discuss the first phase",
-    "reason": "Project initialized — plan your first phase"
+    "command": "/gsd-progress",
+    "label": "Show progress",
+    "reason": "Unsure of state — showing progress"
   },
-  "updated_at": "2026-11-06T05:37:18.770Z"
+  "updated_at": "2026-11-07T06:29:37.209Z"
 }

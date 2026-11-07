@@ -6,11 +6,11 @@ Locale note: REQ-IDs follow the v1.0 convention ([CATEGORY]-[NN]). New category 
 
 ### TUI Shell & Launcher
 
-- [ ] **TUI-01**: User can launch the full-screen `MANET IDS` terminal application from the repository root via `python -m manet` with no required flags, usable offline (local-first)
-- [ ] **TUI-02**: TUI code lives entirely in a new `manet/` package with clean separation of screens, widgets, commands, adapters, and runtime — no simulation, routing, feature-extraction, or IDS logic duplicated
-- [ ] **TUI-03**: User can navigate every screen keyboard-first (arrows, Enter, Esc) with visible keyboard focus and visible shortcut hints, and the layout adapts to terminal resizing including a compact mode for small windows
-- [ ] **TUI-04**: User can open a global searchable command palette and a structured application-command console; the console exposes application commands only and performs no operating-system shell execution
-- [ ] **TUI-05**: User experiences the dark cybersecurity palette (cyan navigation, blue information, green healthy, amber warning, red critical) with reduced-motion and high-contrast options where the framework supports them; preferences are session-only (no persistent profiles)
+- [x] **TUI-01**: User can launch the full-screen `MANET IDS` terminal application from the repository root via `python -m manet` with no required flags, usable offline (local-first)
+- [x] **TUI-02**: TUI code lives entirely in a new `manet/` package with clean separation of screens, widgets, commands, adapters, and runtime — no simulation, routing, feature-extraction, or IDS logic duplicated
+- [x] **TUI-03**: User can navigate every screen keyboard-first (arrows, Enter, Esc) with visible keyboard focus and visible shortcut hints, and the layout adapts to terminal resizing including a compact mode for small windows
+- [x] **TUI-04**: User can open a global searchable command palette and a structured application-command console; the console exposes application commands only and performs no operating-system shell execution
+- [x] **TUI-05**: User experiences the dark cybersecurity palette (cyan navigation, blue information, green healthy, amber warning, red critical) with reduced-motion and high-contrast options where the framework supports them; preferences are session-only (no persistent profiles)
 
 ### Dashboard
 
@@ -67,11 +67,11 @@ Locale note: REQ-IDs follow the v1.0 convention ([CATEGORY]-[NN]). New category 
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TUI-01 | Phase 7 — TUI Shell & Application Frame | Pending |
-| TUI-02 | Phase 7 — TUI Shell & Application Frame | Pending |
-| TUI-03 | Phase 7 — TUI Shell & Application Frame | Pending |
-| TUI-04 | Phase 7 — TUI Shell & Application Frame | Pending |
-| TUI-05 | Phase 7 — TUI Shell & Application Frame | Pending |
+| TUI-01 | Phase 7 — TUI Shell & Application Frame | Satisfied |
+| TUI-02 | Phase 7 — TUI Shell & Application Frame | Satisfied |
+| TUI-03 | Phase 7 — TUI Shell & Application Frame | Satisfied |
+| TUI-04 | Phase 7 — TUI Shell & Application Frame | Satisfied |
+| TUI-05 | Phase 7 — TUI Shell & Application Frame | Satisfied |
 | TUI-06 | Phase 8 — Operational Dashboard | Pending |
 | TUI-07 | Phase 8 — Operational Dashboard | Pending |
 | TUI-08 | Phase 8 — Operational Dashboard | Pending |

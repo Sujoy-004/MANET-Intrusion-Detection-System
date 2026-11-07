@@ -197,3 +197,21 @@ async def test_console_typed_help_opens_help_about():
         await pilot.pause()
 
         assert isinstance(app.screen, HelpAboutScreen)
+
+
+@pytest.mark.asyncio
+async def test_console_hostile_markup_input_does_not_crash():
+    """Verify hostile rich markup closing tags (e.g. [/red], [/]) do not raise MarkupError."""
+    app = ManetApp()
+    async with app.run_test() as pilot:
+        await pilot.press("ctrl+o")
+        await pilot.pause()
+        assert isinstance(app.screen, ConsoleScreen)
+
+        input_widget = app.screen.query_one("#console-input", Input)
+        for hostile_cmd in ["[/red]", "[/]", "echo [bold]", "[/x] ls"]:
+            input_widget.value = hostile_cmd
+            await pilot.press("enter")
+            await pilot.pause()
+            # Verify screen is still healthy and app has not crashed
+            assert isinstance(app.screen, ConsoleScreen)

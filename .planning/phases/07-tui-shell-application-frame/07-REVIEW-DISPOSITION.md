@@ -5,32 +5,39 @@ titles: json
 findings:
   - id: CR-01
     severity: critical
-    disposition: open
+    disposition: fixed
     title: "User-triggerable application crash — raw user text interpolated into Rich markup on `markup=True` RichLog"
+    details: "Fixed in manet/screens/console.py by emitting unparsed Text objects directly into RichLog, preventing MarkupError on unmatched closing tags. Regression-tested via test_console_hostile_markup_input_does_not_crash."
   - id: CR-02
     severity: critical
-    disposition: open
+    disposition: deferred
     title: "D-03 \"option-a\" reversibility decision recorded as user-approved but the mounting contract was never built"
+    details: "Deferred to Phase 8: Mounting contract for StatusBar, NotificationRail, NavRail and adapter interfaces in manet/widgets/ and manet/adapters/ carried into Phase 8 operational dashboard."
   - id: CR-03
     severity: critical
-    disposition: open
+    disposition: fixed
     title: "D-20 honesty violation — console help copy advertises a nonexistent `help` command (self-referential dead end)"
+    details: "Fixed in Plan 07-05: registered 'help' command in manet/commands/registry.py dispatching action_show_help, backed by test_console_executes_help_command."
   - id: WR-01
     severity: warning
-    disposition: open
+    disposition: deferred
     title: "`motion-toggle` is an advertised capability with zero consumers (unobservable toggle)"
+    details: "Deferred to Phase 10: live telemetry and progress animation consumers will observe motion settings."
   - id: WR-02
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "`except Exception: return` silently swallows — violates the zero-exception-swallowing rule"
+    details: "Fixed in Plan 07-05: removed silent exception swallow in ConsoleScreen.on_key, enforcing T-7-04 visible traceback invariant."
   - id: WR-03
     severity: warning
-    disposition: open
+    disposition: deferred
     title: "Workspace focus CSS is dead and the default screen has no focusable content (D-08 gap)"
+    details: "Deferred to Phase 8: interactive dashboard cards and widgets mounted on MainWorkspace will receive keyboard focus."
   - id: WR-04
     severity: warning
-    disposition: open
+    disposition: skipped
     title: "Palette provider docstring records a recency handoff that its own completed plan never delivered"
+    details: "Skipped: docstring-only drift with zero runtime effect."
   - id: WR-05
     severity: warning
     disposition: open
@@ -71,32 +78,36 @@ findings:
     severity: info
     disposition: open
     title: "Shortcut copy drift — console footer shows two identical \"Close\" entries; help-table labels vs footer labels differ"
-open: 17
+open: 9
+deferred: 3
+fixed: 3
+skipped: 1
 total: 17
-recorded: 2026-11-07T03:32:35.213Z
+recorded: 2026-11-07T11:18:00.000Z
 ---
 
 # Phase 07: Code Review Disposition
 
-| Finding | Severity | Disposition | Source |
-|---------|----------|-------------|--------|
-| CR-01 | critical | open | - |
-| CR-02 | critical | open | - |
-| CR-03 | critical | open | - |
-| WR-01 | warning | open | - |
-| WR-02 | warning | open | - |
-| WR-03 | warning | open | - |
-| WR-04 | warning | open | - |
-| WR-05 | warning | open | - |
-| IN-01 | info | open | - |
-| IN-02 | info | open | - |
-| IN-03 | info | open | - |
-| IN-04 | info | open | - |
-| IN-05 | info | open | - |
-| IN-06 | info | open | - |
-| IN-07 | info | open | - |
-| IN-08 | info | open | - |
-| IN-09 | info | open | - |
+| Finding | Severity | Disposition | Details |
+|---------|----------|-------------|---------|
+| CR-01 | critical | fixed | Raw user text bypasses markup via rich.text.Text; regression tested |
+| CR-02 | critical | deferred | Carried into Phase 8 mounting contract (StatusBar/NotificationRail/NavRail) |
+| CR-03 | critical | fixed | Addressed in Plan 07-05 (registered 'help' AppCommand in registry.py) |
+| WR-01 | warning | deferred | Deferred to Phase 10 live telemetry animation consumers |
+| WR-02 | warning | fixed | Addressed in Plan 07-05 (silent exception swallow removed from on_key) |
+| WR-03 | warning | deferred | Deferred to Phase 8 (interactive dashboard widgets on MainWorkspace) |
+| WR-04 | warning | skipped | Informational docstring drift without runtime impact |
+| WR-05 | warning | open | Console output colors |
+| IN-01 | info | open | Hardcoded version literal in help_about.py |
+| IN-02 | info | open | CSS variable shadowing |
+| IN-03 | info | open | Dead session settings |
+| IN-04 | info | open | Redundant type union in registry |
+| IN-05 | info | open | Runtime __init__ re-exports |
+| IN-06 | info | open | Import guard test style |
+| IN-07 | info | open | Asyncio test marker consistency |
+| IN-08 | info | open | Input clear timing |
+| IN-09 | info | open | Console footer shortcut copy |
+
 
 Dispositions: `open` (recorded, not yet triaged), `fixed`, `skipped`, `deferred`.
 Set `deferred` by hand and put the reason in the Source cell; both are preserved. A `|` in the reason is kept as prose and escaped on the next run.
