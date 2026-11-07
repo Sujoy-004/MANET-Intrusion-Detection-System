@@ -11,6 +11,8 @@ from textual.widgets import Button, Collapsible, DataTable, Input, RadioButton, 
 
 from manet.adapters.scenario import ScenarioAdapter, ScenarioPreset
 from manet.adapters.workspace import WorkspaceAdapter
+from manet.app import ManetApp
+from manet.screens.main_workspace import MainWorkspace
 from manet.screens.simulation_workflow import SimulationWorkflowScreen
 from manet.widgets.wizard_step_mode import StepModeSelectWidget
 from manet.widgets.wizard_step_params import StepParamsWidget
@@ -344,4 +346,151 @@ async def test_review_confirmation(tmp_path: Path):
         assert manifest["status"] == "CONFIGURED"
         assert manifest["software_version"] == "2.0.0-dev"
         assert "configuration" in manifest
+
+
+@pytest.mark.asyncio
+async def test_step1_preset_selection_and_parameter_population():
+    """Verify selecting e1_normal_30n in Step 1 populates Step 2 form parameters (TUI-09)."""
+    workflow_screen = SimulationWorkflowScreen()
+    app = DummyWorkflowScreenApp(workflow_screen)
+
+    async with app.run_test() as pilot:
+        step1 = app.query_one("#step-mode-select", StepModeSelectWidget)
+        table = step1.query_one("#table-presets", DataTable)
+
+        # Find row for e1_normal_30n
+        preset = step1.scenario_adapter.get_preset("e1_normal_30n")
+        assert preset is not None
+        assert preset.nodes == 30
+        assert preset.duration == 300.0
+
+        step1._selected_preset_id = "e1_normal_30n"
+        btn_next = step1.query_one("#btn-mode-next", Button)
+        btn_next.press()
+        await pilot.pause()
+
+        # Step 2 form should now match e1_normal_30n
+        step2 = app.query_one("#step-param-config", StepParamsWidget)
+        assert step2.query_one("#input-nodes", Input).value == "30"
+        assert step2.query_one("#input-duration", Input).value == "300.0"
+        assert step2.query_one("#select-attacker", Select).value == "None"
+
+
+@pytest.mark.asyncio
+async def test_step2_blur_validation_and_seed_customization():
+    """Verify typing does not flash premature errors, invalid blur prevents submit, and custom seed persists (TUI-10, TUI-11)."""
+    workflow_screen = SimulationWorkflowScreen()
+    app = DummyWorkflowScreenApp(workflow_screen)
+
+    async with app.run_test() as pilot:
+        # Advance from Step 1 to Step 2
+        app.query_one("#btn-mode-next", Button).press()
+        await pilot.pause()
+
+        step2 = app.query_one("#step-param-config", StepParamsWidget)
+        input_nodes = step2.query_one("#input-nodes", Input)
+        input_seed = step2.query_one("#input-seed", Input)
+        error_display = step2.query_one("#params-error-display", Static)
+
+        # 1. Typing an invalid value does NOT flash error prematurely while typing
+        input_nodes.value = "1"
+        assert str(error_display.render()) == ""
+
+        # Blur the input
+        input_seed.focus()
+        await pilot.pause()
+        # Even after blur, error display remains clean until submission
+        assert str(error_display.render()) == ""
+
+        # 2. Attempting to advance with invalid input blocks and updates error display
+        btn_next = step2.query_one("#btn-params-next", Button)
+        btn_next.press()
+        await pilot.pause()
+
+        assert "Validation Error" in str(error_display.render())
+        # Current screen must remain step-param-config
+        switcher = app.query_one("#wizard-switcher")
+        assert switcher.current == "step-param-config"
+
+        # 3. Correct node count and customize explicit seed
+        input_nodes.value = "45"
+        input_seed.value = "777888"
+        btn_next.press()
+        await pilot.pause()
+
+        # Successfully advanced to step-preflight-review
+        assert switcher.current == "step-preflight-review"
+
+        # 4. Step back via Escape and verify custom seed and nodes are retained
+        await pilot.press("escape")
+        await pilot.pause()
+
+        assert switcher.current == "step-param-config"
+        assert input_nodes.value == "45"
+        assert input_seed.value == "777888"
+
+
+@pytest.mark.asyncio
+async def test_wizard_escape_navigation_cycle():
+    """Verify pressing Escape steps back across all wizard steps and returns to workspace (D-01)."""
+    app = ManetApp()
+
+    async with app.run_test() as pilot:
+        assert isinstance(app.screen, MainWorkspace)
+
+        # Press 's' to open SimulationWorkflowScreen
+        await pilot.press("s")
+        await pilot.pause()
+        assert isinstance(app.screen, SimulationWorkflowScreen)
+
+        workflow_screen = app.screen
+        switcher = workflow_screen.query_one("#wizard-switcher")
+        assert switcher.current == "step-mode-select"
+
+        # Advance Step 1 -> Step 2
+        await pilot.press("enter")
+        await pilot.pause()
+        assert switcher.current == "step-param-config"
+
+        # Advance Step 2 -> Step 3
+        await pilot.press("enter")
+        await pilot.pause()
+        assert switcher.current == "step-preflight-review"
+
+        # Press Escape -> Step 3 to Step 2
+        await pilot.press("escape")
+        await pilot.pause()
+        assert switcher.current == "step-param-config"
+
+        # Press Escape -> Step 2 to Step 1
+        await pilot.press("escape")
+        await pilot.pause()
+        assert switcher.current == "step-mode-select"
+
+        # Press Escape -> Step 1 dismisses to MainWorkspace
+        await pilot.press("escape")
+        await pilot.pause()
+        assert isinstance(app.screen, MainWorkspace)
+
+
+@pytest.mark.asyncio
+async def test_collapsible_advanced_toggle():
+    """Verify collapsible advanced parameters container expands and collapses cleanly (D-03)."""
+    step2 = StepParamsWidget()
+    app = DummyStep2App()
+
+    async with app.run_test() as pilot:
+        collapsible = app.query_one("#collapsible-advanced", Collapsible)
+        assert collapsible.collapsed is True
+
+        # Expand collapsible
+        collapsible.collapsed = False
+        await pilot.pause()
+        assert collapsible.collapsed is False
+
+        # Collapse again
+        collapsible.collapsed = True
+        await pilot.pause()
+        assert collapsible.collapsed is True
+
 

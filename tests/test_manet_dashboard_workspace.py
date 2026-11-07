@@ -31,6 +31,7 @@ from manet.adapters.status import StatusAdapter, WorkloadStatus
 from manet.adapters.workspace import ExperimentSummary, WorkspaceAdapter
 from manet.app import ManetApp
 from manet.screens.main_workspace import MainWorkspace
+from manet.screens.simulation_workflow import SimulationWorkflowScreen
 from manet.widgets.cta_hero import CtaHeroPanel
 from manet.widgets.dashboard_cards import (
     ActiveWorkloadCard,
@@ -268,11 +269,10 @@ async def test_full_workspace_mount_with_cards_and_rails():
         # 4. Keyboard shortcuts on MainWorkspace
         assert notif_rail.display is False
         await pilot.press("s")
-        assert notif_rail.display is True
-        assert "Phase 9" in notif_rail.get_active_notice()
+        assert isinstance(app.screen, SimulationWorkflowScreen)
 
         await pilot.press("escape")
-        assert notif_rail.display is False
+        assert isinstance(app.screen, MainWorkspace)
 
         await pilot.press("r")
         assert notif_rail.display is True

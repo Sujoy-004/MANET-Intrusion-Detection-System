@@ -42,7 +42,7 @@ _COMMANDS: tuple[AppCommand, ...] = (
     ),
     AppCommand(
         name="sim:start",
-        display="Start Simulation Workflow",
+        display="Start Simulation Wizard",
         help="Open the 3-step simulation configuration wizard",
         parameters=(),
         action="action_simulation",

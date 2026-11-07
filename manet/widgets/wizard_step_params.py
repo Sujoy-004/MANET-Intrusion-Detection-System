@@ -389,7 +389,14 @@ class StepParamsWidget(VerticalScroll):
         """Validate all form fields and post ParametersSubmitted if valid."""
         error_display = self.query_one("#params-error-display", Static)
         validated_inputs = self.query(Input)
-        invalid_fields = [inp.id for inp in validated_inputs if inp.validators and not inp.is_valid]
+        invalid_fields = []
+        for inp in validated_inputs:
+            if inp.validators:
+                for v in inp.validators:
+                    res = v.validate(inp.value)
+                    if not res.is_valid:
+                        invalid_fields.append(inp.id or "unknown")
+                        break
 
         if invalid_fields:
             error_display.update(
