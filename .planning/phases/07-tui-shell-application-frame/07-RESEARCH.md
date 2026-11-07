@@ -445,20 +445,23 @@ Not a rename/refactor/migration phase — this is a greenfield application packa
 | A5 | `pilot.press("ctrl+o")`-style composite key strings work for our chosen console key in run_test | Validation Architecture | Test-only; choose a simple key or use pilot.click as fallback |
 | A6 | pytest-asyncio 1.3.0 accepts `asyncio_default_fixture_loop_scope` config key (post-0.25 key) | Validation Architecture | Config-only; if unknown key, remove and rely on `asyncio_mode = auto` alone |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Which screen hosts the console — plain `Screen` pushed full-screen, or `ModalScreen` overlay?**
    - What's known: both patterns verified; ModalScreen blocks App bindings (Pitfall 3).
    - What's unclear: whether the console should be reachable *from anywhere including inside the console* (stacked) or always a modal.
    - Recommendation: plain `Screen` switched at top level, carrying its own Esc-back binding; simplest D-02 conformance. Decided during planning (discretion).
+   - RESOLVED: plain `Screen` at top level — implemented as `ConsoleScreen(Screen)` in `manet/screens/console.py`, proven in-suite (Pilot open/Esc navigation tests).
 
 2. **Should notification persistence (D-03) be a widget (persistent notification rail listing dismissible entries) or App.notify()+history widget?**
    - What's known: `notify()`/Toast is transient only; a persistent list is custom but trivial (a `Static`/`ListView` fed by a deque).
    - What's unclear: nothing — this is *the* discretionary split.
    - Recommendation: ship `App.notify()` for fresh toasts + a small persistent rail widget mirroring the deque (history survives dismiss); keep the widget thin so Phase 10/11 workers can `post_message` into it.
+   - RESOLVED: `App.notify()` toasts shipped in Phase 7; the persistent notification rail (D-03, with the full shell-rails mounting contract) is deferred to Phase 8 per the 07-VERIFICATION.md Deferred Items table.
 
 3. **Exact dedicated-key set (D-02 discretion).**
    - Recommendation: ctrl+p (palette, framework default), ctrl+o (console), F1 (help), arrows/Enter/Esc (navigation), ctrl+q (quit, priority, framework default). Record final choice in `manet/runtime/keymap.py` and README's shortcut table.
+   - RESOLVED: final keymap locked in `manet/runtime/keymap.py` — `BINDING_PALETTE = "ctrl+p"`, `BINDING_CONSOLE = "ctrl+o"`, `BINDING_HELP = "f1"`, `BINDING_QUIT = "ctrl+q"`, arrows/Enter/Esc navigation (verified in-tree; framework defaults preserved).
 
 ## Environment Availability
 
