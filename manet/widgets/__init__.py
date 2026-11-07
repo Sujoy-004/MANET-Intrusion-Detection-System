@@ -12,6 +12,8 @@ from manet.widgets.nav_rail import NavRail
 from manet.widgets.notification_rail import NotificationRail
 from manet.widgets.recent_experiments import RecentExperimentsTable
 from manet.widgets.status_bar import StatusBar
+from manet.widgets.wizard_step_mode import StepModeSelectWidget
+from manet.widgets.wizard_step_params import StepParamsWidget
 
 __all__ = [
     "CTA_HERO_CONTENT",
@@ -22,5 +24,7 @@ __all__ = [
     "NotificationRail",
     "RecentExperimentsTable",
     "StatusBar",
+    "StepModeSelectWidget",
+    "StepParamsWidget",
     "SystemHealthCard",
 ]
