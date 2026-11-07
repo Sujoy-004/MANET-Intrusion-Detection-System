@@ -7,6 +7,9 @@ from manet.adapters.diagnostics import (
     DiagnosticsProbe,
     DiagnosticsReport,
 )
+from manet.adapters.handoff import (
+    SimulationLaunchRequest,
+)
 from manet.adapters.navigation import (
     NavigationAdapter,
     NavigationTarget,
@@ -20,6 +23,17 @@ from manet.adapters.scenario import (
     ScenarioAdapter,
     ScenarioPreset,
 )
+from manet.adapters.simulation_config import (
+    CustomScenarioBuilder,
+    SimulationConfigValidator,
+    build_custom_configuration,
+    validate_duration,
+    validate_loss_probability,
+    validate_node_count,
+    validate_radio_range,
+    validate_seed,
+    validate_structural_invariants,
+)
 from manet.adapters.status import (
     StatusAdapter,
     WorkloadStatus,
@@ -31,6 +45,7 @@ from manet.adapters.workspace import (
 
 __all__ = [
     "CapabilityStatus",
+    "CustomScenarioBuilder",
     "DiagnosticsProbe",
     "DiagnosticsReport",
     "ExperimentSummary",
@@ -41,7 +56,16 @@ __all__ = [
     "QUICK_ACTIONS",
     "ScenarioAdapter",
     "ScenarioPreset",
+    "SimulationConfigValidator",
+    "SimulationLaunchRequest",
     "StatusAdapter",
     "WorkloadStatus",
     "WorkspaceAdapter",
+    "build_custom_configuration",
+    "validate_duration",
+    "validate_loss_probability",
+    "validate_node_count",
+    "validate_radio_range",
+    "validate_seed",
+    "validate_structural_invariants",
 ]
