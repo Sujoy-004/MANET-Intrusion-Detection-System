@@ -11,6 +11,8 @@ from textual.app import ComposeResult
 from textual.screen import Screen
 from textual.widgets import Footer, Header, Static
 
+from manet.widgets.dashboard_cards import SystemHealthCard
+
 
 WORKSPACE_CONTENT = (
     "[bold $primary]MANET INTRUSION DETECTION SYSTEM[/]\n"
@@ -60,6 +62,13 @@ class MainWorkspace(Screen):
         margin: 1 2;
     }
 
+    #card-health {
+        border: solid $info-blue;
+        margin-bottom: 1;
+        padding: 0 1;
+        text-align: left;
+    }
+
     #workspace-box:focus {
         border: double $navigation-cyan;
     }
@@ -72,10 +81,9 @@ class MainWorkspace(Screen):
     def compose(self) -> ComposeResult:
         """Compose the primary shell layout."""
         yield Header()
-        yield Static(
-            WORKSPACE_CONTENT,
-            id="workspace-box",
-        )
+        with Static(id="workspace-box"):
+            yield SystemHealthCard(id="card-health")
+            yield Static(WORKSPACE_CONTENT, id="workspace-content")
         yield Footer()
 
 
