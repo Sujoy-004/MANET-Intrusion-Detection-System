@@ -2,6 +2,14 @@
 
 from __future__ import annotations
 
-from manet.adapters.diagnostics import DiagnosticsProbe
+from manet.adapters.diagnostics import (
+    CapabilityStatus,
+    DiagnosticsProbe,
+    DiagnosticsReport,
+)
 
-__all__ = ["DiagnosticsProbe"]
+__all__ = [
+    "CapabilityStatus",
+    "DiagnosticsProbe",
+    "DiagnosticsReport",
+]
