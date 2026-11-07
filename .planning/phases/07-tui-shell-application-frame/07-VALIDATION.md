@@ -3,9 +3,9 @@ phase: "7"
 slug: "tui-shell-application-frame"
 # status lifecycle: draft (seeded by plan-phase) → validated (set by validate-phase §6)
 # audit-milestone §5.5 distinguishes NOT-VALIDATED (draft) from PARTIAL (validated + nyquist_compliant: false) (#2117)
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: validated
+nyquist_compliant: true
+wave_0_complete: true
 created: "2026-11-06"
 ---
 
@@ -40,15 +40,15 @@ created: "2026-11-06"
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| W0-pytest.ini | 01 | 0 | TUI-01 (enabler) | — | N/A | collect | `python -m pytest tests/ -q` (79 baseline unchanged) | ❌ W0 | ⬜ pending |
-| launch | 01 | 1 | TUI-01 | T-7-02 (honest capability) | Title `MANET IDS`, default screen mounted, theme set, no network | unit (async) | `python -m pytest tests/test_manet_app_launch.py -x` | ❌ W0 | ⬜ pending |
-| entry | 01 | 1 | TUI-01 | — | `manet/__main__.main` callable; package import has no side effects | unit (sync) | `python -m pytest tests/test_manet_entry.py -x` | ❌ W0 | ⬜ pending |
-| boundaries | 01 | 1 | TUI-02 | T-7-01/T-7-03 | `manet/` never imports business logic; no `subprocess`/`os.system`/`shutil` in `manet/commands/` | unit (AST, sync) | `python -m pytest tests/test_manet_import_boundaries.py -x` | ❌ W0 | ⬜ pending |
-| navigation | 01 | 1 | TUI-02 | — | Arrow focus / Enter activate / Esc return / Footer visible / focus styles | unit (async, Pilot) | `python -m pytest tests/test_manet_navigation.py -x` | ❌ W0 | ⬜ pending |
-| compact | 01 | 1 | TUI-02 | — | Compact breakpoint classes at small size, full at large | unit (async, run_test(size)) | `python -m pytest tests/test_manet_compact.py -x` | ❌ W0 | ⬜ pending |
-| palette | 01 | 1 | TUI-03 | T-7-03 | Provider yields registry commands only; fuzzy match works | unit (async) | `python -m pytest tests/test_manet_command_palette.py -x` | ❌ W0 | ⬜ pending |
-| registry | 01 | 1 | TUI-03 | T-7-01 | Console resolve() accepts known app commands only; unknown → suggestion, never execution | unit (mix) | `python -m pytest tests/test_manet_command_registry.py -x` | ❌ W0 | ⬜ pending |
-| theme | 01 | 1 | TUI-04 | T-7-04 | `manet-soc` defaults; high-contrast toggle; nothing persists (no file writes) | unit (async + AST) | `python -m pytest tests/test_manet_theme.py -x` | ❌ W0 | ⬜ pending |
+| W0-pytest.ini | 01 | 0 | TUI-01 (enabler) | — | N/A | collect | `python -m pytest tests/ -q` (79 baseline unchanged) | ✅ | ✅ green |
+| launch | 01 | 1 | TUI-01 | T-7-02 (honest capability) | Title `MANET IDS`, default screen mounted, theme set, no network | unit (async) | `python -m pytest tests/test_manet_app_launch.py -x` | ✅ | ✅ green |
+| entry | 01 | 1 | TUI-01 | — | `manet/__main__.main` callable; package import has no side effects | unit (sync) | `python -m pytest tests/test_manet_entry.py -x` | ✅ | ✅ green |
+| boundaries | 01 | 1 | TUI-02 | T-7-01/T-7-03 | `manet/` never imports business logic; no `subprocess`/`os.system`/`shutil` in `manet/commands/` | unit (AST, sync) | `python -m pytest tests/test_manet_import_boundaries.py -x` | ✅ | ✅ green |
+| navigation | 01 | 1 | TUI-02 | — | Arrow focus / Enter activate / Esc return / Footer visible / focus styles | unit (async, Pilot) | `python -m pytest tests/test_manet_navigation.py -x` | ✅ | ✅ green |
+| compact | 01 | 1 | TUI-02 | — | Compact breakpoint classes at small size, full at large | unit (async, run_test(size)) | `python -m pytest tests/test_manet_compact.py -x` | ✅ | ✅ green |
+| palette | 01 | 1 | TUI-03 | T-7-03 | Provider yields registry commands only; fuzzy match works | unit (async) | `python -m pytest tests/test_manet_command_palette.py -x` | ✅ | ✅ green |
+| registry | 01 | 1 | TUI-03 | T-7-01 | Console resolve() accepts known app commands only; unknown → suggestion, never execution | unit (mix) | `python -m pytest tests/test_manet_command_registry.py -x` | ✅ | ✅ green |
+| theme | 01 | 1 | TUI-04 | T-7-04 | `manet-soc` defaults; high-contrast toggle; nothing persists (no file writes) | unit (async + AST) | `python -m pytest tests/test_manet_theme.py -x` | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -56,14 +56,14 @@ created: "2026-11-06"
 
 ## Wave 0 Requirements
 
-- [ ] Root `pytest.ini` — `asyncio_mode = auto`, `asyncio_default_fixture_loop_scope = function` (verify the 79 existing tests still collect/pass unchanged after adding)
-- [ ] `tests/test_manet_app_launch.py` — covers TUI-01
-- [ ] `tests/test_manet_entry.py` — covers TUI-01
-- [ ] `tests/test_manet_import_boundaries.py` — covers TUI-02 (extends existing `tests/test_import_boundaries.py` AST pattern)
-- [ ] `tests/test_manet_navigation.py` + `tests/test_manet_compact.py` — covers TUI-02
-- [ ] `tests/test_manet_command_palette.py` + `tests/test_manet_command_registry.py` — covers TUI-03
-- [ ] `tests/test_manet_theme.py` — covers TUI-04
-- [ ] No framework install needed — textual 8.2.8 / pytest / pytest-asyncio all present
+- [x] Root `pytest.ini` — `asyncio_mode = auto`, `asyncio_default_fixture_loop_scope = function` (verify the 79 existing tests still collect/pass unchanged after adding)
+- [x] `tests/test_manet_app_launch.py` — covers TUI-01
+- [x] `tests/test_manet_entry.py` — covers TUI-01
+- [x] `tests/test_manet_import_boundaries.py` — covers TUI-02 (extends existing `tests/test_import_boundaries.py` AST pattern)
+- [x] `tests/test_manet_navigation.py` + `tests/test_manet_compact.py` — covers TUI-02
+- [x] `tests/test_manet_command_palette.py` + `tests/test_manet_command_registry.py` — covers TUI-03
+- [x] `tests/test_manet_theme.py` — covers TUI-04
+- [x] No framework install needed — textual 8.2.8 / pytest / pytest-asyncio all present
 
 ---
 
