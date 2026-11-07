@@ -61,7 +61,17 @@ Plans:
   3. The IDS option is enabled only when the champion model artifact exists and is disabled (with an explanatory reason) otherwise
   4. A review screen summarizes the full run configuration before launch, and confirming a run targets a unique experiment directory under `.manet-workspace/` without overwriting existing traces, datasets, models, or experiment records
   5. At launch, the experiment record captures scenario, seed, configuration, software version, and start time, and execution goes through the existing `SimulationRunner`, scenario loader, and metric functions with output compatible with the current trace schema and legacy CLI behavior
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+**Wave 1**
+- [ ] 09-01-PLAN.md — Deliver foundational adapter layer for authentic scenario discovery, two-tier parameter validation, and collision-free workspace allocation
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 09-02-PLAN.md — Implement interactive 3-step simulation workflow wizard widgets, blur validation, IDS model gating, and pre-flight review screen
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 09-03-PLAN.md — Wire MainWorkspace [S] shortcut and sim:start command, update navigation tests, and verify SimulationRunner end-to-end compatibility
 **UI hint**: yes
 
 ### Phase 10: Background Execution & Live Feedback
