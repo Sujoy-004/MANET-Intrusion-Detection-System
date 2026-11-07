@@ -269,7 +269,7 @@ class MainWorkspace(Screen):
             return
         if self.app.focused is not None and isinstance(self.app.focused, Input):
             return
-        self.app.switch_screen("simulation")
+        self.app.switch_screen("simulation_workflow")
 
     def action_results(self) -> None:
         """Display informative notice that results browser is pending in Phase 11."""

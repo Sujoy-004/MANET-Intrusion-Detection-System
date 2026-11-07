@@ -37,6 +37,7 @@ class ManetApp(App):
         "console": ConsoleScreen,
         "help": HelpAboutScreen,
         "simulation": SimulationWorkflowScreen,
+        "simulation_workflow": SimulationWorkflowScreen,
     }
     BINDINGS = [
         Binding(BINDING_CONSOLE, "show_console", "Console", show=True),
@@ -71,16 +72,20 @@ class ManetApp(App):
         """Switch to the contextual help screen."""
         self.switch_screen("help")
 
+    def action_show_simulation(self) -> None:
+        """Switch to simulation workflow wizard screen."""
+        self.switch_screen("simulation_workflow")
+
     def action_simulation(self) -> None:
         """Switch to simulation workflow wizard screen."""
-        self.switch_screen("simulation")
+        self.switch_screen("simulation_workflow")
 
     def action_results(self) -> None:
         """Forward results shortcut to active MainWorkspace screen."""
         if isinstance(self.screen, MainWorkspace):
             self.screen.action_results()
 
-    action_new_simulation = action_simulation
+    action_new_simulation = action_show_simulation
     action_show_results = action_results
 
     def action_toggle_high_contrast(self) -> None:

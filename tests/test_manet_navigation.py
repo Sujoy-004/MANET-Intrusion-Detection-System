@@ -220,7 +220,7 @@ async def test_console_hostile_markup_input_does_not_crash():
 
 
 @pytest.mark.asyncio
-async def test_simulation_shortcut_triggers_notice():
+async def test_simulation_shortcut_opens_workflow_screen():
     """Verify pressing 's' on MainWorkspace opens SimulationWorkflowScreen, and escape dismisses."""
     app = ManetApp()
     async with app.run_test() as pilot:
@@ -228,6 +228,32 @@ async def test_simulation_shortcut_triggers_notice():
 
         await pilot.press("s")
         await pilot.pause()
+        assert isinstance(app.screen, SimulationWorkflowScreen)
+
+        await pilot.press("escape")
+        await pilot.pause()
+        assert isinstance(app.screen, MainWorkspace)
+
+
+test_simulation_shortcut_triggers_notice = test_simulation_shortcut_opens_workflow_screen
+
+
+@pytest.mark.asyncio
+async def test_sim_start_command_opens_simulation_workflow():
+    """Verify executing 'sim:start' in console switches to SimulationWorkflowScreen."""
+    app = ManetApp()
+    async with app.run_test() as pilot:
+        assert isinstance(app.screen, MainWorkspace)
+
+        await pilot.press("ctrl+o")
+        await pilot.pause()
+        assert isinstance(app.screen, ConsoleScreen)
+
+        input_widget = app.screen.query_one("#console-input", Input)
+        input_widget.value = "sim:start"
+        await pilot.press("enter")
+        await pilot.pause()
+
         assert isinstance(app.screen, SimulationWorkflowScreen)
 
         await pilot.press("escape")
