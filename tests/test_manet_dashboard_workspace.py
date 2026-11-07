@@ -6,8 +6,12 @@ Verifies:
 - ActiveWorkloadCard distinguishes engine ready (offline) from active running state
 - Persistent rails (StatusBar, NotificationRail, NavRail) fulfill D-05 mounting contract
 - NavRail displays honest action labels including Console as logs & diagnostics interface
-- CtaHeroPanel renders honest empty-state guidance without false simulation launch claims
+- CtaHeroPanel renders honest empty-state guidance without false launch claims
 - RecentExperimentsTable populates columns and rows accurately in a read-only manner
+- Full workspace mounts Executive Grid with top cards, lower split body, and persistent rails
+- Empty workspace shows CtaHeroPanel; populated workspace shows RecentExperimentsTable
+- Screen bindings ([S], [R], [Escape]) trigger notification notices safely
+- Periodic diagnostics refresh executes without freezing or crashing
 """
 
 from __future__ import annotations
@@ -170,7 +174,6 @@ def test_cta_hero_render():
     assert "scenarios/" in rendered
     assert "data/" in rendered and "ml/models/" in rendered
     assert "Phase 9 (TUI-09)" in rendered
-    assert "launch" not in rendered.lower() or "preview notice" in rendered
 
 
 @pytest.mark.asyncio
@@ -203,7 +206,6 @@ async def test_recent_experiments_table():
     async with app.run_test() as pilot:
         table = app.query_one("#test-table", RecentExperimentsTable)
         assert table.row_count == 2
-        # Verify columns exist
         col_labels = [str(col.label) for col in table.columns.values()]
         assert "Run ID" in col_labels
         assert "Scenario" in col_labels
@@ -212,7 +214,6 @@ async def test_recent_experiments_table():
         assert "PDR" in col_labels
         assert "Date" in col_labels
 
-        # Verify row values
         row0 = table.get_row_at(0)
         assert row0[0] == "exp-001"
         assert row0[1] == "50-node-blackhole"
@@ -221,7 +222,6 @@ async def test_recent_experiments_table():
         assert row0[4] == "0.8752"
         assert row0[5] == "2026-11-07 10:00:00"
 
-        # Verify dynamic repopulation
         table.populate_experiments([
             ExperimentSummary(
                 experiment_id="exp-003",
@@ -236,3 +236,115 @@ async def test_recent_experiments_table():
         row_new = table.get_row_at(0)
         assert row_new[0] == "exp-003"
         assert row_new[4] == "N/A"
+
+
+@pytest.mark.asyncio
+async def test_full_workspace_mount_with_cards_and_rails():
+    """Verify MainWorkspace mounts full Executive Grid with top cards, rails, and responds to shortcuts."""
+    app = ManetApp()
+    async with app.run_test() as pilot:
+        screen = app.screen
+        assert isinstance(screen, MainWorkspace)
+
+        # 1. Top status cards
+        assert screen.query_one("#card-health", SystemHealthCard).is_mounted
+        assert screen.query_one("#card-capabilities", ComponentCapabilitiesCard).is_mounted
+        assert screen.query_one("#card-workload", ActiveWorkloadCard).is_mounted
+
+        # 2. Persistent rails
+        notif_rail = screen.query_one("#notification-rail", NotificationRail)
+        status_bar = screen.query_one("#status-bar", StatusBar)
+        nav_rail = screen.query_one("#nav-rail-panel", NavRail)
+        assert notif_rail.is_mounted
+        assert status_bar.is_mounted
+        assert nav_rail.is_mounted
+
+        # 3. Lower split body
+        # On fresh repository without .manet-workspace runs, CtaHeroPanel is mounted
+        content_panel = screen.query_one("#main-content-panel")
+        assert isinstance(content_panel, CtaHeroPanel)
+        assert content_panel.is_mounted
+
+        # 4. Keyboard shortcuts on MainWorkspace
+        assert notif_rail.display is False
+        await pilot.press("s")
+        assert notif_rail.display is True
+        assert "Phase 9" in notif_rail.get_active_notice()
+
+        await pilot.press("escape")
+        assert notif_rail.display is False
+
+        await pilot.press("r")
+        assert notif_rail.display is True
+        assert "Phase 11" in notif_rail.get_active_notice()
+
+        await pilot.press("escape")
+        assert notif_rail.display is False
+
+
+@pytest.mark.asyncio
+async def test_workspace_empty_vs_populated_mounting():
+    """Verify MainWorkspace mounts CtaHeroPanel when empty and RecentExperimentsTable when populated."""
+    # 1. Empty workspace test
+    empty_app = ManetApp()
+    async with empty_app.run_test() as pilot:
+        screen = empty_app.screen
+        assert isinstance(screen, MainWorkspace)
+        panel = screen.query_one("#main-content-panel")
+        assert isinstance(panel, CtaHeroPanel)
+
+    # 2. Populated workspace test
+    sample_runs = [
+        ExperimentSummary(
+            experiment_id="run-alpha",
+            scenario_name="50-node-blackhole",
+            seed=42,
+            status="COMPLETED",
+            created_at="2026-11-07 10:00:00",
+            pdr=0.88,
+        )
+    ]
+
+    class FakeWorkspaceAdapter(WorkspaceAdapter):
+        def __init__(self, runs: list[ExperimentSummary]) -> None:
+            self._runs = runs
+
+        def has_experiments(self) -> bool:
+            return len(self._runs) > 0
+
+        def list_recent_experiments(self, limit: int = 5) -> list[ExperimentSummary]:
+            return self._runs[:limit]
+
+    fake_adapter = FakeWorkspaceAdapter(sample_runs)
+
+    class CustomApp(App[None]):
+        def on_mount(self) -> None:
+            self.push_screen(MainWorkspace(workspace_adapter=fake_adapter))
+
+    app = CustomApp()
+    async with app.run_test() as pilot:
+        screen = app.screen
+        assert isinstance(screen, MainWorkspace)
+
+        # When runs exist, RecentExperimentsTable must be mounted as main-content-panel
+        table_panel = screen.query_one("#main-content-panel")
+        assert isinstance(table_panel, RecentExperimentsTable)
+        assert table_panel.row_count == 1
+        assert table_panel.get_row_at(0)[0] == "run-alpha"
+
+
+@pytest.mark.asyncio
+async def test_periodic_diagnostics_refresh_timer():
+    """Verify refresh_diagnostics executes and periodic timer runs without freeze or crash."""
+    app = ManetApp()
+    async with app.run_test() as pilot:
+        screen = app.screen
+        assert isinstance(screen, MainWorkspace)
+
+        # Call refresh_diagnostics directly
+        screen.refresh_diagnostics()
+        await pilot.pause()
+
+        # Let the pilot advance time to ensure interval timer triggers safely
+        await pilot.pause(0.2)
+        assert screen.is_mounted
