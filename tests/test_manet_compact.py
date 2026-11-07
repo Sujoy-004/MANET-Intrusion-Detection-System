@@ -51,6 +51,21 @@ async def test_normal_breakpoint_engagement_large_terminal():
         assert not app.screen.has_class("-compact")
 
 
+@pytest.mark.asyncio
+async def test_standard_80x24_terminal_dimensions():
+    """Verify 80x24 standard terminal size engages '-normal' class and core components mount cleanly."""
+    app = ManetApp()
+    async with app.run_test(size=(80, 24)) as pilot:
+        assert isinstance(app.screen, MainWorkspace)
+        assert app.screen.has_class("-normal")
+        header = app.screen.query_one(Header)
+        footer = app.screen.query_one(Footer)
+        box = app.screen.query_one("#workspace-box", Static)
+        assert header.is_mounted and header.display is True
+        assert footer.is_mounted and footer.display is True
+        assert box.is_mounted and box.display is True
+
+
 def test_main_workspace_declares_horizontal_breakpoints():
     """Verify MainWorkspace class statically declares expected breakpoint thresholds."""
     assert hasattr(MainWorkspace, "HORIZONTAL_BREAKPOINTS"), (

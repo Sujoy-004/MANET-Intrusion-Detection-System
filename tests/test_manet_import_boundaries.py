@@ -50,6 +50,13 @@ def test_manet_never_imports_business_packages():
             len(violations) == 0
         ), f"Architectural violation (D-12/TUI-02): {py_file.relative_to(repo_root)} imports business packages: {violations}"
 
+    # Specifically assert adapters and widgets subpackages exist and are covered
+    for subpkg in ("adapters", "widgets"):
+        sub_dir = manet_dir / subpkg
+        assert sub_dir.is_dir(), f"Expected subpackage directory {sub_dir} to exist"
+        sub_py = list(sub_dir.glob("*.py"))
+        assert len(sub_py) > 0, f"Expected python modules in {sub_dir}"
+
 
 def test_command_package_never_uses_os_execution():
     """Verify manet/commands/ modules never import subprocess, shutil, or os (D-10, T-7-01, Pitfall 5)."""
