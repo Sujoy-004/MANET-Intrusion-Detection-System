@@ -232,12 +232,14 @@ class DiagnosticsProbe:
         joblib_path = self.repo_root / "ml" / "models" / "best_model.joblib"
         metadata_path = self.repo_root / "ml" / "models" / "model_metadata.json"
         
+        # Distinguish missing binary from available historical metadata
         if not joblib_path.exists():
+            meta_note = " (historical metadata available)" if metadata_path.exists() else ""
             return CapabilityStatus(
                 name="Champion Model",
                 state="UNAVAILABLE",
-                details="best_model.joblib missing",
-                remediation="Run python -m ml.train && python -m ml.evaluate",
+                details=f"best_model.joblib missing{meta_note}",
+                remediation="Run python scripts/build_dataset.py --multi-attack && python -m ml.train && python -m ml.evaluate",
             )
         
         if metadata_path.exists():
@@ -245,16 +247,30 @@ class DiagnosticsProbe:
                 with open(metadata_path, "r", encoding="utf-8") as f:
                     meta = json.load(f)
                 model_name = meta.get("champion", "unknown")
-                f1_bh = meta.get("test_metrics", {}).get("f1_blackhole", 0.0)
-                f1_gh = meta.get("test_metrics", {}).get("f1_grayhole", 0.0)
-                fpr = meta.get("test_metrics", {}).get("fpr", 0.0)
+                test_metrics = meta.get("test_metrics", {})
+                f1_bh = test_metrics.get("f1_blackhole")
+                f1_gh = test_metrics.get("f1_grayhole")
+                fpr = test_metrics.get("fpr")
                 
-                # Grayhole F1 is 0.0 -> must be surfaced as PARTIAL / Ineffective detection
+                bh_str = f"BH F1: {f1_bh:.4f}" if f1_bh is not None else "BH F1: N/A"
+                fpr_str = f"FPR: {fpr:.4f}" if fpr is not None else "FPR: N/A"
+                
+                # Grayhole F1 is 0.0 -> dynamically badged as PARTIAL / Ineffective detection
+                if f1_gh == 0.0:
+                    gh_str = "GH F1: 0.0 [Ineffective Detection]"
+                    status_state = "PARTIAL"
+                elif f1_gh is not None:
+                    gh_str = f"GH F1: {f1_gh:.4f}"
+                    status_state = "VERIFIED"
+                else:
+                    gh_str = "GH F1: N/A"
+                    status_state = "EXPERIMENTAL"
+
                 return CapabilityStatus(
                     name="Champion Model",
-                    state="PARTIAL",
-                    details=f"{model_name.replace('_', ' ').title()} (BH F1: {f1_bh:.4f}, GH F1: {f1_gh:.1f} [Ineffective], FPR: {fpr:.4f})",
-                    remediation="Multi-attack tuning required for Grayhole detection",
+                    state=status_state,
+                    details=f"{model_name.replace('_', ' ').title()} ({bh_str}, {gh_str}, {fpr_str})",
+                    remediation="Multi-attack tuning required for Grayhole detection" if status_state == "PARTIAL" else None,
                 )
             except Exception:
                 pass
@@ -262,8 +278,8 @@ class DiagnosticsProbe:
         return CapabilityStatus(
             name="Champion Model",
             state="EXPERIMENTAL",
-            details="Artifact present, metadata unreadable",
-            remediation=None,
+            details="Artifact present, metadata unreadable/corrupt",
+            remediation="Re-evaluate model: python -m ml.evaluate",
         )
 ```
 
@@ -570,7 +586,7 @@ class MainWorkspace(Screen):
                 yield ActiveWorkloadCard(id="card-workload")
             with Container(id="lower-body-container"):
                 # Conditional render: Recent experiments table vs Guided CTA Hero
-                experiments = self.workspace_adapter.get_recent_experiments()
+                experiments = self.workspace_adapter.list_recent_experiments()
                 if experiments:
                     yield RecentExperimentsTable(experiments, id="main-content-panel")
                 else:
@@ -585,7 +601,7 @@ class MainWorkspace(Screen):
         self.set_interval(4.0, self.refresh_diagnostics)
 
     def refresh_diagnostics(self) -> None:
-        report = self.diagnostics_probe.run_diagnostics()
+        report = self.diagnostics_probe.probe_all()
         self.query_one("#card-health", SystemHealthCard).update_report(report)
         self.query_one("#card-capabilities", ComponentCapabilitiesCard).update_report(report)
         self.query_one("#card-workload", ActiveWorkloadCard).update_report(report)

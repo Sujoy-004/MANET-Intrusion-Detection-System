@@ -23,7 +23,7 @@ Phase 8 delivers the real Operational Dashboard on the `manet/` TUI main workspa
 - **D-03:** Inline Contextual Badges within Capability Cards. Missing components, unverified artifacts, and degraded models are rendered as inline badges directly inside their respective capability cards (e.g., `[amber]PARTIAL (Grayhole F1: 0.0)[/]`, `[red]UNAVAILABLE[/]`, `[green]VERIFIED[/]`). This preserves screen real estate and visual balance on compact terminals while maintaining absolute operational honesty per TUI-08 without intrusive top alert banners. — **Reversibility:** reversible.
 
 ### First-Run & Empty State Experience
-- **D-04:** Guided Call-to-Action (CTA) Hero Panel. When launching the application on a fresh environment where no experiments exist in `.manet-workspace/`, the lower body displays a prominent, guided CTA panel orienting the user to their first action (e.g., "Ready for Simulation • Press [S] to configure and launch your first MANET scenario"). Once an experiment completes, the panel transitions to display the Recent Experiments summary table. — **Reversibility:** reversible.
+- **D-04:** Guided Call-to-Action (CTA) Hero Panel. When launching the application on a fresh environment where no experiments exist in `.manet-workspace/`, the lower body displays a prominent, guided CTA panel orienting the user to their first action and explaining project state without claiming that pressing [S] launches or configures a simulation now (Phase 9 owns the simulation configuration workflow; [S] currently surfaces an informative pending notice). Once an experiment completes in future phases, the panel transitions to display the read-only Recent Experiments summary table. — **Reversibility:** reversible.
 
 ### Mounting Contract from Phase 7 (Deferred D-03 Option-A)
 - **D-05:** Session Shell Mounting Contract. Carry forward Phase 7's deferred D-03 contract by structuring `MainWorkspace` with `StatusBar`, `NotificationRail`, and `NavRail` under `manet/widgets/` backed by clean noop adapter interfaces under `manet/adapters/`. This establishes the mounting points for Phase 10/11 background workers and history without re-architecting the shell. — **Reversibility:** costly — pins the adapter interface boundaries across the app.
@@ -86,14 +86,19 @@ Phase 8 delivers the real Operational Dashboard on the `manet/` TUI main workspa
 ## Specific Ideas
 
 - Capability status tags should follow strict honesty:
-  - Runtime Environment: `VERIFIED (Python 3.11.x, SimPy, NetworkX, Scikit-learn)`
-  - Scenarios: `VERIFIED ({count} scenarios available in scenarios/)`
-  - Datasets: `VERIFIED (data/train.csv, data/test.csv present)` or `UNAVAILABLE (Run scripts/build_dataset.py)`
+  - Runtime Environment: `VERIFIED (Python 3.11.x, SimPy, NetworkX, Scikit-learn)` (mapping `sklearn` to distribution `scikit-learn` for metadata lookup)
+  - Scenarios: `VERIFIED ({count} valid scenarios available in scenarios/)` (distinguishing valid presets from malformed JSON)
+  - Datasets: `VERIFIED (data/train.csv, data/test.csv present)` or `UNAVAILABLE (Run python scripts/build_dataset.py --multi-attack)`
   - Champion Model:
-    - If `ml/models/best_model.joblib` exists: `PARTIAL (Random Forest: Blackhole F1 0.7593, Grayhole F1 0.0 [Ineffective])`
-    - If `ml/models/best_model.joblib` missing: `UNAVAILABLE (Run python -m ml.train && python -m ml.evaluate)`
-  - Active Workload: `IDLE (No active simulation)`
-- Keyboard shortcuts clearly visible on dashboard footer / quick action panel: `[S] New Simulation`, `[R] Results / History`, `[O] Console`, `[P] Palette`, `[F1] Help`.
+    - If `ml/models/best_model.joblib` exists: metrics extracted dynamically from `model_metadata.json` (e.g. `PARTIAL (Random Forest: Blackhole F1 {val}, Grayhole F1 0.0 [Ineffective Detection])`). Missing metrics must not default to 0.0.
+    - If `ml/models/best_model.joblib` missing: `UNAVAILABLE (Run python scripts/build_dataset.py --multi-attack && python -m ml.train && python -m ml.evaluate)`, explicitly distinguishing missing model binary from available historical metadata.
+  - Active Workload: Workload: `IDLE (No active simulation)`; Engine State: `AODV Engine Ready (Offline)` (distinguishing engine availability from execution state, never claiming AODV is actively running when idle).
+- Keyboard shortcuts and navigation:
+  - `[S] Simulation (Phase 9 Notice)`, `[R] Results (Phase 11 Notice)`, `[Ctrl+O] Console (Logs/Diagnostics)`, `[Ctrl+P] Palette`, `[F1] Help`.
+  - Reconcile the logs navigation requirement via `[Ctrl+O] Console` without advertising an unimplemented dedicated logs screen.
+  - Keyboard bindings for S/R must be scoped to `MainWorkspace` so they never interfere with typing in the console input.
+  - `NotificationAdapter` must have a bounded in-memory queue to safely handle repeated shortcut presses.
+  - Workspace inspection in `WorkspaceAdapter` is strictly read-only; no mock runs are invented.
 
 </specifics>
 
