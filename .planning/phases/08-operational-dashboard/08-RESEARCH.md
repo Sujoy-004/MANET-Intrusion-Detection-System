@@ -618,12 +618,11 @@ class MainWorkspace(Screen):
 | A1 | File stat probing via `pathlib.Path.stat()` is sufficiently fast on local Windows NTFS to run every 4s without perceptible UI jitter | Periodic Polling | If wrong, polling could introduce micro-stutters; mitigated by polling only 4 files (`train.csv`, `test.csv`, `best_model.joblib`, `model_metadata.json`) |
 | A2 | Users launching the app before running `build_dataset.py` expect immediate remediation CLI guidance | First-run UX | If wrong, users may be confused by `UNAVAILABLE` status; mitigated by explicit Guided CTA Hero Panel |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **How should `MainWorkspace` handle terminal heights below 24 rows?**
+1. **How should `MainWorkspace` handle terminal heights below 24 rows?** [RESOLVED]
    - What we know: `HORIZONTAL_BREAKPOINTS` manages widths below 80 columns by stacking cards vertically.
-   - What's unclear: On very short terminals (e.g. 15 rows), vertical stacking might exceed visible viewport without scrolling.
-   - Recommendation: Wrap `#workspace-box` or the cards container in a Textual `VerticalScroll` or ensure cards use compact single-line rendering under `-compact`.
+   - Resolution: `MainWorkspace` wraps the card container with compact padding and single-line / responsive reflow under `Screen.-compact` with `overflow-y: auto` so short terminal viewports remain navigable without clipping or layout exceptions (verified down to standard 80x24).
 
 ## Environment Availability
 
