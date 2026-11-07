@@ -38,7 +38,12 @@
   2. Dashboard shows active workload state and recent experiment summaries when they exist, with quick navigation to simulation, results, logs, and help
   3. Every capability carries an explicit state — verified, experimental, partial, or unavailable — with no mock values and no claim of model or dataset existence when files are missing
   4. Model metadata is reported with its timestamp/version context, and a Grayhole F1 of 0.0 is presented as not-effective detection rather than a working detector
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 08-01-PLAN.md — Deliver foundational adapter layer and tracer slice for zero-mock diagnostics and decoupled interfaces
+- [ ] 08-02-PLAN.md — Build full Executive Grid layout, responsive breakpoints, lower split body, and periodic background polling
+- [ ] 08-03-PLAN.md — Wire quick action navigation shortcuts, verify regression safety, and harden test validation
 **UI hint**: yes
 
 ### Phase 9: Simulation Workflow
