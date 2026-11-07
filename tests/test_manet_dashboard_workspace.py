@@ -6,6 +6,8 @@ Verifies:
 - ActiveWorkloadCard distinguishes engine ready (offline) from active running state
 - Persistent rails (StatusBar, NotificationRail, NavRail) fulfill D-05 mounting contract
 - NavRail displays honest action labels including Console as logs & diagnostics interface
+- CtaHeroPanel renders honest empty-state guidance without false simulation launch claims
+- RecentExperimentsTable populates columns and rows accurately in a read-only manner
 """
 
 from __future__ import annotations
@@ -14,14 +16,18 @@ import platform
 import sys
 import pytest
 
+from textual.app import App, ComposeResult
+
 from manet.adapters.diagnostics import (
     CapabilityStatus,
     DiagnosticsProbe,
     DiagnosticsReport,
 )
 from manet.adapters.status import StatusAdapter, WorkloadStatus
+from manet.adapters.workspace import ExperimentSummary, WorkspaceAdapter
 from manet.app import ManetApp
 from manet.screens.main_workspace import MainWorkspace
+from manet.widgets.cta_hero import CtaHeroPanel
 from manet.widgets.dashboard_cards import (
     ActiveWorkloadCard,
     ComponentCapabilitiesCard,
@@ -29,6 +35,7 @@ from manet.widgets.dashboard_cards import (
 )
 from manet.widgets.nav_rail import NavRail
 from manet.widgets.notification_rail import NotificationRail
+from manet.widgets.recent_experiments import RecentExperimentsTable
 from manet.widgets.status_bar import StatusBar
 
 
@@ -151,3 +158,81 @@ def test_rails_render():
     assert "Workspace:" in status_text
     assert "Engine:" in status_text
     assert "Press" in status_text and "F1" in status_text
+
+
+def test_cta_hero_render():
+    """Verify CtaHeroPanel displays honest pending workflow guidance without false launch claims."""
+    cta = CtaHeroPanel()
+    rendered = str(cta.render())
+    assert "Guided First-Run" in rendered
+    assert "Workflow Pending (Phase 9)" in rendered
+    assert "[S]" in rendered and "workflow preview notice" in rendered
+    assert "scenarios/" in rendered
+    assert "data/" in rendered and "ml/models/" in rendered
+    assert "Phase 9 (TUI-09)" in rendered
+    assert "launch" not in rendered.lower() or "preview notice" in rendered
+
+
+@pytest.mark.asyncio
+async def test_recent_experiments_table():
+    """Verify RecentExperimentsTable mounts, adds columns, and populates rows read-only."""
+    sample_runs = [
+        ExperimentSummary(
+            experiment_id="exp-001",
+            scenario_name="50-node-blackhole",
+            seed=42,
+            status="COMPLETED",
+            created_at="2026-11-07 10:00:00",
+            pdr=0.8752,
+        ),
+        ExperimentSummary(
+            experiment_id="exp-002",
+            scenario_name="30-node-baseline",
+            seed=101,
+            status="COMPLETED",
+            created_at="2026-11-07 11:30:00",
+            pdr=0.9810,
+        ),
+    ]
+
+    class TableHostApp(App[None]):
+        def compose(self) -> ComposeResult:
+            yield RecentExperimentsTable(experiments=sample_runs, id="test-table")
+
+    app = TableHostApp()
+    async with app.run_test() as pilot:
+        table = app.query_one("#test-table", RecentExperimentsTable)
+        assert table.row_count == 2
+        # Verify columns exist
+        col_labels = [str(col.label) for col in table.columns.values()]
+        assert "Run ID" in col_labels
+        assert "Scenario" in col_labels
+        assert "Seed" in col_labels
+        assert "Status" in col_labels
+        assert "PDR" in col_labels
+        assert "Date" in col_labels
+
+        # Verify row values
+        row0 = table.get_row_at(0)
+        assert row0[0] == "exp-001"
+        assert row0[1] == "50-node-blackhole"
+        assert row0[2] == "42"
+        assert row0[3] == "COMPLETED"
+        assert row0[4] == "0.8752"
+        assert row0[5] == "2026-11-07 10:00:00"
+
+        # Verify dynamic repopulation
+        table.populate_experiments([
+            ExperimentSummary(
+                experiment_id="exp-003",
+                scenario_name="40-node-grayhole",
+                seed=7,
+                status="COMPLETED",
+                created_at="2026-11-07 12:00:00",
+                pdr=None,
+            )
+        ])
+        assert table.row_count == 1
+        row_new = table.get_row_at(0)
+        assert row_new[0] == "exp-003"
+        assert row_new[4] == "N/A"
