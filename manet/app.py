@@ -20,7 +20,7 @@ from manet.runtime.keymap import (
     BINDING_QUIT,
 )
 from manet.runtime.settings import SessionSettings
-from manet.runtime.theme import SOC, SOC_HIGH_CONTRAST
+from manet.runtime.theme import AI_STUDIO_WARM, SOC, SOC_HIGH_CONTRAST
 from manet.screens.console import ConsoleScreen
 from manet.screens.help_about import HelpAboutScreen
 from manet.screens.main_workspace import MainWorkspace
@@ -53,6 +53,7 @@ class ManetApp(App):
         """Register themes and mount the primary workspace screen."""
         self.register_theme(SOC)
         self.register_theme(SOC_HIGH_CONTRAST)
+        self.register_theme(AI_STUDIO_WARM)
         self.theme = "manet-soc"
         self.push_screen("workspace")
 
@@ -85,6 +86,20 @@ class ManetApp(App):
         """Toggle between standard SOC and high-contrast themes."""
         self.settings.high_contrast = not self.settings.high_contrast
         self.theme = "manet-soc-high-contrast" if self.settings.high_contrast else "manet-soc"
+
+    def action_toggle_warm_theme(self) -> None:
+        """Toggle between dark SOC theme and Google AI Studio warm-white theme."""
+        if self.theme == "manet-ai-studio-warm":
+            self.theme = "manet-soc"
+        else:
+            self.theme = "manet-ai-studio-warm"
+            self.settings.high_contrast = False
+
+    def action_set_theme(self, theme_name: str) -> None:
+        """Switch active theme by name."""
+        if theme_name in ("manet-soc", "manet-soc-high-contrast", "manet-ai-studio-warm"):
+            self.theme = theme_name
+            self.settings.high_contrast = (theme_name == "manet-soc-high-contrast")
 
     def action_toggle_reduced_motion(self) -> None:
         """Toggle UI motion and animation effects."""

@@ -48,6 +48,13 @@ _COMMANDS: tuple[AppCommand, ...] = (
         action="action_toggle_high_contrast",
     ),
     AppCommand(
+        name="theme-warm",
+        display="Toggle Google AI Studio Warm Theme",
+        help="Toggle between dark SOC and warm-white Google AI Studio theme",
+        parameters=(),
+        action="action_toggle_warm_theme",
+    ),
+    AppCommand(
         name="motion-toggle",
         display="Toggle Reduced Motion",
         help="Toggle UI motion and animation effects",

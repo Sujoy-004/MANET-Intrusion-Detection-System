@@ -64,4 +64,27 @@ SOC_HIGH_CONTRAST = Theme(
     },
 )
 
-__all__ = ["SOC", "SOC_HIGH_CONTRAST"]
+AI_STUDIO_WARM = Theme(
+    name="manet-ai-studio-warm",
+    dark=False,
+    background="#f9f9f6",
+    surface="#ffffff",
+    panel="#f1f0ea",
+    foreground="#1f1f1f",
+    primary="#1a73e8",
+    secondary="#0b57d0",
+    accent="#7c3aed",
+    success="#137333",
+    warning="#b06000",
+    error="#c5221f",
+    variables={
+        "navigation-cyan": "#1a73e8",
+        "info-blue": "#0b57d0",
+        "healthy-green": "#137333",
+        "warning-amber": "#b06000",
+        "critical-red": "#c5221f",
+        "footer-key-foreground": "#1a73e8",
+    },
+)
+
+__all__ = ["SOC", "SOC_HIGH_CONTRAST", "AI_STUDIO_WARM"]

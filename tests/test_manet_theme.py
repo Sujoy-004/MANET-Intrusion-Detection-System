@@ -18,7 +18,7 @@ import pytest
 
 from manet.app import ManetApp
 from manet.runtime.settings import SessionSettings
-from manet.runtime.theme import SOC, SOC_HIGH_CONTRAST
+from manet.runtime.theme import AI_STUDIO_WARM, SOC, SOC_HIGH_CONTRAST
 
 
 REQUIRED_SEMANTIC_KEYS = (
@@ -72,18 +72,41 @@ async def test_reduced_motion_toggle_action():
         assert app.settings.reduced_motion is False
 
 
+@pytest.mark.asyncio
+async def test_warm_theme_toggle_action():
+    """Verify action_toggle_warm_theme toggles between SOC and Google AI Studio warm-white theme."""
+    app = ManetApp()
+    async with app.run_test() as pilot:
+        assert app.theme == "manet-soc"
+
+        app.action_toggle_warm_theme()
+        await pilot.pause()
+        assert app.theme == "manet-ai-studio-warm"
+
+        app.action_toggle_warm_theme()
+        await pilot.pause()
+        assert app.theme == "manet-soc"
+
+
 def test_theme_semantic_variables():
-    """Verify all mandatory semantic color variables exist across both themes (D-06, D-08)."""
+    """Verify all mandatory semantic color variables exist across themes (D-06, D-08)."""
     assert SOC.name == "manet-soc"
     assert SOC.dark is True
     assert SOC_HIGH_CONTRAST.name == "manet-soc-high-contrast"
     assert SOC_HIGH_CONTRAST.dark is True
     assert SOC_HIGH_CONTRAST.background == "#000000"
+    assert AI_STUDIO_WARM.name == "manet-ai-studio-warm"
+    assert AI_STUDIO_WARM.dark is False
+    assert AI_STUDIO_WARM.background == "#f9f9f6"
+    assert AI_STUDIO_WARM.surface == "#ffffff"
 
     for key in REQUIRED_SEMANTIC_KEYS:
         assert key in SOC.variables, f"Missing semantic variable '{key}' in SOC theme"
         assert key in SOC_HIGH_CONTRAST.variables, (
             f"Missing semantic variable '{key}' in SOC_HIGH_CONTRAST theme"
+        )
+        assert key in AI_STUDIO_WARM.variables, (
+            f"Missing semantic variable '{key}' in AI_STUDIO_WARM theme"
         )
 
 
