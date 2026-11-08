@@ -35,9 +35,9 @@
     }
   ],
   "next": {
-    "command": "/gsd-plan-phase 10",
-    "label": "Plan Phase 10",
-    "reason": "Phase 9 hardened and verified; Phase 10 is next unstarted phase"
+    "command": "/gsd-progress",
+    "label": "Show progress",
+    "reason": "Unsure of state — showing progress"
   },
-  "updated_at": "2026-11-08T06:12:00.000Z"
+  "updated_at": "2026-11-08T16:56:31.518Z"
 }

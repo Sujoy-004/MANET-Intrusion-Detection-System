@@ -13,8 +13,8 @@ Phase 10 delivers non-blocking background execution and live telemetry for simul
 <decisions>
 ## Implementation Decisions
 
-### Worker Concurrency Architecture (D-01)
-- **In-Process Thread Worker via Textual Worker API:**
+### Worker Concurrency Architecture
+- **D-01:** In-Process Thread Worker via Textual Worker API:
   - The simulation runs in a dedicated background worker thread scheduled at the application supervisor level (never inside `LiveRunScreen`), so screen unmounting or navigation can never abort execution.
   - In Textual 8.2.8, the worker is launched via `from textual import work` or `app.run_worker(..., thread=True, exit_on_error=False)`.
   - Avoids Windows subprocess signal handling bugs, pipe buffering delays, and abrupt process termination that would discard in-memory trace buffers.
@@ -46,8 +46,8 @@ Phase 10 delivers non-blocking background execution and live telemetry for simul
     7. Cooperative cancellation (verifying token stops loop and preserves partial traces).
   — **Reversibility:** costly — anchors execution lifecycle, dependency injection boundaries, and worker management.
 
-### Live Run View & Screen Navigation (D-02)
-- **Dedicated Full-Screen Monitor (`LiveRunScreen`) as a Reconnectable View:**
+### Live Run View & Screen Navigation
+- **D-02:** Dedicated Full-Screen Monitor (`LiveRunScreen`) as a Reconnectable View:
   - Upon confirming launch in Step 3 of the simulation wizard (`simulation_workflow.py`), the application transitions immediately to `LiveRunScreen`.
   - `LiveRunScreen` is a reconnectable observer of supervisor state; it never owns, spawns, or terminates the worker thread.
   - Full 80x24 terminal viewport utilization: header with scenario/seed, progress bar with elapsed wall time vs simulated duration, current execution stage, key live counters, and bounded event log.
@@ -69,8 +69,8 @@ Phase 10 delivers non-blocking background execution and live telemetry for simul
   - Register `sim:monitor` (open live view) and `sim:stop` (stop active simulation) in `manet/commands/registry.py`.
   — **Reversibility:** costly — defines navigation contracts between `simulation_workflow.py`, `live_run.py`, and `main_workspace.py`.
 
-### Live Telemetry & UI Refresh Throttling (D-03)
-- **Decoupled Bounded Ring-Buffer with UI Timer Drain:**
+### Live Telemetry & UI Refresh Throttling
+- **D-03:** Decoupled Bounded Ring-Buffer with UI Timer Drain:
   - Simulator worker thread (producer) appends packet and node status events to a bounded `collections.deque(maxlen=500)` with drop-oldest semantics.
   - Non-blocking execution: simulator never awaits Textual rendering or message dispatch.
   - Full trace fidelity is written directly to disk via `write_traces()` on run finalization (or partial trace on interrupt).
@@ -88,8 +88,8 @@ Phase 10 delivers non-blocking background execution and live telemetry for simul
     - `DATA_DROP`: authentic packet drop events.
   — **Reversibility:** reversible — contained within telemetry adapters and `LiveRunScreen` widgets.
 
-### Cancellation & Interruption Protocol (D-04)
-- **Context-Differentiated Stop Protocol:**
+### Cancellation & Interruption Protocol
+- **D-04:** Context-Differentiated Stop Protocol:
   - **In-View Explicit Stop:** Pressing dedicated `[X] Stop` inside `LiveRunScreen` immediately signals the cooperative cancellation token without a modal prompt. Execution halts, partial trace rows are written to disk, manifest is marked `interrupted`, and UI updates cleanly.
   - **Accidental Global Exit Guard:** Destructive global actions (`Ctrl+Q`, application shutdown, or quitting while a run is active) present a confirmation dialog to prevent accidental aborts, and await finalization before exiting.
   - **Pause/Resume Indication:** Pause button is visible in `LiveRunScreen` but permanently disabled with explicit label/tooltip `(Pause not supported by runner)` fulfilling TUI-18 while keeping TUI-PAUSE deferred.
