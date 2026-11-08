@@ -87,13 +87,9 @@ Plans:
 
 Plans:
 **Wave 1**
-- [ ] 10-01-PLAN.md — Deliver foundational stepping execution engine, bounded telemetry sink, and WorkloadSupervisor state machine
-
-**Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 10-02-PLAN.md — Implement reconnectable LiveRunScreen with SimPy virtual-time progress, authentic counters, throttled RichLog drain, and safe stop controls
-
-**Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 10-03-PLAN.md — Wire supervisor into ManetApp, connect wizard launch, integrate dashboard status cards, register shortcuts/commands, and verify package isolation
+- [x] 10-01-PLAN.md — Deliver foundational stepping execution engine, bounded telemetry sink, and WorkloadSupervisor state machine
+- [x] 10-02-PLAN.md — Implement reconnectable LiveRunScreen with SimPy virtual-time progress, authentic counters, throttled RichLog drain, and safe stop controls
+- [x] 10-03-PLAN.md — Wire supervisor into ManetApp, connect wizard launch, integrate dashboard status cards, register shortcuts/commands, and verify package isolation
 **UI hint**: yes
 
 ### Phase 11: Results & Experiment Records
@@ -126,7 +122,7 @@ Plans:
 | 7. TUI Shell & Application Frame | 5/5 | Complete | 2026-11-07 |
 | 8. Operational Dashboard | 3/3 | Complete | 2026-11-07 |
 | 9. Simulation Workflow | 3/3 | Complete | 2026-11-08 |
-| 10. Background Execution & Live Feedback | 0/3 | Ready | - |
+| 10. Background Execution & Live Feedback | 3/3 | Complete | 2026-11-08 |
 | 11. Results & Experiment Records | 0/? | Not started | - |
 | 12. Quality, Testing & Delivery | 0/? | Not started | - |
 
