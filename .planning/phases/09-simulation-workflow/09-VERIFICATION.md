@@ -1,7 +1,7 @@
 ---
 phase: 09-simulation-workflow
 verified: 2026-11-08T11:42:00Z
-status: human_needed
+status: passed
 score: 8/8 must-haves verified
 overrides_applied: 0
 covered_files: [".planning/phases/09-simulation-workflow/09-01-PLAN.md", ".planning/phases/09-simulation-workflow/09-01-SUMMARY.md", ".planning/phases/09-simulation-workflow/09-02-PLAN.md", ".planning/phases/09-simulation-workflow/09-02-SUMMARY.md", ".planning/phases/09-simulation-workflow/09-03-PLAN.md", ".planning/phases/09-simulation-workflow/09-03-SUMMARY.md", "manet/__init__.py", "manet/adapters/__init__.py", "manet/adapters/handoff.py", "manet/adapters/scenario.py", "manet/adapters/simulation_config.py", "manet/adapters/workspace.py", "manet/app.py", "manet/commands/registry.py", "manet/runtime/keymap.py", "manet/screens/__init__.py", "manet/screens/main_workspace.py", "manet/screens/simulation_workflow.py", "manet/widgets/__init__.py", "manet/widgets/wizard_step_mode.py", "manet/widgets/wizard_step_params.py", "manet/widgets/wizard_step_review.py", "tests/test_manet_command_palette.py", "tests/test_manet_dashboard_workspace.py", "tests/test_manet_import_boundaries.py", "tests/test_manet_navigation.py", "tests/test_manet_scenario_adapter.py", "tests/test_manet_simulation_config.py", "tests/test_manet_simulation_runner_compat.py", "tests/test_manet_simulation_workflow.py", "tests/test_manet_workspace_allocation.py"]
