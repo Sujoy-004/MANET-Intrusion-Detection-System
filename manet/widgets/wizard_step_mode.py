@@ -9,7 +9,6 @@ from textual.message import Message
 from textual.widgets import (
     Button,
     DataTable,
-    Label,
     RadioButton,
     RadioSet,
     Static,
@@ -118,6 +117,7 @@ class StepModeSelectWidget(VerticalScroll):
 
         with Container(id="presets-container"):
             yield DataTable(id="table-presets", cursor_type="row", zebra_stripes=True)
+            yield Static("", id="presets-diagnostic-notice")
 
         with Container(id="custom-info-container"):
             yield Static(
@@ -150,7 +150,10 @@ class StepModeSelectWidget(VerticalScroll):
         table.clear()
         self._presets = self.scenario_adapter.list_presets()
 
+        seen_keys: set[str] = set()
         for preset in self._presets:
+            if preset.scenario_id in seen_keys:
+                continue
             table.add_row(
                 escape(preset.scenario_id),
                 str(preset.nodes),
@@ -160,6 +163,18 @@ class StepModeSelectWidget(VerticalScroll):
                 escape(preset.description),
                 key=preset.scenario_id,
             )
+            seen_keys.add(preset.scenario_id)
+
+        try:
+            diag_widget = self.query_one("#presets-diagnostic-notice", Static)
+            if self.scenario_adapter.diagnostics:
+                diag_widget.update(
+                    "[dim $warning]Notice: " + escape(" | ".join(self.scenario_adapter.diagnostics)) + "[/]"
+                )
+            else:
+                diag_widget.update("")
+        except Exception:
+            pass
 
         if self._presets and self._selected_preset_id is None:
             self._selected_preset_id = self._presets[0].scenario_id
@@ -187,6 +202,11 @@ class StepModeSelectWidget(VerticalScroll):
         """Track highlighted row key as current candidate."""
         if event.row_key and event.row_key.value:
             self._selected_preset_id = str(event.row_key.value)
+
+    @property
+    def selected_preset(self) -> ScenarioPreset | None:
+        """Property alias for get_selected_preset()."""
+        return self.get_selected_preset()
 
     def get_selected_preset(self) -> ScenarioPreset | None:
         """Retrieve the currently selected ScenarioPreset record."""

@@ -494,3 +494,262 @@ async def test_collapsible_advanced_toggle():
         assert collapsible.collapsed is True
 
 
+@pytest.mark.asyncio
+async def test_duplicate_scenario_id_mounts_cleanly_in_wizard(tmp_path: Path):
+    """Verify duplicate scenario_id across files does not crash DataTable on mount (CR-01)."""
+    file1 = tmp_path / "01_first.json"
+    file2 = tmp_path / "02_second.json"
+
+    data1 = {
+        "scenario_id": "duplicate_id",
+        "description": "First file with duplicate id",
+        "nodes": 30,
+        "duration": 100.0,
+        "flows": [{"src": 0, "dst": 1}],
+    }
+    data2 = {
+        "scenario_id": "duplicate_id",
+        "description": "Second file with duplicate id",
+        "nodes": 50,
+        "duration": 200.0,
+        "flows": [{"src": 0, "dst": 2}],
+    }
+    file1.write_text(json.dumps(data1), encoding="utf-8")
+    file2.write_text(json.dumps(data2), encoding="utf-8")
+
+    adapter = ScenarioAdapter(tmp_path)
+    screen = SimulationWorkflowScreen(scenario_adapter=adapter)
+
+    class HarnessApp(App[None]):
+        def compose(self) -> ComposeResult:
+            yield screen
+
+    app = HarnessApp()
+    async with app.run_test() as pilot:
+        step1 = screen.query_one("#step-mode-select", StepModeSelectWidget)
+        table = step1.query_one("#table-presets", DataTable)
+        assert table.row_count == 1
+        assert step1._selected_preset_id == "duplicate_id"
+        # Selecting scenario resolves to expected first preset
+        assert step1.selected_preset is not None
+        assert step1.selected_preset.description == "First file with duplicate id"
+        assert step1.selected_preset.nodes == 30
+
+
+@pytest.mark.asyncio
+async def test_wizard_resets_on_reentry_preventing_stale_reconfirmation(tmp_path: Path):
+    """Verify wizard resets to Step 1 on re-entry and stale Step 3 cannot be re-confirmed (WR-01)."""
+    workspace_root = tmp_path / ".manet-workspace"
+    app = ManetApp()
+    workflow_screen = SimulationWorkflowScreen(
+        workspace_adapter=WorkspaceAdapter(workspace_root)
+    )
+    app.uninstall_screen("simulation_workflow")
+    app.install_screen(workflow_screen, name="simulation_workflow")
+
+    async with app.run_test() as pilot:
+        # Open wizard via 's'
+        await pilot.press("s")
+        await pilot.pause()
+        assert isinstance(app.screen, SimulationWorkflowScreen)
+        workflow_screen = app.screen
+        switcher = workflow_screen.query_one("#wizard-switcher")
+        assert switcher.current == "step-mode-select"
+
+        # Walk Step 1 -> 2 -> 3
+        await pilot.press("enter")
+        await pilot.pause()
+        assert switcher.current == "step-param-config"
+
+        await pilot.press("enter")
+        await pilot.pause()
+        assert switcher.current == "step-preflight-review"
+
+        # Confirm launch on Step 3
+        await pilot.press("enter")
+        await pilot.pause()
+
+        # Returned to workspace screen
+        assert isinstance(app.screen, MainWorkspace)
+        # Handoff request is preserved
+        assert workflow_screen.last_completed_launch_request is not None
+        first_exp_id = workflow_screen.last_completed_launch_request.experiment_id
+
+        # Re-open wizard via 's'
+        await pilot.press("s")
+        await pilot.pause()
+        assert isinstance(app.screen, SimulationWorkflowScreen)
+
+        # Re-entry must show Step 1, not stale Step 3
+        assert switcher.current == "step-mode-select"
+
+        # Pressing Enter on Step 1 only advances to Step 2, NEVER triggers an allocation
+        await pilot.press("enter")
+        await pilot.pause()
+        assert switcher.current == "step-param-config"
+        # The handoff request was not duplicated or changed
+        assert workflow_screen.last_completed_launch_request.experiment_id == first_exp_id
+
+
+@pytest.mark.asyncio
+async def test_allocation_and_manifest_failure_handling(tmp_path: Path, monkeypatch):
+    """Verify filesystem failures during allocation/manifest creation do not crash TUI and clean up (WR-02)."""
+    workspace_root = tmp_path / "fail_workspace"
+    adapter = WorkspaceAdapter(workspace_root)
+    screen = SimulationWorkflowScreen(workspace_adapter=adapter)
+
+    class HarnessApp(App[None]):
+        def compose(self) -> ComposeResult:
+            yield screen
+
+    app = HarnessApp()
+    async with app.run_test() as pilot:
+        # Advance Step 1 -> Step 2
+        await pilot.press("enter")
+        await pilot.pause()
+
+        # Advance Step 2 -> Step 3
+        await pilot.press("enter")
+        await pilot.pause()
+
+        switcher = screen.query_one("#wizard-switcher")
+        assert switcher.current == "step-preflight-review"
+
+        # Mock record_launch_manifest to raise OSError simulating disk write failure
+        def mock_record_manifest(*args, **kwargs):
+            raise OSError("Disk quota exceeded")
+
+        monkeypatch.setattr(adapter, "record_launch_manifest", mock_record_manifest)
+
+        # Trigger confirmation
+        await pilot.press("enter")
+        await pilot.pause()
+
+        # TUI did not crash, remained on Step 3
+        assert switcher.current == "step-preflight-review"
+        errors_display = screen.query_one("#review-errors-display", Static)
+        assert "Workspace allocation failed" in str(errors_display.render())
+        assert "Disk quota exceeded" in str(errors_display.render())
+
+        # Cleanup verified: incomplete directory was removed
+        created_dirs = list(workspace_root.glob("exp_*"))
+        assert len(created_dirs) == 0
+
+
+@pytest.mark.asyncio
+async def test_mobility_speed_ordering_validation_in_wizard():
+    """Verify entering min_speed >= max_speed blocks advance in Step 2 with clear error (WR-03)."""
+    app = DummyStep2App()
+    async with app.run_test() as pilot:
+        step2 = app.query_one("#step-param-config", StepParamsWidget)
+
+        # Set min_speed = 30.0, max_speed = 10.0 (inverted)
+        min_inp = step2.query_one("#input-min-speed", Input)
+        max_inp = step2.query_one("#input-max-speed", Input)
+        min_inp.value = "30.0"
+        max_inp.value = "10.0"
+
+        # Attempt to submit
+        step2.action_submit_parameters()
+        await pilot.pause()
+
+        # Submission blocked
+        assert len(app.submitted_msgs) == 0
+        err_display = step2.query_one("#params-error-display", Static)
+        assert "Mobility minimum speed (30.0) must be strictly less than maximum speed (10.0)" in str(err_display.render())
+        # Values retained
+        assert min_inp.value == "30.0"
+        assert max_inp.value == "10.0"
+
+
+@pytest.mark.asyncio
+async def test_preset_flow_validation_and_rate_override():
+    """Verify reducing nodes below preset flow endpoints blocks submit, and rate override applies only when edited (WR-04)."""
+    app = DummyStep2App()
+    async with app.run_test() as pilot:
+        step2 = app.query_one("#step-param-config", StepParamsWidget)
+
+        raw_cfg = {
+            "scenario_id": "test_preset",
+            "nodes": 30,
+            "duration": 100.0,
+            "flows": [
+                {"flow_id": 0, "src": 0, "dst": 25, "rate_pps": 8.0},
+                {"flow_id": 1, "src": 5, "dst": 15, "rate_pps": 12.0},
+            ],
+        }
+        preset = ScenarioPreset(
+            scenario_id="test_preset",
+            description="Test",
+            nodes=30,
+            duration=100.0,
+            attack_type="None",
+            flow_count=2,
+            raw_config=raw_cfg,
+        )
+        step2.load_preset(preset)
+
+        # 1. Unchanged rate control: verify per-flow rates are preserved
+        step2.action_submit_parameters()
+        await pilot.pause()
+
+        assert len(app.submitted_msgs) == 1
+        cfg = app.submitted_msgs[0].config
+        assert cfg["flows"][0]["rate_pps"] == 8.0
+        assert cfg["flows"][1]["rate_pps"] == 12.0
+        # Original preset raw_config is NOT mutated
+        assert preset.raw_config["flows"][0]["rate_pps"] == 8.0
+        app.submitted_msgs.clear()
+
+        # 2. Rate override: explicitly edit rate input
+        rate_inp = step2.query_one("#input-rate-pps", Input)
+        rate_inp.value = "20.0"
+        await pilot.pause()
+        step2.action_submit_parameters()
+        await pilot.pause()
+
+        assert len(app.submitted_msgs) == 1
+        cfg_overridden = app.submitted_msgs[0].config
+        assert cfg_overridden["flows"][0]["rate_pps"] == 20.0
+        assert cfg_overridden["flows"][1]["rate_pps"] == 20.0
+        app.submitted_msgs.clear()
+
+        # 3. Reduce nodes to 10 (flow 0 has dst=25, outside range [0, 9])
+        nodes_inp = step2.query_one("#input-nodes", Input)
+        nodes_inp.value = "10"
+        step2.action_submit_parameters()
+        await pilot.pause()
+
+        # Submit must be blocked with explicit offending flow
+        assert len(app.submitted_msgs) == 0
+        err_display = step2.query_one("#params-error-display", Static)
+        assert "Preset flows use endpoints outside valid range [0, 9]" in str(err_display.render())
+        assert "Flow #0 (0->25)" in str(err_display.render())
+
+
+@pytest.mark.asyncio
+async def test_step3_preview_respects_custom_workspace_root(tmp_path: Path):
+    """Verify Step 3 pre-flight review displays the injected workspace_root (WR-05)."""
+    custom_root = tmp_path / "custom_workspace_dir"
+    screen = SimulationWorkflowScreen(workspace_adapter=WorkspaceAdapter(custom_root))
+
+    class HarnessApp(App[None]):
+        def compose(self) -> ComposeResult:
+            yield screen
+
+    app = HarnessApp()
+    async with app.run_test() as pilot:
+        # Advance Step 1 -> 2 -> 3
+        await pilot.press("enter")
+        await pilot.pause()
+        await pilot.press("enter")
+        await pilot.pause()
+
+        review_widget = screen.query_one("#step-preflight-review", StepReviewWidget)
+        workspace_content = review_widget.query_one("#review-workspace-content", Static)
+        rendered_text = str(workspace_content.render())
+
+        assert "custom_workspace_dir" in rendered_text
+        assert "Target Directory Pattern:" in rendered_text
+
+

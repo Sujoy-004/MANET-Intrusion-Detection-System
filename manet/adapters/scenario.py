@@ -7,6 +7,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from manet.runtime.paths import get_project_root
+
 
 @dataclass(frozen=True)
 class ScenarioPreset:
@@ -25,22 +27,43 @@ class ScenarioAdapter:
     """Discovers and parses scenario presets from JSON files on disk."""
 
     def __init__(self, scenarios_dir: Path | None = None) -> None:
-        self.scenarios_dir = scenarios_dir or (Path.cwd() / "scenarios")
+        self.scenarios_dir = scenarios_dir or (get_project_root() / "scenarios")
+        self.diagnostics: list[str] = []
 
     def list_presets(self) -> list[ScenarioPreset]:
-        """Discover all *.json files in scenarios_dir, sorted deterministically by filename."""
+        """Discover all *.json files in scenarios_dir, sorted deterministically by filename.
+
+        Preserves first-match semantics on duplicate scenario_id values and logs diagnostics.
+        """
+        self.diagnostics.clear()
         if not self.scenarios_dir.is_dir():
+            self.diagnostics.append(f"Scenarios directory not found: {self.scenarios_dir}")
             return []
 
         presets: list[ScenarioPreset] = []
+        seen_ids: dict[str, Path] = {}
+
         for json_path in sorted(self.scenarios_dir.glob("*.json"), key=lambda p: p.name):
             try:
                 with open(json_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
                 if not isinstance(data, dict):
+                    self.diagnostics.append(f"Skipping {json_path.name}: Root JSON structure must be a dictionary")
                     continue
                 # Validate minimal required fields: scenario_id or nodes
                 if "scenario_id" not in data and "nodes" not in data:
+                    self.diagnostics.append(f"Skipping {json_path.name}: Missing required 'scenario_id' or 'nodes'")
+                    continue
+
+                raw_config = dict(data)
+                raw_config["_source_path"] = str(json_path)
+
+                scenario_id = str(data.get("scenario_id", json_path.stem))
+                if scenario_id in seen_ids:
+                    self.diagnostics.append(
+                        f"Duplicate scenario_id '{scenario_id}' in {json_path.name}; "
+                        f"already loaded from {seen_ids[scenario_id].name}. Skipping duplicate."
+                    )
                     continue
 
                 flows = data.get("flows", [])
@@ -52,16 +75,18 @@ class ScenarioAdapter:
                     attack_type = str(attack_info.get("type", "None"))
 
                 preset = ScenarioPreset(
-                    scenario_id=str(data.get("scenario_id", json_path.stem)),
+                    scenario_id=scenario_id,
                     description=str(data.get("description", "No description")),
                     nodes=int(data.get("nodes", 30)),
                     duration=float(data.get("duration", 300.0)),
                     attack_type=attack_type,
                     flow_count=flow_count,
-                    raw_config=data,
+                    raw_config=raw_config,
                 )
+                seen_ids[scenario_id] = json_path
                 presets.append(preset)
-            except Exception:
+            except (json.JSONDecodeError, OSError, ValueError, KeyError) as exc:
+                self.diagnostics.append(f"Skipping malformed scenario file {json_path.name}: {exc}")
                 continue
 
         return presets

@@ -185,3 +185,33 @@ def test_console_executes_help_command():
     assert res.command.name == "help"
     assert app.help_invoked is True
     assert list(driver.history) == ["help"]
+
+
+def test_console_executes_parameterized_command(monkeypatch):
+    """Verify ConsoleDriver dispatches keyword arguments for parameterized commands (IN-04)."""
+    from manet.commands.registry import AppCommand
+    import manet.commands.registry as reg
+
+    class ParameterizedApp(DummyApp):
+        def __init__(self) -> None:
+            super().__init__()
+            self.received_theme: str | None = None
+
+        def action_set_theme(self, theme_name: str) -> None:
+            self.received_theme = theme_name
+
+    param_cmd = AppCommand(
+        name="theme:set",
+        display="Set Theme",
+        help="Switch theme",
+        parameters=("theme_name",),
+        action="action_set_theme",
+    )
+    monkeypatch.setattr(reg, "_COMMANDS", (*reg._COMMANDS, param_cmd))
+
+    app = ParameterizedApp()
+    driver = ConsoleDriver(app=app)
+    res = driver.execute("theme:set warm-white")
+    assert res.success is True
+    assert app.received_theme == "warm-white"
+    assert "Executed: Set Theme" in res.output

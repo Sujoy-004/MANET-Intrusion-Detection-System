@@ -3,9 +3,9 @@ gsd_state_version: "1.0"
 milestone: v2.0
 milestone_name: Interactive TUI Application
 status: phase_verified
-stopped_at: Verified Phase 9 (Simulation Workflow) — ready for /gsd-plan-phase 10
-last_updated: "2026-11-08T05:08:30Z"
-state_head: 06f3e3a
+stopped_at: Phase 9 Hardening & Pre-Phase-10 Acceptance Complete — ready for /gsd-plan-phase 10
+last_updated: "2026-11-08T06:10:00Z"
+state_head: 5b8b7f5
 progress:
   total_phases: 6
   completed_phases: 3
@@ -24,8 +24,8 @@ current_phase_name: Background Execution & Live Feedback
 
 ## Current Position
 
-- **Phase:** 9 of 12 (Simulation Workflow) — verified complete (3/3 plans executed, UAT & verification passed)
-- **Status:** Phase 9 verified — ready for Phase 10 planning
+- **Phase:** 9 of 12 (Simulation Workflow) — verified and hardened (14 review findings CR-01..02, WR-01..06, IN-01..06 resolved; 187 tests passing)
+- **Status:** Phase 9 verified & hardened — ready for Phase 10 planning
 - **Progress:**
   [███░░░] 3/6 phases complete (v2.0)
 
@@ -37,7 +37,7 @@ current_phase_name: Background Execution & Live Feedback
 | Plans complete (v2.0) | 11 / 11 (planned so far) |
 | Requirements mapped | 24 / 24 (TUI-01..21, DELV-01..03) |
 | Requirements satisfied | 14 / 24 (TUI-01..14; TUI-15..21, DELV-01..03 pending) |
-| Test suite | 176 tests passing (79 baseline + 97 manet tests) |
+| Test suite | 187 tests passing (79 baseline + 108 manet tests) |
 
 ## Requirements Coverage Snapshot
 
@@ -86,10 +86,10 @@ current_phase_name: Background Execution & Live Feedback
 
 ## Session Continuity
 
-**Last session:** 2026-11-08T03:57:22Z
-**Stopped at:** Completed 09-03-PLAN.md (Phase 9 Simulation Workflow complete)
+**Last session:** 2026-11-08T06:12:00Z
+**Stopped at:** Completed Phase 9 Hardening & Pre-Phase-10 Acceptance pass
 **Resume file:** None
 
-- **Last action:** Plan 09-03 executed: Task 1 [S]/sim:start wiring verified committed (d990673, prior session); Task 2 SimulationRunner compatibility + import-boundary regression tests committed (ec6f74f); full suite 176 passed
-- **Next up:** `/gsd-verify-work 09` then `/gsd-plan-phase 10`
-- **Environment notes:** Windows-native, Python 3.11.8; 176 passing tests verified (79 baseline + 97 manet); Textual 8.2.8 installed
+- **Last action:** Phase 9 Hardening pass completed: all 14 review findings (CR-01..02, WR-01..06, IN-01..06) resolved; regression suites expanded; 187 passed (79 baseline + 108 manet tests)
+- **Next up:** `/gsd-plan-phase 10`
+- **Environment notes:** Windows-native, Python 3.11.8; 187 passing tests verified; Textual 8.2.8 installed

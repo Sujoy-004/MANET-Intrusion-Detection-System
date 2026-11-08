@@ -2,19 +2,19 @@
 
 from __future__ import annotations
 
-import datetime
 from pathlib import Path
 import re
 from typing import Any
 
 from rich.markup import escape
 from textual.app import ComposeResult
-from textual.containers import Container, Horizontal, Vertical, VerticalScroll
+from textual.containers import Container, VerticalScroll
 from textual.message import Message
 from textual.widgets import Button, Static
 
 from manet.adapters.simulation_config import validate_structural_invariants
 from manet.adapters.workspace import sanitize_run_tag
+from manet.runtime.paths import get_project_root
 
 
 class StepReviewWidget(VerticalScroll):
@@ -133,8 +133,8 @@ class StepReviewWidget(VerticalScroll):
         **kwargs,
     ) -> None:
         super().__init__(*args, id=id, classes=classes, **kwargs)
-        self.model_path = model_path or (Path.cwd() / "ml" / "models" / "best_model.joblib")
-        self.workspace_root = workspace_root or (Path.cwd() / ".manet-workspace")
+        self.model_path = model_path or (get_project_root() / "ml" / "models" / "best_model.joblib")
+        self.workspace_root = workspace_root or (get_project_root() / ".manet-workspace")
         self.config: dict[str, Any] = {}
         self.run_tag: str = ""
         self.scenario_name: str = "custom"
@@ -251,19 +251,18 @@ class StepReviewWidget(VerticalScroll):
             model_box.remove_class("model-ok")
             model_content.update("[dim]IDS mitigation is not active for this run.[/]")
 
-        # 3. Workspace Path Preview
-        now_str = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d_%H%M%S")
+        # 3. Workspace Path Preview (truthful pattern with configured workspace root)
         clean_scenario = re.sub(r'[\s\\/:*?"<>|]+', "_", str(scenario_name).strip()).strip("._") or "scenario"
         clean_tag = sanitize_run_tag(run_tag)
-        preview_id = f"exp_{now_str}_{clean_scenario}_{seed}"
+        preview_id = f"exp_<TIMESTAMP>_{clean_scenario}_{seed}"
         if clean_tag:
             preview_id = f"{preview_id}_{clean_tag}"
-        preview_path = f".manet-workspace/{preview_id}/"
+        preview_path = f"{self.workspace_root.as_posix().rstrip('/')}/{preview_id}/"
 
         workspace_content = self.query_one("#review-workspace-content", Static)
         workspace_content.update(
-            f"[bold]Target Directory:[/] [bold $secondary]{escape(preview_path)}[/]\n"
-            f"[dim]Initial launch manifest and event trace will be allocated in this isolated directory.[/]"
+            f"[bold]Target Directory Pattern:[/] [bold $secondary]{escape(preview_path)}[/]\n"
+            f"[dim]Allocated under {escape(str(self.workspace_root))}; exact timestamp and collision suffix are finalized at confirmation.[/]"
         )
 
         # 4. Check validation errors and set launch button disabled state
@@ -279,6 +278,23 @@ class StepReviewWidget(VerticalScroll):
         else:
             errors_display.update("")
             btn_launch.disabled = False
+
+    def show_error(self, message: str) -> None:
+        """Display an actionable allocation or runtime error on the review screen."""
+        errors_display = self.query_one("#review-errors-display", Static)
+        errors_display.update(f"[bold $error]Launch Error:[/] {escape(message)}")
+        btn_launch = self.query_one("#btn-review-launch", Button)
+        btn_launch.disabled = True
+
+    def reset_review(self) -> None:
+        """Reset confirmation state and disable launch button."""
+        try:
+            btn_launch = self.query_one("#btn-review-launch", Button)
+            btn_launch.disabled = True
+            errors_display = self.query_one("#review-errors-display", Static)
+            errors_display.update("")
+        except Exception:
+            pass
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle Back to Edit and Confirm & Allocate Run buttons."""

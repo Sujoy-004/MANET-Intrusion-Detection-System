@@ -15,6 +15,7 @@ from typing import Any
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Container
+from textual.css.query import NoMatches
 from textual.screen import Screen
 from textual.widgets import Footer, Header, Input, Static
 
@@ -202,6 +203,7 @@ class MainWorkspace(Screen):
         self.diagnostics_probe = diagnostics_probe or DiagnosticsProbe()
         self.workspace_adapter = workspace_adapter or WorkspaceAdapter()
         self.status_adapter = status_adapter or StatusAdapter()
+        self._refresh_count: int = 0
 
     def compose(self) -> ComposeResult:
         """Compose the executive grid hierarchy with rails and cards."""
@@ -234,22 +236,23 @@ class MainWorkspace(Screen):
 
     def refresh_diagnostics(self) -> None:
         """Non-blocking background refresh re-probing filesystem and environment state."""
+        self._refresh_count += 1
         report = self.diagnostics_probe.probe_all()
         try:
             self.query_one("#card-health", SystemHealthCard).update_report(report)
-        except Exception:
+        except NoMatches:
             pass
         try:
             self.query_one("#card-capabilities", ComponentCapabilitiesCard).update_report(report)
-        except Exception:
+        except NoMatches:
             pass
         try:
             self.query_one("#card-workload", ActiveWorkloadCard).update_report(report)
-        except Exception:
+        except NoMatches:
             pass
         try:
             self.query_one("#status-bar", StatusBar).update_report(report)
-        except Exception:
+        except NoMatches:
             pass
 
         self.refresh_workspace()
@@ -260,7 +263,7 @@ class MainWorkspace(Screen):
             content_panel = self.query_one("#main-content-panel")
             if isinstance(content_panel, RecentExperimentsTable):
                 content_panel.refresh_experiments()
-        except Exception:
+        except NoMatches:
             pass
 
     def action_simulation(self) -> None:

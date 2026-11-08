@@ -125,6 +125,77 @@ def test_two_tier_validation_and_model_gate(tmp_path: Path):
     assert any("source node -1 out of range" in e for e in errs)
 
     # ---------------------------------------------------------
+    # Tier 2: Mobility speed ordering invariant (WR-03)
+    # ---------------------------------------------------------
+    # Equal speeds
+    equal_speed_cfg = {
+        "nodes": 10,
+        "duration": 50.0,
+        "flows": [{"src": 0, "dst": 1}],
+        "mobility": {"speed_range": [10.0, 10.0]},
+    }
+    errs_equal = validate_structural_invariants(equal_speed_cfg)
+    assert any("must be strictly less than maximum" in e for e in errs_equal)
+
+    # Inverted speeds (min > max)
+    inverted_speed_cfg = {
+        "nodes": 10,
+        "duration": 50.0,
+        "flows": [{"src": 0, "dst": 1}],
+        "mobility": {"speed_range": [25.0, 5.0]},
+    }
+    errs_inverted = validate_structural_invariants(inverted_speed_cfg)
+    assert any("must be strictly less than maximum" in e for e in errs_inverted)
+
+    # Malformed shape (length != 2 or non-list)
+    malformed_speed_cfg = {
+        "nodes": 10,
+        "duration": 50.0,
+        "flows": [{"src": 0, "dst": 1}],
+        "mobility": {"speed_range": [5.0]},
+    }
+    errs_malformed = validate_structural_invariants(malformed_speed_cfg)
+    assert any("must be a list or tuple of two numbers" in e for e in errs_malformed)
+
+    # NaN / Infinity
+    nan_speed_cfg = {
+        "nodes": 10,
+        "duration": 50.0,
+        "flows": [{"src": 0, "dst": 1}],
+        "mobility": {"speed_range": [float("nan"), 20.0]},
+    }
+    errs_nan = validate_structural_invariants(nan_speed_cfg)
+    assert any("values must be finite numbers" in e for e in errs_nan)
+
+    inf_speed_cfg = {
+        "nodes": 10,
+        "duration": 50.0,
+        "flows": [{"src": 0, "dst": 1}],
+        "mobility": {"speed_range": [0.0, float("inf")]},
+    }
+    errs_inf = validate_structural_invariants(inf_speed_cfg)
+    assert any("values must be finite numbers" in e for e in errs_inf)
+
+    # Valid boundaries
+    valid_boundary_cfg = {
+        "nodes": 10,
+        "duration": 50.0,
+        "flows": [{"src": 0, "dst": 1}],
+        "mobility": {"speed_range": [0.0, 0.1]},
+    }
+    errs_valid_boundary = validate_structural_invariants(valid_boundary_cfg)
+    assert len(errs_valid_boundary) == 0
+
+    valid_boundary_cfg2 = {
+        "nodes": 10,
+        "duration": 50.0,
+        "flows": [{"src": 0, "dst": 1}],
+        "mobility": {"speed_range": [0.0, 100.0]},
+    }
+    errs_valid_boundary2 = validate_structural_invariants(valid_boundary_cfg2)
+    assert len(errs_valid_boundary2) == 0
+
+    # ---------------------------------------------------------
     # Tier 2: IDS Champion Model Gate
     # ---------------------------------------------------------
     model_file = tmp_path / "best_model.joblib"

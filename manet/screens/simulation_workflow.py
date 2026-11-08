@@ -8,13 +8,13 @@ from typing import Any
 
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Container
 from textual.screen import Screen
 from textual.widgets import ContentSwitcher, Footer, Header
 
 from manet.adapters.handoff import SimulationLaunchRequest
 from manet.adapters.scenario import ScenarioAdapter
 from manet.adapters.workspace import WorkspaceAdapter
+from manet.runtime.paths import get_project_root
 from manet.widgets.wizard_step_mode import StepModeSelectWidget
 from manet.widgets.wizard_step_params import StepParamsWidget
 from manet.widgets.wizard_step_review import StepReviewWidget
@@ -71,8 +71,30 @@ class SimulationWorkflowScreen(Screen):
         super().__init__(*args, **kwargs)
         self.scenario_adapter = scenario_adapter or ScenarioAdapter()
         self.workspace_adapter = workspace_adapter or WorkspaceAdapter()
-        self.model_path = model_path or (Path.cwd() / "ml" / "models" / "best_model.joblib")
+        self.model_path = model_path or (get_project_root() / "ml" / "models" / "best_model.joblib")
         self.launch_request: SimulationLaunchRequest | None = None
+        self.last_completed_launch_request: SimulationLaunchRequest | None = None
+
+    def on_screen_resume(self) -> None:
+        """Reset visible wizard state to Step 1 on screen re-entry if a run was confirmed."""
+        try:
+            switcher = self.query_one("#wizard-switcher", ContentSwitcher)
+            if switcher.current == "step-preflight-review" or self.last_completed_launch_request is not None:
+                self.reset_workflow(clear_handoff=False)
+        except Exception:
+            pass
+
+    def reset_workflow(self, clear_handoff: bool = False) -> None:
+        """Reset wizard to Step 1 mode selection, defusing stale review confirmations."""
+        try:
+            switcher = self.query_one("#wizard-switcher", ContentSwitcher)
+            switcher.current = "step-mode-select"
+            review_widget = self.query_one("#step-preflight-review", StepReviewWidget)
+            review_widget.reset_review()
+            if clear_handoff:
+                self.launch_request = None
+        except Exception:
+            pass
 
     def compose(self) -> ComposeResult:
         """Compose the 3-step wizard hierarchy with ContentSwitcher."""
@@ -94,7 +116,7 @@ class SimulationWorkflowScreen(Screen):
         """Handle Escape key: go back to previous step, or return to workspace from Step 1."""
         switcher = self.query_one("#wizard-switcher", ContentSwitcher)
         if switcher.current == "step-mode-select":
-            if "workspace" in self.app._installed_screens:
+            if self.app.is_screen_installed("workspace"):
                 self.app.switch_screen("workspace")
         elif switcher.current == "step-param-config":
             switcher.current = "step-mode-select"
@@ -148,28 +170,49 @@ class SimulationWorkflowScreen(Screen):
 
     def on_step_review_widget_review_confirmed(self, event: StepReviewWidget.ReviewConfirmed) -> None:
         """Confirm launch, allocate workspace directory, write manifest, and create handoff request."""
-        # 1. Allocate experiment directory
-        exp_id, exp_dir = self.workspace_adapter.allocate_experiment_directory(
-            scenario_name=event.scenario_name,
-            seed=event.seed,
-            tag=event.run_tag,
-        )
+        allocated_dir: Path | None = None
+        try:
+            # 1. Allocate experiment directory
+            exp_id, exp_dir = self.workspace_adapter.allocate_experiment_directory(
+                scenario_name=event.scenario_name,
+                seed=event.seed,
+                tag=event.run_tag,
+            )
+            allocated_dir = exp_dir
 
-        # 2. Write initial launch manifest
-        self.workspace_adapter.record_launch_manifest(
-            experiment_dir=exp_dir,
-            experiment_id=exp_id,
-            scenario_name=event.scenario_name,
-            seed=event.seed,
-            config=event.config,
-        )
+            # 2. Write initial launch manifest
+            self.workspace_adapter.record_launch_manifest(
+                experiment_dir=exp_dir,
+                experiment_id=exp_id,
+                scenario_name=event.scenario_name,
+                seed=event.seed,
+                config=event.config,
+            )
+        except (OSError, ValueError) as exc:
+            cleanup_warning = ""
+            if allocated_dir is not None and allocated_dir.is_dir():
+                try:
+                    root_resolved = self.workspace_adapter.workspace_root.resolve()
+                    if allocated_dir.resolve().is_relative_to(root_resolved):
+                        for item in allocated_dir.iterdir():
+                            try:
+                                item.unlink()
+                            except OSError:
+                                pass
+                        allocated_dir.rmdir()
+                except OSError as clean_err:
+                    cleanup_warning = f" (Cleanup warning: {clean_err})"
+
+            review_widget = self.query_one("#step-preflight-review", StepReviewWidget)
+            review_widget.show_error(f"Workspace allocation failed: {exc}{cleanup_warning}")
+            return
 
         # 3. Create handoff SimulationLaunchRequest
         ids_cfg = event.config.get("ids", {})
         ids_enabled = bool(ids_cfg.get("enabled", False)) if isinstance(ids_cfg, dict) else False
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
-        self.launch_request = SimulationLaunchRequest(
+        launch_req = SimulationLaunchRequest(
             experiment_id=exp_id,
             scenario_name=event.scenario_name,
             seed=event.seed,
@@ -178,9 +221,15 @@ class SimulationWorkflowScreen(Screen):
             created_at=now_iso,
             ids_enabled=ids_enabled,
         )
+        self.launch_request = launch_req
+        self.last_completed_launch_request = launch_req
+        setattr(self.app, "last_launch_request", launch_req)
 
-        # 4. Transition back to workspace and notify
-        if "workspace" in self.app._installed_screens:
+        # 4. Defuse stale Step 3 review state and reset wizard to Step 1
+        self.reset_workflow(clear_handoff=False)
+
+        # 5. Transition back to workspace and notify
+        if self.app.is_screen_installed("workspace"):
             self.app.switch_screen("workspace")
             try:
                 workspace_screen = self.app.get_screen("workspace")

@@ -83,12 +83,12 @@ No hardcoded empty props at any call site; adapters default to CWD-anchored real
 
 | Behavior | Command | Result | Status |
 | -------- | ------- | ------ | ------ |
-| Adapter + config + workspace units (TUI-09/10/11/13/14) | `python -m pytest tests/test_manet_scenario_adapter.py tests/test_manet_simulation_config.py tests/test_manet_workspace_allocation.py -q` | 12 passed in 0.18s | ✓ PASS |
-| Wizard pilots + navigation + boundaries (all truths) | `python -m pytest tests/test_manet_simulation_workflow.py tests/test_manet_navigation.py tests/test_manet_import_boundaries.py -q` | 27 passed in 16.99s | ✓ PASS |
+| Adapter + config + workspace units (TUI-09/10/11/13/14) | `python -m pytest tests/test_manet_scenario_adapter.py tests/test_manet_simulation_config.py tests/test_manet_workspace_allocation.py tests/test_manet_paths.py -q` | 15 passed in 0.35s | ✓ PASS |
+| Wizard pilots + navigation + boundaries (all truths) | `python -m pytest tests/test_manet_simulation_workflow.py tests/test_manet_navigation.py tests/test_manet_import_boundaries.py -q` | 33 passed in 18.25s | ✓ PASS |
 | Real-runner compat (TUI-14) | `python -m pytest tests/test_manet_simulation_runner_compat.py -q` | 4 passed in 4.03s | ✓ PASS |
-| Full suite regression | `python -m pytest tests -q` | **176 passed, 1 warning** in 166.92s (matches known-good state) | ✓ PASS |
-| CR-01 probe: duplicate DataTable row key | inline Textual app, two `add_row(key=same)` | `DuplicateKey` raised | ✗ reproduced (see advisories) |
-| CR-02 probe: sanitizer truncation-boundary dot + Win32 mkdir | inline snippet | sanitizer emits trailing dot; `mkdir("exp_test_tag.")` creates `exp_test_tag` (FS normalizes) | ⚠️ mitigated by platform + collision loop |
+| Full suite regression | `python -m pytest tests -q` | **187 passed, 1 warning** in 296.52s | ✓ PASS |
+| CR-01 probe: duplicate DataTable row key | unit + pilot regression | First-match preserved; deduplicated; unique DataTable keys | ✓ RESOLVED |
+| CR-02 probe: sanitizer truncation-boundary dot + Win32 mkdir | boundary tests + on-disk parity test | Manifest ID strictly equals on-disk directory name | ✓ RESOLVED |
 
 ### Requirements Coverage
 
@@ -103,21 +103,24 @@ No hardcoded empty props at any call site; adapters default to CWD-anchored real
 
 Every phase requirement ID (TUI-09..TUI-14) is declared in all three plan frontmatters and mapped in REQUIREMENTS.md. No ORPHANED requirements.
 
-### Independent Assessment of Code-Review Findings (advisory review, not verification evidence)
+### Independent Assessment of Code-Review Findings (Hardening Pass)
 
-- **CR-01 (duplicate scenario_id → DuplicateKey crash): CONFIRMED real, non-blocking.** Empirically reproduced `DuplicateKey` for duplicate row keys. However, all 5 real `scenarios/*.json` files have unique `scenario_id`s, so the roadmap truth "lists real scenario files" holds for every actual file. The plan's grace handling contract covered malformed JSON, not duplicates. Recommend a hardening slice (dedup on `refresh_presets`, e.g. skip/renumber duplicated ids) before or during Phase 10, which builds on this wizard surface.
-- **CR-02 (sanitize truncation-boundary trailing dot): CONFIRMED at the string level, empirically harmless on the target platform.** `sanitize_run_tag('a'*31 + '.x')` → `'...aaa.'`; but Win32 FS normalizes the dot away on `mkdir` and the collision loop (`exist_ok=False` → `_1`) guarantees uniqueness without overwrite. TUI-13's uniqueness/no-overwrite invariant remains intact. One-line fix (strip `._` again after truncation) if desired.
-- **WR-01/WR-04/WR-05, IN-01..IN-06:** not must-have failures. Notable: WR-04 (preset flow endpoint clamp + rate overwrite is silent), WR-05 (`Step 3` preview hardcodes `.manet-workspace/` label), IN-05 (preview name ≠ exact allocated name due to timestamp churn). Recorded as UX/transparency advisories; the review screen still shows the configuration that will run.
-- **Stale help label:** `manet/runtime/keymap.py:22` still says "Simulation notice (Phase 9 pending)" for the [S] hint shown on the F1 Help screen — behavior is correct (opens the wizard), only the help text is stale. Cosmetic.
+- **CR-01 (duplicate scenario_id → DuplicateKey crash): RESOLVED.** `ScenarioAdapter.list_presets()` enforces deterministic first-match deduplication and records diagnostic warnings; `StepModeSelectWidget` ensures unique row keys and displays diagnostic notice.
+- **CR-02 (sanitize truncation-boundary trailing dot): RESOLVED.** `sanitize_run_tag` strips `._` before AND after 32-character truncation. Boundary tests and Windows on-disk manifest parity tests verified.
+- **WR-01 (wizard state on re-entry): RESOLVED.** Re-entry resets visible wizard to Step 1; stale Step 3 confirmations are defused; completed `launch_request` is preserved safely for Phase 10 handoff.
+- **WR-02 (allocation/manifest OSError handling): RESOLVED.** Allocation and manifest writing wrapped in specific exception handlers; actionable error shown on Step 3; incomplete allocated directories safely cleaned up.
+- **WR-03 (mobility speed ordering): RESOLVED.** `min_speed < max_speed` enforced in Tier 2 validator and Step 2 submit validation; values retained on error.
+- **WR-04 (preset flow mutation & rate override): RESOLVED.** Flow endpoints outside bounds block advance with explicit offending flow report; authentic preset flow rates preserved unless user explicitly edits the CBR rate override control.
+- **WR-05 (step 3 preview workspace root): RESOLVED.** Injected `workspace_root` honored in Step 3 destination preview.
+- **WR-06 (periodic-timer test): RESOLVED.** Test exercises registered 4.0s timer and callback deterministically.
+- **IN-01..IN-06: ALL RESOLVED.** Unused imports deleted (pyflakes clean); exceptions narrowed; public `is_screen_installed` API used; parameterized command tests added; truthful directory pattern preview implemented; repository root centralized in `manet/runtime/paths.py`.
+- **Help label updated:** `manet/runtime/keymap.py:22` updated to "Simulation workflow wizard".
 
 ### Anti-Patterns Found
 
 | File | Line | Pattern | Severity | Impact |
 | ---- | ---- | ------- | -------- | ------ |
-| `manet/widgets/wizard_step_mode.py` | 161 | `add_row(key=scenario_id)` with no duplicate-id guard (CR-01) | ⚠️ Warning | Latent crash if user-supplied scenario files ever share a `scenario_id`; no effect on the 5 real repo files |
-| `manet/adapters/workspace.py` | 27-30 | Strip-before-truncate can re-emit a trailing dot at char 32 (CR-02) | ⚠️ Warning | Empirically normalized by Windows FS + collision loop; cosmetic ID/actual-name mismatch in edge case |
-| `manet/widgets/wizard_step_params.py` | 448-455 | Preset flow endpoints silently clamped / rate overwritten (WR-04) | ⚠️ Warning | Transparency only; result config shown on review before launch |
-| `manet/widgets/wizard_step_review.py` | 261 | Preview path label hardcoded `.manet-workspace/` (WR-05) | ℹ️ Info | Label-only; actual allocation honors injected root |
+| None | - | None (all 14 review findings resolved in hardening pass) | - | Codebase hardened for Phase 10 |
 | `manet/runtime/keymap.py` | 22 | Stale "Simulation notice (Phase 9 pending)" hint | ℹ️ Info | Stale F1 help text; behavior verified correct |
 | `manet/screens/simulation_workflow.py` | 97, 183 | Private API `self.app._installed_screens` (IN-03) | ℹ️ Info | Works on Textual 8.2.8; API stability note |
 | `manet/adapters/*.py` | various | `except Exception: continue` swallow (IN-02) | ℹ️ Info | Deliberate resilience tradeoff for corrupt scenario/manifest files |

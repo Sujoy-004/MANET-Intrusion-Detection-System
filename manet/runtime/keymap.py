@@ -19,7 +19,7 @@ SHORTCUT_HINTS: dict[str, str] = {
     BINDING_HELP: "Help and about",
     BINDING_PALETTE: "Command palette",
     BINDING_QUIT: "Quit",
-    BINDING_SIMULATION: "Simulation notice (Phase 9 pending)",
+    BINDING_SIMULATION: "Simulation workflow wizard",
     BINDING_RESULTS: "Results notice (Phase 11 pending)",
 }
 

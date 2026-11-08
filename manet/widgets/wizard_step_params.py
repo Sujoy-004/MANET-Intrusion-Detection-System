@@ -7,7 +7,7 @@ from typing import Any
 
 from rich.markup import escape
 from textual.app import ComposeResult
-from textual.containers import Container, Horizontal, Vertical, VerticalScroll
+from textual.containers import Container, Horizontal, VerticalScroll
 from textual.message import Message
 from textual.validation import Integer, Number
 from textual.widgets import (
@@ -258,7 +258,7 @@ class StepParamsWidget(VerticalScroll):
                 )
 
             with Horizontal(classes="form-row"):
-                yield Label("CBR Packet Rate (pps):", classes="field-label")
+                yield Label("CBR Packet Rate (pps) [Override]:", classes="field-label")
                 yield Input(
                     value=str(DEFAULT_RATE_PPS),
                     validators=[Number(minimum=0.1, maximum=1000.0)],
@@ -346,9 +346,12 @@ class StepParamsWidget(VerticalScroll):
 
         flows = raw_cfg.get("flows", [])
         if flows and isinstance(flows, list) and isinstance(flows[0], dict):
-            self.query_one("#input-rate-pps", Input).value = str(flows[0].get("rate_pps", DEFAULT_RATE_PPS))
+            init_rate = float(flows[0].get("rate_pps", DEFAULT_RATE_PPS))
         else:
-            self.query_one("#input-rate-pps", Input).value = str(DEFAULT_RATE_PPS)
+            init_rate = float(DEFAULT_RATE_PPS)
+        self._preset_initial_rate = init_rate
+        self._rate_manually_edited = False
+        self.query_one("#input-rate-pps", Input).value = str(init_rate)
 
         self.query_one("#input-run-tag", Input).value = ""
         self.query_one("#params-error-display", Static).update("")
@@ -357,6 +360,7 @@ class StepParamsWidget(VerticalScroll):
         """Reset form inputs to standard benchmark defaults."""
         self.mode = "custom"
         self.preset = None
+        self._rate_manually_edited = True
 
         indicator = self.query_one("#params-mode-indicator", Static)
         indicator.update("[dim]Mode: Custom Simulation (Manual Configuration)[/]")
@@ -377,6 +381,17 @@ class StepParamsWidget(VerticalScroll):
         self.query_one("#input-area-height", Input).value = str(DEFAULT_AREA[1])
         self.query_one("#input-run-tag", Input).value = ""
         self.query_one("#params-error-display", Static).update("")
+
+    def on_input_changed(self, event: Input.Changed) -> None:
+        """Track manual changes to fields like CBR packet rate override."""
+        if event.input.id == "input-rate-pps" and self.mode == "preset":
+            try:
+                val = float(event.value)
+                init_val = getattr(self, "_preset_initial_rate", None)
+                if init_val is not None and abs(val - init_val) > 1e-6:
+                    self._rate_manually_edited = True
+            except (ValueError, TypeError):
+                self._rate_manually_edited = True
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle Back and Next button actions."""
@@ -426,6 +441,12 @@ class StepParamsWidget(VerticalScroll):
             error_display.update(f"[bold $error]Input Error:[/] {escape(str(exc))}")
             return
 
+        if min_speed >= max_speed:
+            error_display.update(
+                f"[bold $error]Validation Error:[/] Mobility minimum speed ({min_speed}) must be strictly less than maximum speed ({max_speed})."
+            )
+            return
+
         error_display.update("")
 
         if self.mode == "preset" and self.preset is not None:
@@ -445,14 +466,28 @@ class StepParamsWidget(VerticalScroll):
 
             config["area"] = [area_w, area_h]
 
+            is_rate_overridden = getattr(self, "_rate_manually_edited", False)
+            if hasattr(self, "_preset_initial_rate") and abs(rate_pps - self._preset_initial_rate) > 1e-6:
+                is_rate_overridden = True
+
+            bad_flows = []
             if "flows" in config and isinstance(config["flows"], list):
-                for flow in config["flows"]:
+                for idx, flow in enumerate(config["flows"]):
                     if isinstance(flow, dict):
-                        flow["rate_pps"] = rate_pps
-                        if flow.get("src", 0) >= nodes:
-                            flow["src"] = 0
-                        if flow.get("dst", 0) >= nodes:
-                            flow["dst"] = (nodes - 1) if nodes > 1 else 1
+                        src = flow.get("src", 0)
+                        dst = flow.get("dst", 0)
+                        if src < 0 or src >= nodes or dst < 0 or dst >= nodes or src == dst:
+                            bad_flows.append((idx, src, dst))
+                        elif is_rate_overridden:
+                            flow["rate_pps"] = rate_pps
+
+            if bad_flows:
+                bad_descs = [f"Flow #{i} ({s}->{d})" for i, s, d in bad_flows]
+                error_display.update(
+                    f"[bold $error]Flow Endpoints Error:[/] Preset flows use endpoints outside valid range [0, {nodes - 1}]: "
+                    f"{', '.join(bad_descs)}. Increase node count to at least match preset endpoints or select custom mode."
+                )
+                return
 
             is_attack = attacker.lower() not in ("none", "")
             if "attack" not in config or not isinstance(config["attack"], dict):

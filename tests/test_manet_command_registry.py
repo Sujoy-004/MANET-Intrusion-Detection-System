@@ -68,3 +68,30 @@ def test_anti_phantom_command_honesty():
             f"Phantom command detected: ManetApp has no action method '{cmd.action}' "
             f"for command '{cmd.name}'"
         )
+
+
+def test_resolve_parameterized_command_abstraction(monkeypatch):
+    """Verify resolve() correctly handles parameterized commands and arity checks (IN-04)."""
+    import manet.commands.registry as reg
+
+    test_cmd = AppCommand(
+        name="test:param",
+        display="Test Parameterized Command",
+        help="Command taking parameters",
+        parameters=("param_a", "param_b"),
+        action="action_test_param",
+    )
+    monkeypatch.setattr(reg, "_COMMANDS", (*reg._COMMANDS, test_cmd))
+
+    # Exact argument count matches
+    res = reg.resolve("test:param", ["foo", "bar"])
+    assert res is not None
+    cmd, params = res
+    assert cmd == test_cmd
+    assert params == {"param_a": "foo", "param_b": "bar"}
+
+    # Under-arity: too few arguments
+    assert reg.resolve("test:param", ["foo"]) is None
+
+    # Over-arity: too many arguments
+    assert reg.resolve("test:param", ["foo", "bar", "baz"]) is None

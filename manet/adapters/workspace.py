@@ -10,13 +10,14 @@ import re
 from typing import Any
 
 import manet
+from manet.runtime.paths import get_project_root
 
 
 def sanitize_run_tag(tag: str) -> str:
     """Sanitize user-supplied run tag to prevent directory traversal and Windows-illegal filenames.
 
     Strips path traversal dots, spaces, symbols, and Windows-illegal path characters (\\ / : * ? " < > |).
-    Leading/trailing underscores and dots are stripped, and the result is truncated to 32 characters.
+    Leading/trailing underscores and dots are stripped both before and after truncation to 32 characters.
     """
     if not tag:
         return ""
@@ -25,9 +26,9 @@ def sanitize_run_tag(tag: str) -> str:
     cleaned = re.sub(r"\.\.+", "_", cleaned)
     # Replace spaces, slashes, colons, and Windows-illegal characters
     cleaned = re.sub(r'[\s\\/:*?"<>|]+', "_", cleaned)
-    # Strip leading/trailing dots and underscores
+    # Strip leading/trailing dots and underscores both before and after truncation
     cleaned = cleaned.strip("._")
-    return cleaned[:32]
+    return cleaned[:32].rstrip("._")
 
 
 def record_launch_manifest(
@@ -70,7 +71,7 @@ class WorkspaceAdapter:
     """Workspace adapter discovering past runs and allocating collision-free experiment directories."""
 
     def __init__(self, workspace_root: Path | None = None) -> None:
-        self.workspace_root = workspace_root or (Path.cwd() / ".manet-workspace")
+        self.workspace_root = workspace_root or (get_project_root() / ".manet-workspace")
 
     def has_experiments(self) -> bool:
         """Check if any experiment records exist in the workspace."""
@@ -88,7 +89,7 @@ class WorkspaceAdapter:
                 key=lambda p: p.stat().st_mtime,
                 reverse=True,
             )
-        except Exception:
+        except (OSError, ValueError):
             return []
 
         for entry in entries:
@@ -112,7 +113,7 @@ class WorkspaceAdapter:
                                     pdr=float(data["pdr"]) if "pdr" in data and data["pdr"] is not None else None,
                                 )
                             )
-                    except Exception:
+                    except (json.JSONDecodeError, OSError, ValueError, KeyError):
                         continue
                 else:
                     runs.append(
@@ -140,7 +141,7 @@ class WorkspaceAdapter:
                                 pdr=float(data["pdr"]) if "pdr" in data and data["pdr"] is not None else None,
                             )
                         )
-                except Exception:
+                except (json.JSONDecodeError, OSError, ValueError, KeyError):
                     continue
 
             if len(runs) >= limit:

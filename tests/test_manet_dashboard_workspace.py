@@ -335,16 +335,27 @@ async def test_workspace_empty_vs_populated_mounting():
 
 @pytest.mark.asyncio
 async def test_periodic_diagnostics_refresh_timer():
-    """Verify refresh_diagnostics executes and periodic timer runs without freeze or crash."""
+    """Verify refresh_diagnostics executes and periodic 4.0s timer is scheduled and executes callback."""
     app = ManetApp()
     async with app.run_test() as pilot:
         screen = app.screen
         assert isinstance(screen, MainWorkspace)
 
-        # Call refresh_diagnostics directly
-        screen.refresh_diagnostics()
+        # 1. Assert initial mount executed refresh_diagnostics
+        assert screen._refresh_count >= 1
+        count_after_mount = screen._refresh_count
+
+        # 2. Assert periodic 4.0s interval timer is registered on the screen pointing to refresh_diagnostics
+        matching_timers = [
+            t for t in screen._timers
+            if getattr(t, "_interval", None) == 4.0 and getattr(t, "_callback", None) == screen.refresh_diagnostics
+        ]
+        assert len(matching_timers) == 1, "Expected exactly one 4.0s interval timer for refresh_diagnostics"
+
+        # 3. Deterministically trigger the timer callback and verify refresh execution and state update
+        interval_timer = matching_timers[0]
+        interval_timer._callback()
         await pilot.pause()
 
-        # Let the pilot advance time to ensure interval timer triggers safely
-        await pilot.pause(0.2)
+        assert screen._refresh_count == count_after_mount + 1
         assert screen.is_mounted

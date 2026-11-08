@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import math
 from pathlib import Path
 from typing import Any
+
+from manet.runtime.paths import get_project_root
 
 # Standard validation bounds
 MIN_NODES: int = 2
@@ -155,15 +158,32 @@ def validate_structural_invariants(
             if src_int == dst_int:
                 errors.append(f"Flow #{idx} source ({src_int}) cannot equal destination ({dst_int})")
 
-    # 4. IDS gating invariant
+    # 4. Mobility speed ordering invariant (min_speed < max_speed)
+    mobility = config.get("mobility", {})
+    if isinstance(mobility, dict) and "speed_range" in mobility:
+        speed = mobility.get("speed_range")
+        if not (isinstance(speed, (list, tuple)) and len(speed) == 2):
+            errors.append("Mobility 'speed_range' must be a list or tuple of two numbers")
+        else:
+            try:
+                lo = float(speed[0])
+                hi = float(speed[1])
+                if not (math.isfinite(lo) and math.isfinite(hi)):
+                    errors.append("Mobility 'speed_range' values must be finite numbers")
+                elif lo >= hi:
+                    errors.append(f"Mobility speed_range minimum ({lo}) must be strictly less than maximum ({hi})")
+            except (TypeError, ValueError):
+                errors.append("Mobility 'speed_range' must contain numeric values")
+
+    # 5. IDS gating invariant
     ids_cfg = config.get("ids", {})
     if isinstance(ids_cfg, dict) and ids_cfg.get("enabled", False):
-        target_model = model_path if model_path is not None else (Path.cwd() / "ml" / "models" / "best_model.joblib")
+        target_model = model_path if model_path is not None else (get_project_root() / "ml" / "models" / "best_model.joblib")
         exists_and_non_empty = False
         try:
             if target_model.is_file() and target_model.stat().st_size > 0:
                 exists_and_non_empty = True
-        except Exception:
+        except (OSError, ValueError):
             exists_and_non_empty = False
 
         if not exists_and_non_empty:

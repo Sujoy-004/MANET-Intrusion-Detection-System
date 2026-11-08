@@ -113,6 +113,47 @@ def test_sanitize_run_tag_rules():
     assert len(sanitize_run_tag(long_tag)) == 32
     assert sanitize_run_tag(long_tag) == "a" * 32
 
+    # Boundary tests: strip dots/underscores after truncation (CR-02)
+    assert sanitize_run_tag("a" * 31 + ".x") == "a" * 31
+    assert sanitize_run_tag("a" * 31 + ".b") == "a" * 31
+    assert sanitize_run_tag("a" * 31 + "_x") == "a" * 31
+    assert sanitize_run_tag("a" * 31 + ".") == "a" * 31
+    assert sanitize_run_tag("a" * 31 + "_") == "a" * 31
+    assert sanitize_run_tag("a" * 32) == "a" * 32
+    assert sanitize_run_tag("a" * 30 + "..") == "a" * 30
+
+
+def test_manifest_experiment_id_matches_directory_name_on_windows(tmp_path: Path):
+    """Verify manifest experiment_id strictly matches on-disk directory name without Windows stripping divergence (CR-02)."""
+    workspace_root = tmp_path / "win_workspace"
+    adapter = WorkspaceAdapter(workspace_root)
+
+    # Use a tag that would produce a trailing dot before CR-02 fix
+    tricky_tag = "a" * 31 + ".b"
+    exp_id, exp_dir = adapter.allocate_experiment_directory(
+        scenario_name="e1_normal",
+        seed=42,
+        tag=tricky_tag,
+    )
+
+    # Physical on-disk directory name must equal the recorded exp_id
+    assert exp_dir.is_dir()
+    assert exp_dir.name == exp_id
+    assert not exp_id.endswith(".")
+    assert not exp_id.endswith("_")
+
+    manifest_path = record_launch_manifest(
+        experiment_dir=exp_dir,
+        experiment_id=exp_id,
+        scenario_name="e1_normal",
+        seed=42,
+        config={"test": True},
+    )
+    with open(manifest_path, "r", encoding="utf-8") as f:
+        manifest = json.load(f)
+
+    assert manifest["experiment_id"] == exp_dir.name
+
 
 def test_path_containment_and_traversal_rejection(tmp_path: Path):
     """Verify path traversal cannot escape workspace root."""

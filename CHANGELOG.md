@@ -5,6 +5,21 @@ All notable changes to the Machine Learning-Based Intrusion Detection System for
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- **Phase 9 Simulation Workflow Hardening:**
+  - **CR-01 (Duplicate Scenario IDs):** Enforced deterministic first-match deduplication in `ScenarioAdapter.list_presets()` with diagnostic warning logging; defused `DuplicateKey` crashes in `StepModeSelectWidget` DataTable with unique row keys and user-facing diagnostic notice.
+  - **CR-02 (Run Tag Sanitization Boundary):** Updated `sanitize_run_tag()` to strip leading/trailing dots and underscores both before and after 32-character truncation, eliminating Windows on-disk folder name and manifest `experiment_id` divergence.
+  - **WR-01 (Wizard Re-Entry State):** Configured `SimulationWorkflowScreen` to automatically reset to Step 1 on workflow completion and screen re-entry, preventing stale Step 3 pre-flight review configurations from being accidentally re-confirmed while preserving completed handoff requests for Phase 10 background execution.
+  - **WR-02 (Workspace Allocation Resilience):** Wrapped experiment directory allocation and manifest generation in specific `(OSError, ValueError)` handlers; on failure, surfaces actionable errors on Step 3, retains user inputs, and performs safe best-effort cleanup of incomplete newly allocated directories.
+  - **WR-03 (Mobility Speed Ordering Invariant):** Enforced `min_speed < max_speed` in the Tier 2 structural invariant validator and Step 2 submit validation, rejecting equal, inverted, NaN, infinite, and malformed speed values with actionable error feedback.
+  - **WR-04 (Preset Flow Mutation Transparency):** Removed silent coercion of preset flow endpoints to 0 or `nodes - 1`, blocking advance with explicit identification of offending flows when node count is reduced below preset requirements; preserved authentic preset flow rates unless the CBR rate override control is explicitly edited.
+  - **WR-05 (Workspace Destination Preview):** Updated Step 3 workspace preview to honor injected `workspace_root` rather than hardcoding `.manet-workspace/`.
+  - **WR-06 (Diagnostics Periodic Refresh Test):** Replaced vacuous pause in `test_periodic_diagnostics_refresh_timer` with deterministic assertion of the 4.0s timer interval and callback execution.
+  - **IN-01..IN-06 (Hygiene, API & Portability):** Removed all unused imports across `manet/` (pyflakes reports 0 warnings); narrowed broad `except Exception` blocks to expected exception types; replaced private `self.app._installed_screens` with public `App.is_screen_installed("workspace")`; added direct tests for parameterized command resolution and dispatch; rendered truthful directory patterns in Step 3 preview; centralized repository root in `manet/runtime/paths.py` with cwd-independence regression tests.
+  - Total automated test count updated from 176 to 187 passing tests across 12 test modules.
+
 ## [1.1.0] - 2026-11-03
 
 ### Added

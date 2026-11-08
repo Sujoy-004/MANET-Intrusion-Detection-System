@@ -116,6 +116,44 @@ def test_malformed_json_handling(tmp_path: Path):
     assert presets[0].flow_count == 1
 
 
+def test_duplicate_scenario_id_deduplication(tmp_path: Path):
+    """Verify duplicate scenario_id across files preserves first-match and records diagnostic (CR-01)."""
+    file1 = tmp_path / "01_first.json"
+    file2 = tmp_path / "02_second.json"
+
+    data1 = {
+        "scenario_id": "duplicate_id",
+        "description": "First file with duplicate id",
+        "nodes": 20,
+        "duration": 100.0,
+        "flows": [{"src": 0, "dst": 1}],
+    }
+    data2 = {
+        "scenario_id": "duplicate_id",
+        "description": "Second file with duplicate id",
+        "nodes": 40,
+        "duration": 200.0,
+        "flows": [{"src": 0, "dst": 2}],
+    }
+    file1.write_text(json.dumps(data1), encoding="utf-8")
+    file2.write_text(json.dumps(data2), encoding="utf-8")
+
+    adapter = ScenarioAdapter(tmp_path)
+    presets = adapter.list_presets()
+
+    assert len(presets) == 1, f"Expected 1 deduplicated preset, got {len(presets)}"
+    assert presets[0].scenario_id == "duplicate_id"
+    assert presets[0].description == "First file with duplicate id"
+    assert presets[0].nodes == 20
+    assert len(adapter.diagnostics) == 1
+    assert "Duplicate scenario_id 'duplicate_id'" in adapter.diagnostics[0]
+    assert "02_second.json" in adapter.diagnostics[0]
+
+    retrieved = adapter.get_preset("duplicate_id")
+    assert retrieved is not None
+    assert retrieved.description == "First file with duplicate id"
+
+
 def test_missing_or_empty_directory(tmp_path: Path):
     """Verify missing directory or empty directory returns empty list."""
     empty_dir = tmp_path / "empty"

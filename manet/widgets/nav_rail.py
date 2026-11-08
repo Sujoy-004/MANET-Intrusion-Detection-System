@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from textual.widgets import Static
 
-from manet.adapters.navigation import QUICK_ACTIONS, NavigationAdapter
+from manet.adapters.navigation import NavigationAdapter
 
 
 class NavRail(Static):

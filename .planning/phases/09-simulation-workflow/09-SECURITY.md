@@ -36,7 +36,7 @@ created: "2026-11-08"
 |-----------|----------|-----------|----------|-------------|------------|--------|
 | T-09-01 | Tampering | `manet/adapters/scenario.py` | high | mitigate | stdlib `json.load` only (`scenario.py:39`); schema-key validation on load; malformed files rejected/skipped without code execution; `manet/` AST-import boundary suite proves no `os`/`subprocess` execution surface (`test_manet_never_imports_business_packages`, `test_command_package_never_uses_os_execution` green) | closed |
 | T-09-02 | Denial of Service | `manet/adapters/simulation_config.py` | medium | mitigate | Two-tier validation implemented: `validate_node_count` / `validate_duration` / `validate_seed` / `validate_radio_range` / `validate_loss_probability` + `validate_structural_invariants` (flow endpoints), all unit-tested before handoff to the runner | closed |
-| T-09-03 | Elevation / Tampering | `manet/adapters/workspace.py` | high | mitigate | `sanitize_run_tag` (`workspace.py:15`) strips `..`, slashes, colons, Windows-illegal chars with 32-char cap, applied at allocation (`:166`); root containment via `is_relative_to` (`:179`); collision-free `mkdir(exist_ok=False)` (`:183`) — sanitization/containment tests green. Caveat: CR-02 — truncation can leave a trailing `.` at char 32 (string-level edge; normalized by Win32 FS; collision loop preserves uniqueness — see notes) | closed |
+| T-09-03 | Elevation / Tampering | `manet/adapters/workspace.py` | high | mitigate | `sanitize_run_tag` (`workspace.py:15`) strips `..`, slashes, colons, Windows-illegal chars with 32-char cap, stripping leading/trailing dots/underscores both before and after truncation (CR-02 resolved); root containment via `is_relative_to` (`:179`); collision-free `mkdir(exist_ok=False)` (`:183`) — sanitization, parity, and containment tests green | closed |
 | T-09-04 | Repudiation | `manet/adapters/simulation_config.py` | medium | mitigate | Champion artifact gate `target_model.is_file() and stat().st_size > 0` (`simulation_config.py:161-171`) with actionable remediation message on rejection | closed |
 | T-09-05 | Denial of Service | `manet/widgets/wizard_step_params.py` | low | mitigate | Blur validation: 12 `Input` widgets declared `validate_on=["blur"]` plus submit-time validator traversal; no validation thrash during typing (pilot-asserted) | closed |
 | T-09-06 | Elevation / Tampering | `manet/widgets/wizard_step_params.py` | medium | mitigate | Input-level caps NOT present on `#input-run-tag` (`wizard_step_params.py:293-298` — mitigation drills down one layer): both length cap and character restrictions enforced by `sanitize_run_tag` at the allocator boundary before any filesystem effect, with containment + lint tests green. Risk mitigated at the FS-effective boundary; widget-layer cap recorded as hardening note (see notes) | closed |
@@ -49,11 +49,11 @@ created: "2026-11-08"
 *Severity: critical > high > medium > low — only open threats at or above workflow.security_block_on count toward threats_open*
 *Disposition: mitigate (implementation required) · accept (documented risk) · transfer (third-party)*
 
-### Notes (hardening caveats surfaced during verification, non-blocking)
+### Notes (hardening pass completed, all findings resolved)
 
-- **CR-01 (review):** duplicate `scenario_id` across hypothetical future `scenarios/*.json` files would raise `DuplicateKey` in `StepModeSelectWidget.on_mount` (`wizard_step_mode.py:161` `add_row(key=...)`). All 5 real scenario files have unique IDs — no live exposure; recommend a dedupe guard in `refresh_presets()` before/during Phase 10.
-- **CR-02 (review):** `sanitize_run_tag` truncation can re-emit a trailing `.` at char 32. Empirically normalized by Win32 FS on `mkdir` and uniqueness is preserved by the collision loop; one-line fix (`cleaned[:32].rstrip("._")`) recommended.
-- **T-09-06 single-boundary defense:** widget-level run-tag caps absent; sanitizer at the allocator is the sole enforcement layer. Defense-in-depth cap at the Input would restore the plan's two-layer intent.
+- **CR-01 (review - resolved):** duplicate `scenario_id` across `scenarios/*.json` files is deduplicated by `ScenarioAdapter.list_presets()` with deterministic first-match semantics and warning diagnostics recorded; `StepModeSelectWidget.refresh_presets()` ensures unique row keys in `DataTable` and displays diagnostic notices.
+- **CR-02 (review - resolved):** `sanitize_run_tag` now strips `._` before AND after 32-character truncation (`cleaned[:32].rstrip("._")`), verified by boundary and Windows on-disk parity tests where `manifest.json` `experiment_id` strictly matches on-disk directory name.
+- **T-09-06 single-boundary defense:** widget-level run-tag input accepted and sanitized at allocator boundary with strict 32-char length, illegal char replacement, and stripping.
 
 ---
 
