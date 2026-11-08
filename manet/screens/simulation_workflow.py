@@ -225,11 +225,22 @@ class SimulationWorkflowScreen(Screen):
         self.last_completed_launch_request = launch_req
         setattr(self.app, "last_launch_request", launch_req)
 
-        # 4. Defuse stale Step 3 review state and reset wizard to Step 1
+        # 4. Start background simulation via WorkloadSupervisor if present
+        if hasattr(self.app, "supervisor") and self.app.supervisor is not None:
+            try:
+                self.app.supervisor.start_simulation(launch_req, self.app)
+            except Exception as exc:
+                review_widget = self.query_one("#step-preflight-review", StepReviewWidget)
+                review_widget.show_error(f"Failed to start simulation: {exc}")
+                return
+
+        # 5. Defuse stale Step 3 review state and reset wizard to Step 1
         self.reset_workflow(clear_handoff=False)
 
-        # 5. Transition back to workspace and notify
-        if self.app.is_screen_installed("workspace"):
+        # 6. Transition immediately to live_run monitor (or fallback to workspace)
+        if self.app.is_screen_installed("live_run"):
+            self.app.switch_screen("live_run")
+        elif self.app.is_screen_installed("workspace"):
             self.app.switch_screen("workspace")
             try:
                 workspace_screen = self.app.get_screen("workspace")

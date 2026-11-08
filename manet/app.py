@@ -6,10 +6,14 @@ keyboard navigation, and session lifecycle for the terminal user interface.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Optional
 
-from textual.app import App
+from textual.app import App, ComposeResult
 from textual.binding import Binding
+from textual.containers import Horizontal, Vertical
+from textual.screen import ModalScreen
+from textual.timer import Timer
+from textual.widgets import Button, Static
 
 from manet.commands.console_driver import ConsoleDriver
 from manet.commands.palette_provider import ManetCommands
@@ -20,11 +24,110 @@ from manet.runtime.keymap import (
     BINDING_QUIT,
 )
 from manet.runtime.settings import SessionSettings
+from manet.runtime.supervisor import WorkloadState, WorkloadSupervisor
 from manet.runtime.theme import AI_STUDIO_WARM, SOC, SOC_HIGH_CONTRAST
 from manet.screens.console import ConsoleScreen
 from manet.screens.help_about import HelpAboutScreen
+from manet.screens.live_run import LiveRunScreen
 from manet.screens.main_workspace import MainWorkspace
 from manet.screens.simulation_workflow import SimulationWorkflowScreen
+
+
+class QuitConfirmModal(ModalScreen[bool]):
+    """Modal dialog prompting user to confirm exit while a simulation is active."""
+
+    CSS = """
+    QuitConfirmModal {
+        align: center middle;
+    }
+
+    #quit-dialog {
+        width: 60;
+        height: auto;
+        border: thick #f85149;
+        background: #161b22;
+        padding: 1 2;
+    }
+
+    #quit-buttons {
+        layout: horizontal;
+        align: right middle;
+        margin-top: 1;
+        height: 3;
+    }
+
+    #quit-buttons Button {
+        margin-left: 1;
+    }
+    """
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="quit-dialog"):
+            yield Static("[bold #f85149]ACTIVE SIMULATION RUNNING[/]\n")
+            yield Static(
+                "A simulation workload is currently active in the background.\n"
+                "Exiting will halt the simulation. Partial traces will be preserved.\n\n"
+                "Are you sure you want to stop the simulation and quit?"
+            )
+            with Horizontal(id="quit-buttons"):
+                yield Button("Cancel", id="btn-cancel", variant="default")
+                yield Button("Stop & Quit", id="btn-confirm", variant="error")
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "btn-confirm":
+            self.dismiss(True)
+        else:
+            self.dismiss(False)
+
+
+class ShutdownErrorModal(ModalScreen[None]):
+    """Modal dialog displaying error encountered during simulation shutdown finalization."""
+
+    CSS = """
+    ShutdownErrorModal {
+        align: center middle;
+    }
+
+    #error-dialog {
+        width: 64;
+        height: auto;
+        border: thick #f85149;
+        background: #161b22;
+        padding: 1 2;
+    }
+
+    #error-buttons {
+        layout: horizontal;
+        align: right middle;
+        margin-top: 1;
+        height: 3;
+    }
+
+    #error-buttons Button {
+        margin-left: 1;
+    }
+    """
+
+    def __init__(self, error_message: str) -> None:
+        super().__init__()
+        self.error_message = error_message
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="error-dialog"):
+            yield Static("[bold red]SIMULATION FINALIZATION FAILED[/]\n")
+            yield Static(
+                f"Error during shutdown finalization:\n[red]{self.error_message}[/]\n\n"
+                "You can force exit now or dismiss to inspect state."
+            )
+            with Horizontal(id="error-buttons"):
+                yield Button("Dismiss", id="btn-dismiss", variant="default")
+                yield Button("Force Exit", id="btn-force-exit", variant="error")
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "btn-force-exit":
+            self.app.exit(1)
+        else:
+            self.dismiss()
 
 
 class ManetApp(App):
@@ -38,6 +141,7 @@ class ManetApp(App):
         "help": HelpAboutScreen,
         "simulation": SimulationWorkflowScreen,
         "simulation_workflow": SimulationWorkflowScreen,
+        "live_run": LiveRunScreen,
     }
     BINDINGS = [
         Binding(BINDING_CONSOLE, "show_console", "Console", show=True),
@@ -46,11 +150,13 @@ class ManetApp(App):
         Binding(BINDING_QUIT, "quit", "Quit", show=True),
     ]
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        """Initialize ManetApp, console driver, and in-memory session settings."""
+    def __init__(self, *args: Any, executor: Optional[Any] = None, **kwargs: Any) -> None:
+        """Initialize ManetApp, supervisor, console driver, and in-memory session settings."""
         super().__init__(*args, **kwargs)
+        self.supervisor = WorkloadSupervisor(executor=executor)
         self.console_driver = ConsoleDriver(self)
         self.settings = SessionSettings()
+        self._shutdown_timer: Optional[Timer] = None
 
     def on_mount(self) -> None:
         """Register themes and mount the primary workspace screen."""
@@ -75,6 +181,42 @@ class ManetApp(App):
     def action_show_simulation(self) -> None:
         """Switch to simulation workflow wizard screen."""
         self.switch_screen("simulation_workflow")
+
+    def action_show_live_run(self) -> None:
+        """Switch to live simulation monitor screen."""
+        self.switch_screen("live_run")
+
+    def action_stop_simulation(self) -> None:
+        """Trigger cooperative cancellation of the active simulation."""
+        if hasattr(self, "supervisor") and self.supervisor.is_running:
+            self.supervisor.cancel_simulation()
+
+    def action_quit(self) -> None:
+        """Safe non-blocking quit action with active simulation confirmation."""
+        if hasattr(self, "supervisor") and self.supervisor.is_running:
+            self.push_screen(QuitConfirmModal(), self._handle_quit_confirm)
+        else:
+            super().action_quit()
+
+    def _handle_quit_confirm(self, confirmed: bool | None) -> None:
+        """Handle quit confirmation modal result."""
+        if not confirmed:
+            return
+
+        self.action_stop_simulation()
+        self._shutdown_timer = self.set_interval(0.1, self._poll_shutdown)
+
+    def _poll_shutdown(self) -> None:
+        """Asynchronously monitor shutdown without blocking the Textual event loop."""
+        if not self.supervisor.is_running:
+            if self._shutdown_timer is not None:
+                self._shutdown_timer.stop()
+                self._shutdown_timer = None
+
+            if self.supervisor.state == WorkloadState.FAILED and self.supervisor.last_error:
+                self.push_screen(ShutdownErrorModal(self.supervisor.last_error))
+            else:
+                super().action_quit()
 
     def action_simulation(self) -> None:
         """Switch to simulation workflow wizard screen."""

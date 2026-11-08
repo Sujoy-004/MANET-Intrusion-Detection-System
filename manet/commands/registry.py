@@ -48,6 +48,20 @@ _COMMANDS: tuple[AppCommand, ...] = (
         action="action_show_simulation",
     ),
     AppCommand(
+        name="sim:monitor",
+        display="Monitor Simulation",
+        help="Open the live simulation monitor screen",
+        parameters=(),
+        action="action_show_live_run",
+    ),
+    AppCommand(
+        name="sim:stop",
+        display="Stop Simulation",
+        help="Safely stop the active simulation workload",
+        parameters=(),
+        action="action_stop_simulation",
+    ),
+    AppCommand(
         name="theme-toggle",
         display="Toggle High Contrast",
         help="Toggle between standard SOC and high-contrast themes",

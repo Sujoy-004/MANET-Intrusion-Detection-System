@@ -22,7 +22,7 @@ from textual.widgets import Footer, Header, Input, Static
 from manet.adapters.diagnostics import DiagnosticsProbe
 from manet.adapters.status import StatusAdapter
 from manet.adapters.workspace import WorkspaceAdapter
-from manet.runtime.keymap import BINDING_RESULTS, BINDING_SIMULATION
+from manet.runtime.keymap import BINDING_LIVE_RUN, BINDING_RESULTS, BINDING_SIMULATION
 from manet.widgets.cta_hero import CtaHeroPanel
 from manet.widgets.dashboard_cards import (
     ActiveWorkloadCard,
@@ -42,6 +42,7 @@ class MainWorkspace(Screen):
 
     BINDINGS = [
         Binding(BINDING_SIMULATION, "simulation", "Simulation", show=True),
+        Binding(BINDING_LIVE_RUN, "show_live_run", "Live Monitor", show=True),
         Binding(BINDING_RESULTS, "results", "Results", show=True),
         Binding("escape", "dismiss_notification", "Dismiss", show=False),
     ]
@@ -225,14 +226,32 @@ class MainWorkspace(Screen):
                 else:
                     yield CtaHeroPanel(id="main-content-panel")
                 yield NavRail(id="nav-rail-panel")
-        yield StatusBar(id="status-bar")
+        yield StatusBar(id="status-bar", status_adapter=self.status_adapter)
         yield Footer()
 
     def on_mount(self) -> None:
         """Initialize live diagnostics and schedule periodic background polling (D-02)."""
+        if hasattr(self.app, "supervisor"):
+            self.status_adapter.supervisor = getattr(self.app, "supervisor", None)
         self.refresh_diagnostics()
         # Non-blocking periodic refresh every 4 seconds
         self.set_interval(4.0, self.refresh_diagnostics)
+        # Dedicated 0.5s timer for live workload status updates
+        self.set_interval(0.5, self._refresh_workload_fast)
+
+    def _refresh_workload_fast(self) -> None:
+        """Lightweight 0.5s refresh for active workload card and status bar."""
+        if hasattr(self.app, "supervisor") and self.status_adapter.supervisor is None:
+            self.status_adapter.supervisor = getattr(self.app, "supervisor", None)
+        status = self.status_adapter.get_status()
+        try:
+            self.query_one("#card-workload", ActiveWorkloadCard).update_status(status)
+        except NoMatches:
+            pass
+        try:
+            self.query_one("#status-bar", StatusBar).update_status(workload_status=status)
+        except NoMatches:
+            pass
 
     def refresh_diagnostics(self) -> None:
         """Non-blocking background refresh re-probing filesystem and environment state."""
@@ -288,6 +307,14 @@ class MainWorkspace(Screen):
         except Exception:
             pass
 
+    def action_show_live_run(self) -> None:
+        """Switch to LiveRunScreen monitor."""
+        if hasattr(self.app, "action_show_live_run"):
+            self.app.action_show_live_run()
+        elif self.app.is_screen_installed("live_run"):
+            self.app.switch_screen("live_run")
+
+    action_live_run = action_show_live_run
     action_new_simulation = action_simulation
     action_show_results = action_results
 

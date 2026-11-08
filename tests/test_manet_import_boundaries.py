@@ -50,12 +50,50 @@ def test_manet_never_imports_business_packages():
             len(violations) == 0
         ), f"Architectural violation (D-12/TUI-02): {py_file.relative_to(repo_root)} imports business packages: {violations}"
 
-    # Specifically assert adapters and widgets subpackages exist and are covered
-    for subpkg in ("adapters", "widgets"):
+    # Specifically assert adapters, runtime, screens, and widgets subpackages exist and are covered
+    for subpkg in ("adapters", "runtime", "screens", "widgets"):
         sub_dir = manet_dir / subpkg
         assert sub_dir.is_dir(), f"Expected subpackage directory {sub_dir} to exist"
         sub_py = list(sub_dir.glob("*.py"))
         assert len(sub_py) > 0, f"Expected python modules in {sub_dir}"
+
+
+def test_business_packages_never_import_manet():
+    """Verify simulator, attacks, feature_extraction, and ml never import manet (D-01)."""
+    repo_root = Path(__file__).resolve().parent.parent
+    business_pkgs = ("simulator", "attacks", "feature_extraction", "ml")
+
+    for pkg in business_pkgs:
+        pkg_dir = repo_root / pkg
+        if not pkg_dir.exists():
+            continue
+        py_files = sorted(pkg_dir.rglob("*.py"))
+        for py_file in py_files:
+            imported = _get_imported_modules(py_file)
+            violations = [
+                imp
+                for imp in imported
+                if imp == "manet" or imp.startswith("manet.")
+            ]
+            assert (
+                len(violations) == 0
+            ), f"Bidirectional violation (D-01): {py_file.relative_to(repo_root)} imports manet: {violations}"
+
+            # Verify get_project_root is never imported into simulator/
+            if pkg == "simulator":
+                assert (
+                    "manet.runtime.paths" not in imported
+                ), f"simulator module {py_file.relative_to(repo_root)} imports get_project_root"
+
+
+def test_bootstrap_is_at_project_root():
+    """Verify bootstrap.py exists strictly at the repository root and never inside manet/."""
+    repo_root = Path(__file__).resolve().parent.parent
+    bootstrap_root = repo_root / "bootstrap.py"
+    bootstrap_inside_manet = repo_root / "manet" / "bootstrap.py"
+
+    assert bootstrap_root.is_file(), f"Expected bootstrap.py at repo root {bootstrap_root}"
+    assert not bootstrap_inside_manet.exists(), "bootstrap.py must not exist inside manet/ directory"
 
 
 def test_command_package_never_uses_os_execution():

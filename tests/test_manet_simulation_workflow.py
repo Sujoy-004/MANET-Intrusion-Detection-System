@@ -536,11 +536,19 @@ async def test_duplicate_scenario_id_mounts_cleanly_in_wizard(tmp_path: Path):
         assert step1.selected_preset.nodes == 30
 
 
+class _DummyWorkflowExecutor:
+    """Mock executor for wizard integration tests."""
+
+    def execute_simulation(self, *args: Any, **kwargs: Any) -> dict[str, float]:
+        return {"pdr": 0.95, "throughput_bps": 15000.0}
+
+
 @pytest.mark.asyncio
 async def test_wizard_resets_on_reentry_preventing_stale_reconfirmation(tmp_path: Path):
     """Verify wizard resets to Step 1 on re-entry and stale Step 3 cannot be re-confirmed (WR-01)."""
+    from manet.screens.live_run import LiveRunScreen
     workspace_root = tmp_path / ".manet-workspace"
-    app = ManetApp()
+    app = ManetApp(executor=_DummyWorkflowExecutor())
     workflow_screen = SimulationWorkflowScreen(
         workspace_adapter=WorkspaceAdapter(workspace_root)
     )
@@ -565,11 +573,15 @@ async def test_wizard_resets_on_reentry_preventing_stale_reconfirmation(tmp_path
         await pilot.pause()
         assert switcher.current == "step-preflight-review"
 
-        # Confirm launch on Step 3
+        # Confirm launch on Step 3 -> transitions to LiveRunScreen (Phase 10 D-02)
         await pilot.press("enter")
         await pilot.pause()
 
-        # Returned to workspace screen
+        # Transitions to LiveRunScreen; background with 'b' to return to workspace
+        if isinstance(app.screen, LiveRunScreen):
+            await pilot.press("b")
+            await pilot.pause()
+
         assert isinstance(app.screen, MainWorkspace)
         # Handoff request is preserved
         assert workflow_screen.last_completed_launch_request is not None

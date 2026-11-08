@@ -134,17 +134,43 @@ class ActiveWorkloadCard(Static):
         engine_state = status.engine_state
         desc = status.description
 
-        # State color styling
-        workload_color = "cyan" if workload_state == "IDLE" else ("green" if workload_state == "RUNNING" else "yellow")
-        engine_color = "green" if "Ready" in engine_state else "yellow"
+        lines: list[str] = ["[bold $primary]Active Workload[/]"]
 
-        content = (
-            f"[bold $primary]Active Workload[/]\n"
-            f"[bold]Workload State:[/] [{workload_color}]{workload_state}[/] [dim]({desc})[/]\n"
-            f"[bold]Routing Engine:[/] [{engine_color}]{engine_state}[/]\n"
-            f"[bold]IDS Protection:[/] [dim]Standby (Ready for deployment)[/]"
-        )
-        self.update(content)
+        # Supervisor metrics if available
+        sup = getattr(self.status_adapter, "supervisor", None)
+        metrics = getattr(sup, "metrics", None) if sup else None
+
+        if workload_state == "RUNNING":
+            lines.append(f"[bold]Workload State:[/] [green]RUNNING[/] [dim]({desc})[/]")
+            lines.append(f"[bold]Routing Engine:[/] [green]{engine_state}[/]")
+            lines.append(f"[bold]IDS Protection:[/] [green]Active[/]")
+            lines.append("[bold $navigation-cyan]\\[L][/] Live Monitor")
+        elif workload_state == "STOPPING":
+            lines.append(f"[bold]Workload State:[/] [amber]STOPPING...[/] [dim]({desc})[/]")
+            lines.append(f"[bold]Routing Engine:[/] [yellow]{engine_state}[/]")
+            lines.append("[bold $navigation-cyan]\\[L][/] Live Monitor")
+        elif workload_state == "INTERRUPTED":
+            lines.append(f"[bold]Workload State:[/] [amber]INTERRUPTED[/] [dim]({desc})[/]")
+            lines.append(f"[bold]Routing Engine:[/] [dim]{engine_state}[/]")
+            lines.append("[bold $navigation-cyan]\\[L][/] View Run  [dim]|[/]  [bold $navigation-cyan]\\[S][/] New Simulation")
+        elif workload_state == "FAILED":
+            lines.append(f"[bold]Workload State:[/] [red]FAILED[/] [dim]({desc})[/]")
+            lines.append(f"[bold]Routing Engine:[/] [dim]{engine_state}[/]")
+            lines.append("[bold $navigation-cyan]\\[S][/] New Simulation")
+        elif workload_state == "COMPLETED":
+            lines.append(f"[bold]Workload State:[/] [bright_green]COMPLETED[/] [dim]({desc})[/]")
+            lines.append(f"[bold]Routing Engine:[/] [green]{engine_state}[/]")
+            if metrics:
+                pdr = f"{metrics.get('pdr', 0.0) * 100:.1f}%"
+                thru = f"{metrics.get('throughput_bps', 0.0):.0f} bps"
+                lines.append(f"[bold]Results:[/] PDR: [green]{pdr}[/] | Thru: [cyan]{thru}[/]")
+            lines.append("[bold $navigation-cyan]\\[L][/] View Run  [dim]|[/]  [bold $navigation-cyan]\\[S][/] New Simulation")
+        else:
+            lines.append(f"[bold]Workload State:[/] [cyan]IDLE[/] [dim]({desc})[/]")
+            lines.append(f"[bold]Routing Engine:[/] [green]{engine_state}[/]")
+            lines.append("[bold]IDS Protection:[/] [dim]Standby (Ready for deployment)[/]")
+
+        self.update("\n".join(lines))
 
     def update_report(self, report: DiagnosticsReport | None = None) -> None:
         """Periodic refresh hook to poll active workload state."""

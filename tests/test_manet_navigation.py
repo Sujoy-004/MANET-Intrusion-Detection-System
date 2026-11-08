@@ -345,3 +345,102 @@ async def test_repeated_shortcut_presses_bounded_queue():
         adapter = rail.adapter
         assert len(adapter.get_history()) <= 20
 
+
+@pytest.mark.asyncio
+async def test_live_run_shortcut():
+    """Verify pressing 'l' in MainWorkspace switches directly to LiveRunScreen."""
+    from manet.screens.live_run import LiveRunScreen
+    app = ManetApp()
+    async with app.run_test() as pilot:
+        assert isinstance(app.screen, MainWorkspace)
+        await pilot.press("l")
+        await pilot.pause()
+        assert isinstance(app.screen, LiveRunScreen)
+
+
+def test_command_registry_sim_commands():
+    """Verify sim:monitor and sim:stop are properly registered in command registry."""
+    from manet.commands import registry
+    commands = {cmd.name: cmd for cmd in registry.iter_known()}
+
+    assert "sim:monitor" in commands
+    assert commands["sim:monitor"].action == "action_show_live_run"
+
+    assert "sim:stop" in commands
+    assert commands["sim:stop"].action == "action_stop_simulation"
+
+
+@pytest.mark.asyncio
+async def test_active_workload_card_displays_live_state(tmp_path):
+    """Verify ActiveWorkloadCard reflects RUNNING state and COMPLETED metrics from supervisor."""
+    from manet.adapters.handoff import SimulationLaunchRequest
+    from manet.runtime.supervisor import WorkloadState
+    from manet.widgets.dashboard_cards import ActiveWorkloadCard
+
+    app = ManetApp()
+    async with app.run_test() as pilot:
+        workspace = app.screen
+        assert isinstance(workspace, MainWorkspace)
+        card = workspace.query_one("#card-workload", ActiveWorkloadCard)
+
+        # Initially IDLE
+        assert "IDLE" in str(card.render())
+
+        # Set supervisor to RUNNING
+        app.supervisor.current_request = SimulationLaunchRequest(
+            experiment_id="exp_nav_test",
+            scenario_name="e1_normal_30n",
+            seed=42,
+            config={"duration": 100.0},
+            workspace_dir=tmp_path,
+            created_at="2026-11-08T00:00:00Z",
+            ids_enabled=True,
+        )
+        app.supervisor.state = WorkloadState.RUNNING
+        app.supervisor.stage = "SIMULATING"
+
+        await pilot.pause(0.6)  # allow 0.5s fast refresh to fire
+        rendered = str(card.render())
+        assert "RUNNING" in rendered
+        assert "[L] Live Monitor" in rendered
+
+        # Transition to COMPLETED with metrics
+        app.supervisor.state = WorkloadState.COMPLETED
+        app.supervisor.stage = "COMPLETED"
+        app.supervisor.metrics = {"pdr": 0.94, "throughput_bps": 12000.0}
+
+        await pilot.pause(0.6)
+        rendered_comp = str(card.render())
+        assert "COMPLETED" in rendered_comp
+        assert "94.0%" in rendered_comp
+        assert "[L] View Run" in rendered_comp
+
+
+@pytest.mark.asyncio
+async def test_safe_quit_confirmation_guard():
+    """Verify quitting with active simulation prompts QuitConfirmModal."""
+    from manet.app import QuitConfirmModal
+    from manet.runtime.supervisor import WorkloadState
+
+    app = ManetApp()
+    async with app.run_test() as pilot:
+        # Simulate active run
+        app.supervisor.state = WorkloadState.RUNNING
+
+        # Press ctrl+q to quit
+        await pilot.press("ctrl+q")
+        await pilot.pause()
+
+        # Modal must be displayed, app must not have exited
+        assert isinstance(app.screen, QuitConfirmModal)
+
+        # Dismiss modal via cancel
+        btn_cancel = app.screen.query_one("#btn-cancel")
+        btn_cancel.press()
+        await pilot.pause()
+
+        # Should be back to workspace, simulation still running
+        assert isinstance(app.screen, MainWorkspace)
+        assert app.supervisor.is_running is True
+
+
