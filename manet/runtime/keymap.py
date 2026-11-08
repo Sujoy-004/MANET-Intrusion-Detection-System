@@ -13,6 +13,9 @@ BINDING_QUIT = "ctrl+q"
 BINDING_PALETTE = "ctrl+p"
 BINDING_SIMULATION = "s"
 BINDING_RESULTS = "r"
+BINDING_LIVE_RUN = "l"
+BINDING_STOP = "x"
+BINDING_BACKGROUND = "b"
 
 SHORTCUT_HINTS: dict[str, str] = {
     BINDING_CONSOLE: "Open command console",
@@ -21,6 +24,9 @@ SHORTCUT_HINTS: dict[str, str] = {
     BINDING_QUIT: "Quit",
     BINDING_SIMULATION: "Simulation workflow wizard",
     BINDING_RESULTS: "Results notice (Phase 11 pending)",
+    BINDING_LIVE_RUN: "View active simulation monitor",
+    BINDING_STOP: "Stop active simulation",
+    BINDING_BACKGROUND: "Background simulation run",
 }
 
 __all__ = [
@@ -30,5 +36,8 @@ __all__ = [
     "BINDING_QUIT",
     "BINDING_SIMULATION",
     "BINDING_RESULTS",
+    "BINDING_LIVE_RUN",
+    "BINDING_STOP",
+    "BINDING_BACKGROUND",
     "SHORTCUT_HINTS",
 ]
