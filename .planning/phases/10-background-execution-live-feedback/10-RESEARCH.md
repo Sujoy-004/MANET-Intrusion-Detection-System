@@ -738,11 +738,12 @@ class TelemetrySink:
 
 *Note: All core simulation stepping equivalence and boundary advancement findings were empirically verified in this session and are tagged [VERIFIED].*
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Optimal Periodic Drain Interval for 80x24 Terminals:**
+1. **Optimal Periodic Drain Interval for 80x24 Terminals** — RESOLVED:
+   - Resolution: Default to 50ms (20Hz) with maximum 100 items per drain batch; fallback to 100ms if reduced motion is enabled.
    - What we know: 50ms (20Hz) provides fluid animation; 100ms (10Hz) conserves CPU.
-   - Recommendation: Default to 50ms (20Hz) with maximum 100 items per drain batch; fallback to 100ms if reduced motion is enabled.
+   - Recommendation: Implemented in `10-02-PLAN.md` with 50ms periodic timer draining up to 100 items into `RichLog(max_lines=500)`.
 
 ## Environment Availability
 
