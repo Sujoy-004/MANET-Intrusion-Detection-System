@@ -7,6 +7,11 @@ from manet.adapters.diagnostics import (
     DiagnosticsProbe,
     DiagnosticsReport,
 )
+from manet.adapters.execution import (
+    SimulationExecutorProtocol,
+    TelemetryEvent,
+    TelemetrySinkProtocol,
+)
 from manet.adapters.handoff import (
     SimulationLaunchRequest,
 )
@@ -59,8 +64,11 @@ __all__ = [
     "ScenarioAdapter",
     "ScenarioPreset",
     "SimulationConfigValidator",
+    "SimulationExecutorProtocol",
     "SimulationLaunchRequest",
     "StatusAdapter",
+    "TelemetryEvent",
+    "TelemetrySinkProtocol",
     "WorkloadStatus",
     "WorkspaceAdapter",
     "build_custom_configuration",

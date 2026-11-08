@@ -225,18 +225,18 @@ class SimulationRunner:
             now = self.env.now
             for nid in sorted(self.nodes.keys()):
                 node = self.nodes[nid]
-                self.trace_rows.append([
-                    f"{now:.6f}",
-                    nid,
-                    -1,
-                    0,
-                    "NODE_STATUS",
-                    0,
-                    "",
-                    nid,
-                    f"{node.speed:.4f}",
-                    len(node.neighbors),
-                ])
+                self.log_event(
+                    sim_time=now,
+                    src=nid,
+                    dst=-1,
+                    pkt_id=0,
+                    pkt_type="NODE_STATUS",
+                    hop_count=0,
+                    dropped_by=None,
+                    node_id=nid,
+                    speed=node.speed,
+                    neighbor_count=len(node.neighbors),
+                )
 
     def select_dynamic_attacker(self, flows: List[Dict[str, Any]]) -> int:
         """Select intermediate node along active CBR flow paths to guarantee interception."""
