@@ -83,7 +83,17 @@ Plans:
   2. The run view shows status, elapsed time, measurable progress, and current stage, with bounded live event/log streaming that never blocks the simulator and never retains unbounded telemetry in memory
   3. Ctrl+C, Esc, or application shutdown leaves result files uncorrupted; simulation event ordering and results are identical regardless of UI interaction, and UI callbacks cannot change simulation or IDS decisions
   4. Stop ends the run safely with partial traces preserved on disk and the run marked interrupted; worker exceptions surface actionable diagnostics with no silent retries and no mislabeling of partial runs as completed; pause/resume is visible but disabled (the runner does not support it)
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+**Wave 1**
+- [ ] 10-01-PLAN.md — Deliver foundational stepping execution engine, bounded telemetry sink, and WorkloadSupervisor state machine
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 10-02-PLAN.md — Implement reconnectable LiveRunScreen with SimPy virtual-time progress, authentic counters, throttled RichLog drain, and safe stop controls
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 10-03-PLAN.md — Wire supervisor into ManetApp, connect wizard launch, integrate dashboard status cards, register shortcuts/commands, and verify package isolation
 **UI hint**: yes
 
 ### Phase 11: Results & Experiment Records
@@ -116,7 +126,7 @@ Plans:
 | 7. TUI Shell & Application Frame | 5/5 | Complete | 2026-11-07 |
 | 8. Operational Dashboard | 3/3 | Complete | 2026-11-07 |
 | 9. Simulation Workflow | 3/3 | Complete | 2026-11-08 |
-| 10. Background Execution & Live Feedback | 0/? | Not started | - |
+| 10. Background Execution & Live Feedback | 0/3 | Ready | - |
 | 11. Results & Experiment Records | 0/? | Not started | - |
 | 12. Quality, Testing & Delivery | 0/? | Not started | - |
 
