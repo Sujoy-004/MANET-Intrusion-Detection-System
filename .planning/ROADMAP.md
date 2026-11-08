@@ -9,7 +9,7 @@
 
 - [x] **Phase 7: TUI Shell & Application Frame** - Textual package, launcher, keyboard-first navigation, command palette/console, cybersecurity theming (completed 2026-11-07)
 - [x] **Phase 8: Operational Dashboard** - Real capability diagnostics, workload/experiment snapshots, honest capability states (completed 2026-11-07)
-- [ ] **Phase 9: Simulation Workflow** - Preset/custom run configuration, seed selection, IDS gating, review/confirm, workspace allocation
+- [x] **Phase 9: Simulation Workflow** - Preset/custom run configuration, seed selection, IDS gating, review/confirm, workspace allocation (completed 2026-11-08)
 - [ ] **Phase 10: Background Execution & Live Feedback** - Non-blocking worker, bounded telemetry, safe interruption and stop
 - [ ] **Phase 11: Results & Experiment Records** - Real metrics display, atomic manifests with checksums, session history
 - [ ] **Phase 12: Quality, Testing & Delivery** - Unweakened suite + new feature tests, CLI compatibility, README/CHANGELOG, honest completion report
@@ -65,13 +65,13 @@ Plans:
 
 Plans:
 **Wave 1**
-- [ ] 09-01-PLAN.md — Deliver foundational adapter layer for authentic scenario discovery, two-tier parameter validation, and collision-free workspace allocation
+- [x] 09-01-PLAN.md — Deliver foundational adapter layer for authentic scenario discovery, two-tier parameter validation, and collision-free workspace allocation
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 09-02-PLAN.md — Implement interactive 3-step simulation workflow wizard widgets, blur validation, IDS model gating, and pre-flight review screen
+- [x] 09-02-PLAN.md — Implement interactive 3-step simulation workflow wizard widgets, blur validation, IDS model gating, and pre-flight review screen
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 09-03-PLAN.md — Wire MainWorkspace [S] shortcut and sim:start command, update navigation tests, and verify SimulationRunner end-to-end compatibility
+- [x] 09-03-PLAN.md — Wire MainWorkspace [S] shortcut and sim:start command, update navigation tests, and verify SimulationRunner end-to-end compatibility
 **UI hint**: yes
 
 ### Phase 10: Background Execution & Live Feedback
@@ -115,7 +115,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 7. TUI Shell & Application Frame | 5/5 | Complete | 2026-11-07 |
 | 8. Operational Dashboard | 3/3 | Complete | 2026-11-07 |
-| 9. Simulation Workflow | 0/3 | Ready to execute | - |
+| 9. Simulation Workflow | 3/3 | Complete | 2026-11-08 |
 | 10. Background Execution & Live Feedback | 0/? | Not started | - |
 | 11. Results & Experiment Records | 0/? | Not started | - |
 | 12. Quality, Testing & Delivery | 0/? | Not started | - |
@@ -128,4 +128,4 @@ Plans:
 - Project-level future features: ATK-04 (RREQ Flooding/DoS), VIZ-01 (web replay dashboard), XAI-01 (SHAP explainability)
 
 ---
-*Roadmap updated: 2026-11-06 — v2.0 Interactive TUI milestone (phases 7-12)*
+*Roadmap updated: 2026-11-08 — v2.0 Interactive TUI milestone (phases 7-12)*

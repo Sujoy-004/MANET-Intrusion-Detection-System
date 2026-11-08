@@ -2,15 +2,15 @@
 gsd_state_version: "1.0"
 milestone: v2.0
 milestone_name: Interactive TUI Application
-status: ready_to_execute
-stopped_at: Phase 9 pre-execution readiness audit complete
-last_updated: "2026-11-07T15:08:00.000Z"
-state_head: 823b1f0dfb2ece073f2a964646555a7b59d8f54c
+status: ready_to_verify
+stopped_at: Completed Phase 9 Plan 09-03 — ready for /gsd-verify-work 09
+last_updated: "2026-11-08T03:57:22Z"
+state_head: ec6f74f78eada80ece72acb0b7436466a36e23d0
 progress:
   total_phases: 6
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 11
-  completed_plans: 8
+  completed_plans: 11
 current_phase_name: Simulation Workflow
 ---
 
@@ -24,19 +24,20 @@ current_phase_name: Simulation Workflow
 
 ## Current Position
 
-- **Phase:** 9 of 12 (Simulation Workflow) — next phase
-- **Status:** Phase 8 (Operational Dashboard) complete (3 plans executed: 08-01..08-03, 14/14 must-haves verified)
+- **Phase:** 9 of 12 (Simulation Workflow) — complete (3/3 plans executed)
+- **Status:** Phase 9 complete (09-01, 09-02, 09-03 summaries on disk) — ready for verify-work
 - **Progress:**
-  [██░░░░] 2/6 phases complete (v2.0)
+  [███░░░] 3/6 phases complete (v2.0)
 
 ## Performance Metrics
 
 | Metric | Value |
 |--------|-------|
-| Phases complete (v2.0) | 2 / 6 |
-| Plans complete (v2.0) | 8 / 8 |
+| Phases complete (v2.0) | 3 / 6 |
+| Plans complete (v2.0) | 11 / 11 (planned so far) |
 | Requirements mapped | 24 / 24 (TUI-01..21, DELV-01..03) |
-| Test suite | 148 tests passing (79 baseline + 69 manet tests) |
+| Requirements satisfied | 14 / 24 (TUI-01..14; TUI-15..21, DELV-01..03 pending) |
+| Test suite | 176 tests passing (79 baseline + 97 manet tests) |
 
 ## Requirements Coverage Snapshot
 
@@ -44,7 +45,7 @@ current_phase_name: Simulation Workflow
 |-------|--------------|--------|
 | 7 - TUI Shell & Application Frame | TUI-01..05 | Complete (07-01..07-05 verified) |
 | 8 - Operational Dashboard | TUI-06..08 | Complete (08-01..08-03 verified) |
-| 9 - Simulation Workflow | TUI-09..14 | Pending |
+| 9 - Simulation Workflow | TUI-09..14 | Complete (09-01..09-03) |
 | 10 - Background Execution & Live Feedback | TUI-15..18 | Pending |
 | 11 - Results & Experiment Records | TUI-19..21 | Pending |
 | 12 - Quality, Testing & Delivery | DELV-01..03 | Pending |
@@ -81,13 +82,14 @@ current_phase_name: Simulation Workflow
 |---|-------------|------|--------|-----------|
 | 261107-h0c | Refine Phase 8 plans before execution | 2026-11-07 | e08d7c7 | [261107-h0c-refine-phase-08-plans](./quick/261107-h0c-refine-phase-08-plans/) |
 | 261107-wwh | Google AI Studio warm-white theme & typography | 2026-11-07 | 5f1725c | [261107-wwh-warm-white-google-ai-studio-theme](./quick/261107-wwh-warm-white-google-ai-studio-theme/) |
+| 3 | re-bake gsd agents (gsd install --opencode @1.20.1) | 2026-11-08 | d990673 | — |
 
 ## Session Continuity
 
-**Last session:** 2026-11-07T15:08:00.000Z
-**Stopped at:** Phase 9 pre-execution readiness audit complete
-**Resume file:** .planning/phases/09-simulation-workflow/09-01-PLAN.md
+**Last session:** 2026-11-08T03:57:22Z
+**Stopped at:** Completed 09-03-PLAN.md (Phase 9 Simulation Workflow complete)
+**Resume file:** None
 
-- **Last action:** Phase 9 planned and pre-execution readiness audit complete (all 20 review items verified; 0 blockers)
-- **Next up:** `/gsd-execute-phase 09`
-- **Environment notes:** Windows-native, Python 3.11.8; 148 passing tests verified (79 baseline + 69 manet); Textual 8.2.8 installed
+- **Last action:** Plan 09-03 executed: Task 1 [S]/sim:start wiring verified committed (d990673, prior session); Task 2 SimulationRunner compatibility + import-boundary regression tests committed (ec6f74f); full suite 176 passed
+- **Next up:** `/gsd-verify-work 09` then `/gsd-plan-phase 10`
+- **Environment notes:** Windows-native, Python 3.11.8; 176 passing tests verified (79 baseline + 97 manet); Textual 8.2.8 installed

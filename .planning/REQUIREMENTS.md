@@ -20,12 +20,12 @@ Locale note: REQ-IDs follow the v1.0 convention ([CATEGORY]-[NN]). New category 
 
 ### Simulation Workflow
 
-- [ ] **TUI-09**: User can start a validated preset run by choosing a scenario JSON from `scenarios/` shown with its real name, description, and relevant parameters (actual file schema, not documented examples)
-- [ ] **TUI-10**: User can start a custom run configuring only parameters the actual runner supports, with validation of node counts, flow endpoints, durations, seed, and numeric ranges
-- [ ] **TUI-11**: User can select the random seed explicitly for any run
-- [ ] **TUI-12**: User can enable IDS only when the champion model artifact exists, and never otherwise
-- [ ] **TUI-13**: User confirms a review screen before any run launches, and each run executes into a unique experiment directory under a dedicated `.manet-workspace/` without overwriting existing traces, datasets, models, or experiment records
-- [ ] **TUI-14**: Each experiment records scenario, seed, configuration, software version, and start time at launch, using the existing `SimulationRunner`, scenario loader, and metric functions with output compatible with the current trace schema and legacy CLI behavior
+- [x] **TUI-09**: User can start a validated preset run by choosing a scenario JSON from `scenarios/` shown with its real name, description, and relevant parameters (actual file schema, not documented examples)
+- [x] **TUI-10**: User can start a custom run configuring only parameters the actual runner supports, with validation of node counts, flow endpoints, durations, seed, and numeric ranges
+- [x] **TUI-11**: User can select the random seed explicitly for any run
+- [x] **TUI-12**: User can enable IDS only when the champion model artifact exists, and never otherwise
+- [x] **TUI-13**: User confirms a review screen before any run launches, and each run executes into a unique experiment directory under a dedicated `.manet-workspace/` without overwriting existing traces, datasets, models, or experiment records
+- [x] **TUI-14**: Each experiment records scenario, seed, configuration, software version, and start time at launch, using the existing `SimulationRunner`, scenario loader, and metric functions with output compatible with the current trace schema and legacy CLI behavior
 
 ### Execution & Live Feedback
 
@@ -75,12 +75,12 @@ Locale note: REQ-IDs follow the v1.0 convention ([CATEGORY]-[NN]). New category 
 | TUI-06 | Phase 8 — Operational Dashboard | Satisfied |
 | TUI-07 | Phase 8 — Operational Dashboard | Satisfied |
 | TUI-08 | Phase 8 — Operational Dashboard | Satisfied |
-| TUI-09 | Phase 9 — Simulation Workflow | Pending |
-| TUI-10 | Phase 9 — Simulation Workflow | Pending |
-| TUI-11 | Phase 9 — Simulation Workflow | Pending |
-| TUI-12 | Phase 9 — Simulation Workflow | Pending |
-| TUI-13 | Phase 9 — Simulation Workflow | Pending |
-| TUI-14 | Phase 9 — Simulation Workflow | Pending |
+| TUI-09 | Phase 9 — Simulation Workflow | Satisfied (09-01, 09-02, 09-03) |
+| TUI-10 | Phase 9 — Simulation Workflow | Satisfied (09-01, 09-02, 09-03) |
+| TUI-11 | Phase 9 — Simulation Workflow | Satisfied (09-01, 09-02, 09-03) |
+| TUI-12 | Phase 9 — Simulation Workflow | Satisfied (09-01, 09-02, 09-03) |
+| TUI-13 | Phase 9 — Simulation Workflow | Satisfied (09-01, 09-02, 09-03) |
+| TUI-14 | Phase 9 — Simulation Workflow | Satisfied (09-01, 09-02, 09-03) |
 | TUI-15 | Phase 10 — Background Execution & Live Feedback | Pending |
 | TUI-16 | Phase 10 — Background Execution & Live Feedback | Pending |
 | TUI-17 | Phase 10 — Background Execution & Live Feedback | Pending |
