@@ -48,6 +48,7 @@ from manet.adapters.workspace import (
     WorkspaceAdapter,
     record_launch_manifest,
     sanitize_run_tag,
+    update_manifest_status,
 )
 
 __all__ = [
@@ -74,6 +75,7 @@ __all__ = [
     "build_custom_configuration",
     "record_launch_manifest",
     "sanitize_run_tag",
+    "update_manifest_status",
     "validate_duration",
     "validate_loss_probability",
     "validate_node_count",

@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import datetime
 import json
+import os
 from pathlib import Path
 import re
 from typing import Any
@@ -52,6 +53,49 @@ def record_launch_manifest(
     }
     with open(manifest_path, "w", encoding="utf-8") as f:
         json.dump(manifest_data, f, indent=2)
+    return manifest_path
+
+
+def update_manifest_status(
+    experiment_dir: Path,
+    status: str,
+    metrics: dict[str, float] | None = None,
+    error: str | None = None,
+) -> Path:
+    """Atomically update status, metrics, and timestamps in experiment manifest.json."""
+    manifest_path = experiment_dir / "manifest.json"
+    tmp_path = experiment_dir / "manifest.json.tmp"
+
+    if manifest_path.is_file():
+        with open(manifest_path, "r", encoding="utf-8") as f:
+            manifest_data = json.load(f)
+    else:
+        manifest_data = {
+            "experiment_id": experiment_dir.name,
+            "scenario_name": "Unknown",
+            "seed": 0,
+            "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        }
+
+    now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    manifest_data["status"] = status
+    manifest_data["updated_at"] = now_iso
+
+    if status in ("COMPLETED", "INTERRUPTED", "FAILED"):
+        manifest_data["completed_at"] = now_iso
+
+    if metrics is not None:
+        manifest_data["metrics"] = metrics
+        if "pdr" in metrics and metrics["pdr"] is not None:
+            manifest_data["pdr"] = metrics["pdr"]
+
+    if error is not None:
+        manifest_data["error_details"] = str(error)
+
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        json.dump(manifest_data, f, indent=2)
+
+    os.replace(tmp_path, manifest_path)
     return manifest_path
 
 
@@ -189,6 +233,7 @@ class WorkspaceAdapter:
                 counter += 1
 
     record_launch_manifest = staticmethod(record_launch_manifest)
+    update_manifest_status = staticmethod(update_manifest_status)
 
 
 __all__ = [
@@ -196,4 +241,5 @@ __all__ = [
     "WorkspaceAdapter",
     "record_launch_manifest",
     "sanitize_run_tag",
+    "update_manifest_status",
 ]
