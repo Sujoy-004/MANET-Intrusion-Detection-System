@@ -76,9 +76,9 @@ async def test_search_fuzzy_scoring_and_filtering():
         provider = ManetCommands(app.screen)
 
         # Matching query
-        matching_hits = [hit async for hit in provider.search("work")]
+        matching_hits = [hit async for hit in provider.search("workspace")]
         assert len(matching_hits) == 1, (
-            f"Expected exactly 1 hit for 'work', got {len(matching_hits)}"
+            f"Expected exactly 1 hit for 'workspace', got {len(matching_hits)}"
         )
         hit = matching_hits[0]
         assert isinstance(hit, Hit), f"Expected Hit instance, got {type(hit)}"
@@ -86,6 +86,13 @@ async def test_search_fuzzy_scoring_and_filtering():
         assert str(hit.text) == "Go to workspace", (
             f"Unexpected matched hit text '{hit.text}'"
         )
+
+        # Matching query for simulation workflow
+        sim_hits = [hit async for hit in provider.search("workflow")]
+        assert len(sim_hits) == 1, (
+            f"Expected exactly 1 hit for 'workflow', got {len(sim_hits)}"
+        )
+        assert str(sim_hits[0].text) == "Start Simulation Workflow"
 
         # Non-matching nonsense query
         miss_hits = [hit async for hit in provider.search("xyz999nonsense_unmatched")]
