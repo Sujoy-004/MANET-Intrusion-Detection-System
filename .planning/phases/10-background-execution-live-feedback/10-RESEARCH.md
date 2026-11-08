@@ -22,6 +22,14 @@
   - Define an abstract execution protocol (`SimulationExecutorProtocol`) within `manet/adapters/` or `manet/runtime/` specifying the execution interface.
   - Retain the external composition-root design: create a minimal top-level composition root outside `manet/` (e.g. `bootstrap.py` or entry point) that imports both `ManetApp` and the concrete `SimulationRunner` adapter, injecting the concrete runner into `ManetApp`.
   - Verify `python -m manet` startup through this dependency-injection path, keeping application entry fully functional while maintaining strict package isolation.
+  - **Missing Execution Engine Fail-Fast:** `WorkloadSupervisor` must enforce a fail-fast guard in `start_simulation()` if `self.executor is None`. A missing or failed bootstrap must never silently produce a usable-looking application that skips execution and reports runs as `COMPLETED`. In `manet/__main__.py`, if bootstrap injection fails, the application must visibly fail fast with an actionable diagnostic message.
+- **NODE_STATUS Telemetry Instrumentation:**
+  - `_periodic_status_logger()` in `simulator/run_scenario.py` must route through `self.log_event(...)` rather than appending directly to `self.trace_rows`.
+  - Calling `self.log_event(sim_time=now, src=nid, dst=-1, pkt_id=0, pkt_type="NODE_STATUS", hop_count=0, dropped_by=None, node_id=nid, speed=node.speed, neighbor_count=len(node.neighbors))` ensures `NODE_STATUS` events pass through `log_event()` and reach the telemetry hook exactly once without altering the canonical 10-column trace schema, row ordering, IDS behavior, or legacy CLI semantics.
+- **Partial Trace Persistence on Failure:**
+  - The stepping executor must wrap simulation execution in robust error handling: if an exception occurs mid-run, attempt best-effort trace persistence (`runner.write_traces()`) and IDS isolation-log persistence (`runner.online_ids.write_isolation_log()`) before recording `FAILED`.
+  - Preserve the original execution exception and capture any finalization failure separately without masking the root cause.
+  - An execution exception must NEVER result in a run being labeled `COMPLETED` or `INTERRUPTED`.
 - **API, Configuration Invariants & Model-Path Resolution:**
   - Retain the existing `SimulationRunner.run()` API signature and return contract (`Dict[str, float]` metrics) completely unchanged.
   - Legacy CLI execution path (`python -m simulator.run_scenario --scenario ... --seed ... --out ...`) remains completely unaffected.

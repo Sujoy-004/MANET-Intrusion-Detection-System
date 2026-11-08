@@ -26,6 +26,10 @@ Phase 10 delivers non-blocking background execution and live telemetry for simul
   - Define an abstract execution protocol (`SimulationExecutorProtocol`) within `manet/adapters/` or `manet/runtime/` specifying the execution interface.
   - Retain the external composition-root design: create a minimal top-level composition root outside `manet/` (e.g. `bootstrap.py` or entry point) that imports both `ManetApp` and the concrete `SimulationRunner` adapter, injecting the concrete runner into `ManetApp`.
   - Verify `python -m manet` startup through this dependency-injection path, keeping application entry fully functional while maintaining strict package isolation.
+  - **Missing Execution Engine Fail-Fast:** `WorkloadSupervisor` must enforce a fail-fast guard in `start_simulation()` if `self.executor is None`. A missing or failed bootstrap must never silently produce a usable-looking application that skips execution and reports runs as `COMPLETED`. In `manet/__main__.py`, if bootstrap injection fails, the application must visibly fail fast with an actionable diagnostic message.
+- **NODE_STATUS Telemetry Instrumentation:**
+  - `_periodic_status_logger()` in `simulator/run_scenario.py` must route through `self.log_event(...)` rather than appending directly to `self.trace_rows`.
+  - Calling `self.log_event(sim_time=now, src=nid, dst=-1, pkt_id=0, pkt_type="NODE_STATUS", hop_count=0, dropped_by=None, node_id=nid, speed=node.speed, neighbor_count=len(node.neighbors))` ensures `NODE_STATUS` events pass through `log_event()` and reach the telemetry hook exactly once without altering the canonical 10-column trace schema, row ordering, IDS behavior, or legacy CLI semantics.
 - **API, Configuration Invariants & Model-Path Resolution:**
   - Retain the existing `SimulationRunner.run()` API signature and return contract (`Dict[str, float]` metrics) completely unchanged.
   - Legacy CLI execution path (`python -m simulator.run_scenario --scenario ... --seed ... --out ...`) remains completely unaffected.
@@ -34,16 +38,21 @@ Phase 10 delivers non-blocking background execution and live telemetry for simul
 - **Controlled Stepping API, Virtual-Time Completion & Stepping Equivalence:**
   - Driven by cooperative time stepping with cooperative cancellation checking (an explicit `threading.Event` token between steps/ticks).
   - **Virtual-Time Completion & Boundary Semantics:** Clarify that a naive `while env.peek() < duration: env.step()` loop may produce matching trace rows without advancing `env.now` to `duration` (halting at the timestamp of the last event prior to duration). Controlled stepping is required to preserve full `env.run(until=duration)` semantics: advancing virtual time cleanly to the requested duration (`env.now == duration` on normal completion) while strictly not processing ordinary events scheduled exactly at that boundary.
-  - **Stepping Equivalence Scope:** Cooperative time stepping was experimentally verified against `env.run(until=duration)` for the tested scenario/seed matrix (`e1_normal_30n.json`, `e2_blackhole_30n.json`, `e4_grayhole_50n.json` across seeds 1, 42, 99), producing identical row counts and byte-identical traces. This equivalence is characterized as verified for the tested scenario/seed matrix rather than an assumed universal mathematical proof.
+  - **Stepping Equivalence Scope:** Cooperative time stepping was experimentally verified against `env.run(until=duration)` for the full test matrix (`e1_normal_30n.json`, `e2_blackhole_30n.json`, `e4_grayhole_50n.json` across seeds 1, 42, and 99), producing identical row counts and byte-identical traces.
+- **Partial Trace Persistence on Failure:**
+  - The stepping executor must wrap simulation execution in robust error handling: if an exception occurs mid-run, attempt best-effort trace persistence (`runner.write_traces()`) and IDS isolation-log persistence (`runner.online_ids.write_isolation_log()`) before recording `FAILED`.
+  - Preserve the original execution exception and capture any finalization failure separately without masking the root cause.
+  - An execution exception must NEVER result in a run being labeled `COMPLETED` or `INTERRUPTED`.
 - **Regression Test Coverage Requirements:**
   - Test suites must maintain explicit regression coverage for:
     1. Final `env.now` advancement to target `duration` on clean completion;
     2. Exact duration boundary handling (confirming events scheduled at `time == duration` are not processed, matching baseline CLI runs);
     3. Scenarios with no further events before the target duration (sparse/quiescent queues);
     4. IDS-enabled runs (`run_with_ids`) including model loading, inference, and node isolation logging;
-    5. Correct emission and capture of `NODE_STATUS` trace events (e.g. node quarantine/isolation);
-    6. Deterministic trace generation (exact row-by-row matching with baseline CLI runs given identical seed);
-    7. Cooperative cancellation (verifying token stops loop and preserves partial traces).
+    5. Correct emission and live telemetry capture of `NODE_STATUS` trace events across stepping runs;
+    6. Deterministic trace generation (exact row-by-row matching with baseline CLI runs across seeds 1, 42, 99);
+    7. Cooperative cancellation (verifying token stops loop and preserves partial traces);
+    8. Partial trace and isolation-log survival under simulated worker exceptions.
   — **Reversibility:** costly — anchors execution lifecycle, dependency injection boundaries, and worker management.
 
 ### Live Run View & Screen Navigation
@@ -60,11 +69,16 @@ Phase 10 delivers non-blocking background execution and live telemetry for simul
     3. `FINALIZING`: flushing trace CSV, persisting IDS isolation log, updating manifest.
   - Never fabricate arbitrary percentages or fake intermediate stages.
 - **Honest Progress & Monotonic Timing:**
-  - Progress is strictly computed as `env.now / duration * 100%` (or 0.0 to 1.0) based on authentic SimPy virtual time.
+  - Progress is strictly computed as `min(1.0, max(0.0, env.now / max(1.0, duration))) * 100.0%` (or 0.0 to 1.0) based on authentic SimPy virtual time, preventing division-by-zero or overshoot across all valid duration ranges (1s to 1000s).
   - Elapsed time is strictly computed using `time.monotonic() - start_monotonic` (monotonic wall-clock seconds). Never conflate simulated time with wall time, and never invent estimated time of arrival (ETA).
+- **Terminal Event Draining:**
+  - When a terminal state (`COMPLETED`, `INTERRUPTED`, `FAILED`) is detected, `LiveRunScreen` performs a final drain of all remaining queued events from the telemetry ring-buffer into `RichLog` before stopping the periodic drain timer.
 - **StatusAdapter & Command Integration:**
   - Wire `ActiveWorkloadCard` and `StatusBar` to real supervisor state (replacing hardcoded `IDLE` in `StatusAdapter`).
   - Add a dedicated, lightweight workload-status refresh path (e.g. 0.5s timer or state change callback) rather than waiting on MainWorkspace's 4-second diagnostics timer.
+  - **COMPLETED State Rendering:** Define explicit rendering when a run is finished:
+    - `ActiveWorkloadCard`: displays `Workload State: [bright_green]COMPLETED[/] ({desc})` with metrics preview (`PDR: {pdr:.1f}% | E2E Delay: {delay:.2f}s | Throughput: {throughput:.1f} kbps`) and shortcut hints `[bold $navigation-cyan][L][/] View Run` and `[bold $navigation-cyan][S][/] New Simulation`.
+    - `StatusBar`: displays `AODV Engine Ready (Offline) | Last Run: COMPLETED ({exp_id})`.
   - Add `[L]` shortcut binding on `MainWorkspace` to open the active simulation monitor.
   - Register `sim:monitor` (open live view) and `sim:stop` (stop active simulation) in `manet/commands/registry.py`.
   — **Reversibility:** costly — defines navigation contracts between `simulation_workflow.py`, `live_run.py`, and `main_workspace.py`.
@@ -91,16 +105,19 @@ Phase 10 delivers non-blocking background execution and live telemetry for simul
 ### Cancellation & Interruption Protocol
 - **D-04:** Context-Differentiated Stop Protocol:
   - **In-View Explicit Stop:** Pressing dedicated `[X] Stop` inside `LiveRunScreen` immediately signals the cooperative cancellation token without a modal prompt. Execution halts, partial trace rows are written to disk, manifest is marked `interrupted`, and UI updates cleanly.
-  - **Accidental Global Exit Guard:** Destructive global actions (`Ctrl+Q`, application shutdown, or quitting while a run is active) present a confirmation dialog to prevent accidental aborts, and await finalization before exiting.
+  - **Accidental Global Exit Guard & Non-Blocking Shutdown:** Destructive global actions (`Ctrl+Q`, application shutdown, or quitting while a run is active) present a confirmation dialog to prevent accidental aborts. Upon confirmation, the application signals cooperative cancellation and waits asynchronously for worker finalization/terminal state without blocking the Textual event loop. If finalization fails, failure diagnostics are surfaced in an error dialog requiring an explicit force-exit decision (`[F] Force Exit` vs `[R] Retry / Dismiss`) rather than reporting a clean shutdown.
   - **Pause/Resume Indication:** Pause button is visible in `LiveRunScreen` but permanently disabled with explicit label/tooltip `(Pause not supported by runner)` fulfilling TUI-18 while keeping TUI-PAUSE deferred.
 - **Supervisor State Machine & Lifecycle Transitions:**
   - A single app-level supervisor (`WorkloadSupervisor` / `SimulationSupervisor`) owns the active launch request, worker reference, cancellation token, telemetry ring buffer, counters, and lifecycle state.
   - Enforces single active simulation capacity while preserving an extensible slot model (one simulation + one ML workload).
   - Explicit lifecycle states and valid transitions:
-    - `CONFIGURED` → `RUNNING` → `COMPLETED`
-    - `CONFIGURED` → `RUNNING` → `STOPPING` → `INTERRUPTED`
-    - `RUNNING` → `FAILED`
-    - `STOPPING` → `FAILED` when finalization fails.
+    - `IDLE` → `CONFIGURED` (when launch request is validated and workspace allocated in Step 3 of wizard)
+    - `CONFIGURED` → `RUNNING` (worker thread spawned)
+    - `RUNNING` → `STOPPING` → `INTERRUPTED` (cooperative cancellation)
+    - `RUNNING` → `COMPLETED` (normal completion at duration)
+    - `RUNNING` → `FAILED` / `STOPPING` → `FAILED` (worker or finalization exception)
+    - `CONFIGURED` → `FAILED` (fail-fast on missing executor or worker spawn error)
+  - Worker creation errors (e.g., failure in `app.run_worker()`) and manifest update failures must cleanly transition the supervisor to `FAILED` and record `last_error`, never leaving the supervisor permanently stuck in `RUNNING` or `STOPPING`.
 - **Terminal-State Race Precedence:**
   - Precedence order for terminal-state races: `FAILED` > `INTERRUPTED` > `COMPLETED`.
   - If worker execution or finalization fails at any point (even if cancellation was signaled or simulation loop reached duration), `FAILED` takes highest precedence.
