@@ -101,14 +101,14 @@ Plans:
   2. Each experiment stores a manifest (experiment ID, configuration, seed, software version, run status, timestamps, logs, trace paths, available metrics) written atomically, with SHA-256 checksums for completed artifacts
   3. A session history list lets the user browse past experiments and open a completed result; completed experiment metadata is read-only — reruns create new runs
   4. Workspace artifacts are ignored by Git without unintentionally changing `.gitignore` semantics, and any safe-cleanup path requires a preview plus explicit confirmation before deleting anything
-**Plans**: 1/3 plans executed
+**Plans**: 2/3 plans executed
 
 Plans:
 **Wave 1**
 - [x] 11-01-PLAN.md — Deliver foundational workspace & manifest engine with atomic finalization, chunked SHA-256 hashing, lazy integrity checking, and safe deletion backend
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 11-02-PLAN.md — Implement Academic Results Screen with top QoS Scorecard (PDR, throughput, delay, overhead) and 3-tab detail inspector (artifacts, security, configuration)
+- [x] 11-02-PLAN.md — Implement Academic Results Screen with top QoS Scorecard (PDR, throughput, delay, overhead) and 3-tab detail inspector (artifacts, security, configuration)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 11-03-PLAN.md — Implement Session History Browser, PruneConfirmationModal, .gitignore workspace isolation, keyboard shortcuts [R]/[V], and full app wiring
@@ -133,7 +133,7 @@ Plans:
 | 8. Operational Dashboard | 3/3 | Complete | 2026-11-07 |
 | 9. Simulation Workflow | 3/3 | Complete | 2026-11-08 |
 | 10. Background Execution & Live Feedback | 3/3 | Complete | 2026-11-08 |
-| 11. Results & Experiment Records | 1/3 | In Progress | - |
+| 11. Results & Experiment Records | 2/3 | In Progress | - |
 | 12. Quality, Testing & Delivery | 0/? | Not started | - |
 
 ## Deferred (out of v2.0 scope)
