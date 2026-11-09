@@ -338,3 +338,203 @@ async def test_history_screen_pruning_error_notification(tmp_path: Path) -> None
         assert screen.query_one("#history-table", DataTable).row_count == 1
         assert any("Deletion failed" in m or "Windows file lock" in m for m, _ in app.notifications)
         assert any(sev == "error" for _, sev in app.notifications)
+
+# ========================= Phase 11 Task 3: Navigation wiring tests =========================
+
+
+@pytest.mark.asyncio
+async def test_dashboard_enter_opens_history(tmp_path: Path) -> None:
+    """"RecentExperimentsTable row selection / [R] opens HistoryScreen (D-02)."""
+    from manet.screens.main_workspace import MainWorkspace
+    from manet.widgets.recent_experiments import RecentExperimentsTable
+
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    _make_exp(ws, "exp_dash1", scenario="s1", seed=1, status="COMPLETED", pdr=0.9)
+    adapter = WorkspaceAdapter(workspace_root=ws)
+
+    class DashApp(App[None]):
+        def __init__(self) -> None:
+            super().__init__()
+            self.pushed: list[Any] = []
+
+        def push_screen(self, screen_obj: Any, *a: Any, **k: Any) -> Any:  # type: ignore[override]
+            self.pushed.append(screen_obj)
+            try:
+                return super().push_screen(screen_obj, *a, **k)
+            except Exception:
+                return None
+
+        def on_mount(self) -> None:
+            self.install_screen(HistoryScreen(workspace_adapter=adapter), "history")
+            self.push_screen(MainWorkspace(workspace_adapter=adapter))
+
+    app = DashApp()
+    async with app.run_test() as pilot:
+        await pilot.pause(0.3)
+        ws_screen = app.screen
+        assert isinstance(ws_screen, MainWorkspace)
+        # action_results should open history
+        ws_screen.action_results()
+        await pilot.pause(0.2)
+        assert any(isinstance(s, HistoryScreen) or s == "history" for s in app.pushed) or isinstance(app.screen, HistoryScreen)
+
+
+@pytest.mark.asyncio
+async def test_live_run_v_opens_actual_results(tmp_path: Path) -> None:
+    """"[V] on completed LiveRunScreen opens ResultsScreen for the actual run."""
+    from manet.runtime.supervisor import WorkloadState, WorkloadSupervisor
+    from manet.screens.live_run import LiveRunScreen
+
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    _make_exp(ws, "exp_live_done", scenario="s1", seed=42, status="COMPLETED", pdr=0.95)
+    adapter = WorkspaceAdapter(workspace_root=ws)
+
+    class FakeReq:
+        experiment_id = "exp_live_done"
+        scenario_name = "s1"
+        seed = 42
+        ids_enabled = False
+
+    class FakeTelemetry:
+        def drain_batch(self, max_items: int = 100):
+            from types import SimpleNamespace
+            return SimpleNamespace(events=[], sim_now=100.0, duration=100.0, data_sent=10, data_fwd=0, data_recv=9, data_drop=1, overflow_count=0)
+
+    sup = WorkloadSupervisor()
+    sup.state = WorkloadState.COMPLETED
+    sup.current_request = FakeReq()  # type: ignore[assignment]
+    sup.metrics = {"pdr": 0.95, "throughput_bps": 100.0}
+    sup.telemetry = FakeTelemetry()  # type: ignore[assignment]
+    sup.start_monotonic = 0.0
+
+    class LiveApp(App[None]):
+        def __init__(self) -> None:
+            super().__init__()
+            self.supervisor = sup
+            self.pushed: list[Any] = []
+
+        def push_screen(self, screen_obj: Any, *a: Any, **k: Any) -> Any:  # type: ignore[override]
+            self.pushed.append(screen_obj)
+            try:
+                return super().push_screen(screen_obj, *a, **k)
+            except Exception:
+                return None
+
+        def on_mount(self) -> None:
+            self.push_screen(LiveRunScreen())
+
+    app = LiveApp()
+    async with app.run_test() as pilot:
+        await pilot.pause(0.3)
+        # simulate terminal handling
+        lr = app.screen
+        assert isinstance(lr, LiveRunScreen)
+        lr._handle_terminal_state(sup)
+        await pilot.pause(0.1)
+        # action or button
+        if hasattr(lr, "action_view_results"):
+            lr.action_view_results()
+            await pilot.pause(0.2)
+    assert any(isinstance(s, ResultsScreen) and (getattr(s, "experiment_id", None) == "exp_live_done" or getattr(s, "_requested_experiment_id", None) == "exp_live_done") for s in app.pushed)
+
+
+@pytest.mark.asyncio
+async def test_view_results_command_selects_latest_completed(tmp_path: Path) -> None:
+    from manet.app import ManetApp
+    from manet.runtime.supervisor import WorkloadState
+
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    _make_exp(ws, "exp_old_completed", scenario="s1", seed=1, status="COMPLETED", pdr=0.9, created_at="2024-01-01T00:00:00Z")
+    _make_exp(ws, "exp_new_failed", scenario="s2", seed=2, status="FAILED", pdr=0.1, created_at="2024-01-02T00:00:00Z")
+    # make failed "newer" in list order by mtime manipulation not needed; adapter sorts by mtime desc
+    import os, time as tmod
+    tmod.sleep(0.02); os.utime(ws / "exp_new_failed", None)
+    tmod.sleep(0.02); os.utime(ws / "exp_new_failed", None)
+
+    app = ManetApp()
+    # ensure no running workload blocks behavior
+    app.supervisor.state = WorkloadState.IDLE
+    pushed: list[Any] = []
+    real_push = app.push_screen
+    real_switch = app.switch_screen
+
+    def cap_push(s: Any, *a: Any, **k: Any):
+        pushed.append(s)
+        try:
+            return real_push(s, *a, **k)
+        except Exception:
+            return None
+
+    def cap_switch(s: Any, *a: Any, **k: Any):
+        pushed.append(("switch", s))
+        try:
+            return real_switch(s, *a, **k)
+        except Exception:
+            return None
+
+    app.push_screen = cap_push  # type: ignore[method-assign]
+    app.switch_screen = cap_switch  # type: ignore[method-assign]
+    # patch WorkspaceAdapter default root by monkeypatching where app constructs it
+    import manet.app as app_mod
+    orig_adapter = app_mod.WorkspaceAdapter if hasattr(app_mod, "WorkspaceAdapter") else None
+    # easier: call action and have it use adapter; we'll monkeypatch at module used inside action
+    from unittest.mock import patch
+    async with app.run_test() as pilot:
+        await pilot.pause(0.2)
+        with patch("manet.app.WorkspaceAdapter", return_value=WorkspaceAdapter(workspace_root=ws)):
+            app.action_show_results()
+            await pilot.pause(0.25)
+    assert any(isinstance(s, ResultsScreen) and "exp_old_completed" in str(getattr(s, "experiment_id", "") or getattr(s, "_requested_experiment_id", "")) for s in pushed)
+
+
+@pytest.mark.asyncio
+async def test_view_results_command_no_completed_runs_redirects_to_history(tmp_path: Path) -> None:
+    from manet.app import ManetApp
+    from manet.runtime.supervisor import WorkloadState
+    from unittest.mock import patch
+
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    _make_exp(ws, "exp_only_failed", scenario="s1", seed=1, status="FAILED", pdr=0.1)
+    app = ManetApp()
+    app.supervisor.state = WorkloadState.IDLE
+    actions: list[Any] = []
+    real_push = app.push_screen
+    real_switch = app.switch_screen
+    notifs: list[str] = []
+    real_notify = app.notify
+
+    def cap_notify(msg: str, *a: Any, **k: Any):
+        notifs.append(str(msg))
+        try:
+            return real_notify(msg, *a, **k)
+        except Exception:
+            pass
+
+    def cap_push(s: Any, *a: Any, **k: Any):
+        actions.append(s)
+        try:
+            return real_push(s, *a, **k)
+        except Exception:
+            return None
+
+    def cap_switch(s: Any, *a: Any, **k: Any):
+        actions.append(("switch", s))
+        try:
+            return real_switch(s, *a, **k)
+        except Exception:
+            return None
+
+    app.notify = cap_notify  # type: ignore[method-assign]
+    app.push_screen = cap_push  # type: ignore[method-assign]
+    app.switch_screen = cap_switch  # type: ignore[method-assign]
+    async with app.run_test() as pilot:
+        await pilot.pause(0.2)
+        with patch("manet.app.WorkspaceAdapter", return_value=WorkspaceAdapter(workspace_root=ws)):
+            app.action_show_results()
+            await pilot.pause(0.25)
+    assert any((s == "history") or (isinstance(s, tuple) and s[1] == "history") or isinstance(s, HistoryScreen) for s in actions)
+    assert any("No completed experiment" in n for n in notifs)

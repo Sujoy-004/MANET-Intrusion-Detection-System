@@ -17,7 +17,7 @@ from textual.binding import Binding
 from textual.containers import Container
 from textual.css.query import NoMatches
 from textual.screen import Screen
-from textual.widgets import Footer, Header, Input, Static
+from textual.widgets import DataTable, Footer, Header, Input, Static
 
 from manet.adapters.diagnostics import DiagnosticsProbe
 from manet.adapters.status import StatusAdapter
@@ -285,6 +285,21 @@ class MainWorkspace(Screen):
         except NoMatches:
             pass
 
+    def on_screen_resume(self) -> None:
+        """Refresh workspace so newly completed runs appear automatically."""
+        self.refresh_workspace()
+        self.refresh_diagnostics()
+
+    def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
+        """Navigate to HistoryScreen when selecting a recent experiment (D-02)."""
+        table = event.data_table
+        if isinstance(table, RecentExperimentsTable) or table.id == "main-content-panel":
+            try:
+                self.app.push_screen("history")
+            except Exception:
+                if hasattr(self.app, "action_show_history"):
+                    self.app.action_show_history()
+
     def action_simulation(self) -> None:
         """Switch to SimulationWorkflowScreen."""
         if self.app.screen is not self:
@@ -294,18 +309,16 @@ class MainWorkspace(Screen):
         self.app.switch_screen("simulation_workflow")
 
     def action_results(self) -> None:
-        """Display informative notice that results browser is pending in Phase 11."""
+        """Open session history browser (TUI-21, D-02)."""
         if self.app.screen is not self:
             return
         if self.app.focused is not None and isinstance(self.app.focused, Input):
             return
         try:
-            rail = self.query_one("#notification-rail", NotificationRail)
-            rail.notify_user(
-                "Results & History: Phase 11 will enable experiment browsing and QoS metric exploration (TUI-07, TUI-19)"
-            )
+            self.app.push_screen("history")
         except Exception:
-            pass
+            if hasattr(self.app, "action_show_history"):
+                self.app.action_show_history()
 
     def action_show_live_run(self) -> None:
         """Switch to LiveRunScreen monitor."""

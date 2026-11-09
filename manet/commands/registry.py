@@ -89,6 +89,20 @@ _COMMANDS: tuple[AppCommand, ...] = (
         parameters=(),
         action="action_show_help",
     ),
+    AppCommand(
+        name="view:history",
+        display="Browse Session History",
+        help="Open session history table to browse past runs",
+        parameters=(),
+        action="action_show_history",
+    ),
+    AppCommand(
+        name="view:results",
+        display="View Experiment Results",
+        help="Inspect QoS metrics and artifact integrity for an experiment",
+        parameters=(),
+        action="action_show_results",
+    ),
 )
 
 

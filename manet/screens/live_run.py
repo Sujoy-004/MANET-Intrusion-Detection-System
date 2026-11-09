@@ -26,8 +26,10 @@ from textual.widgets import Button, Footer, Header, ProgressBar, RichLog, Static
 from manet.runtime.keymap import (
     BINDING_BACKGROUND,
     BINDING_STOP,
+    BINDING_VIEW_RESULTS,
 )
 from manet.runtime.supervisor import WorkloadState, WorkloadSupervisor
+from manet.screens.results import ResultsScreen
 
 
 STAGE_BADGES = {
@@ -49,6 +51,7 @@ class LiveRunScreen(Screen):
         Binding(BINDING_BACKGROUND, "background_run", "Background", show=True),
         Binding("escape", "background_run", "Back", show=False),
         Binding(BINDING_STOP, "stop_run", "Stop", show=True),
+        Binding(BINDING_VIEW_RESULTS, "view_results", "View Results", show=True),
     ]
 
     CSS = """
@@ -314,6 +317,18 @@ class LiveRunScreen(Screen):
         except Exception:
             pass
 
+        # Add [V] View Results on completion
+        if sup.state == WorkloadState.COMPLETED:
+            try:
+                controls = self.query_one("#live-controls-bar", Horizontal)
+                # avoid duplicate
+                try:
+                    self.query_one("#btn-view-results", Button)
+                except Exception:
+                    controls.mount(Button("[V] View Results", id="btn-view-results", variant="success"))
+            except Exception:
+                pass
+
     def action_background_run(self) -> None:
         """Switch view back to main workspace without stopping background simulation."""
         if hasattr(self.app, "switch_screen"):
@@ -337,6 +352,18 @@ class LiveRunScreen(Screen):
             # If already stopped/completed, act like back button
             self.action_background_run()
 
+    def action_view_results(self) -> None:
+        """Open ResultsScreen for the completed experiment run."""
+        sup = self._get_supervisor()
+        exp_id = None
+        if sup and getattr(sup, "current_request", None):
+            exp_id = getattr(sup.current_request, "experiment_id", None)
+        if exp_id:
+            try:
+                self.app.push_screen(ResultsScreen(experiment_id=str(exp_id)))
+            except Exception:
+                pass
+
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle control button clicks."""
         if event.button.id == "btn-background":
@@ -347,6 +374,8 @@ class LiveRunScreen(Screen):
                 self.action_stop_run()
             else:
                 self.action_background_run()
+        elif event.button.id == "btn-view-results":
+            self.action_view_results()
 
 
 __all__ = ["LiveRunScreen"]

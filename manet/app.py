@@ -15,6 +15,7 @@ from textual.screen import ModalScreen
 from textual.timer import Timer
 from textual.widgets import Button, Static
 
+from manet.adapters.workspace import WorkspaceAdapter
 from manet.commands.console_driver import ConsoleDriver
 from manet.commands.palette_provider import ManetCommands
 from manet.runtime.keymap import (
@@ -28,8 +29,10 @@ from manet.runtime.supervisor import WorkloadState, WorkloadSupervisor
 from manet.runtime.theme import AI_STUDIO_WARM, SOC, SOC_HIGH_CONTRAST
 from manet.screens.console import ConsoleScreen
 from manet.screens.help_about import HelpAboutScreen
+from manet.screens.history import HistoryScreen
 from manet.screens.live_run import LiveRunScreen
 from manet.screens.main_workspace import MainWorkspace
+from manet.screens.results import ResultsScreen
 from manet.screens.simulation_workflow import SimulationWorkflowScreen
 
 
@@ -139,6 +142,8 @@ class ManetApp(App):
         "workspace": MainWorkspace,
         "console": ConsoleScreen,
         "help": HelpAboutScreen,
+        "history": HistoryScreen,
+        "results": ResultsScreen,
         "simulation": SimulationWorkflowScreen,
         "simulation_workflow": SimulationWorkflowScreen,
         "live_run": LiveRunScreen,
@@ -222,13 +227,51 @@ class ManetApp(App):
         """Switch to simulation workflow wizard screen."""
         self.switch_screen("simulation_workflow")
 
+    def action_show_history(self) -> None:
+        """Open session history browser."""
+        try:
+            self.push_screen("history")
+        except Exception:
+            try:
+                self.switch_screen("history")
+            except Exception:
+                pass
+
+    def action_show_results(self, experiment_id: str | None = None) -> None:
+        """Open results for an experiment, or latest completed run."""
+        if experiment_id is None:
+            try:
+                recent_runs = WorkspaceAdapter().list_recent_experiments(limit=None)
+            except Exception:
+                recent_runs = []
+            completed = next((r for r in recent_runs if r.status == "COMPLETED"), None)
+            if completed is None:
+                try:
+                    self.notify(
+                        "[bold yellow]No completed experiment records found in workspace.[/]",
+                        severity="warning",
+                    )
+                except Exception:
+                    pass
+                try:
+                    self.push_screen("history")
+                except Exception:
+                    try:
+                        self.switch_screen("history")
+                    except Exception:
+                        pass
+                return
+            experiment_id = completed.experiment_id
+        try:
+            self.push_screen(ResultsScreen(experiment_id=experiment_id))
+        except Exception:
+            pass
+
     def action_results(self) -> None:
-        """Forward results shortcut to active MainWorkspace screen."""
-        if isinstance(self.screen, MainWorkspace):
-            self.screen.action_results()
+        """Open session history (TUI-21 / D-02)."""
+        self.action_show_history()
 
     action_new_simulation = action_show_simulation
-    action_show_results = action_results
 
     def action_toggle_high_contrast(self) -> None:
         """Toggle between standard SOC and high-contrast themes."""
