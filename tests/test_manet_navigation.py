@@ -18,6 +18,7 @@ from textual.widgets import DataTable, Input
 from manet.app import ManetApp
 from manet.screens.console import ConsoleScreen
 from manet.screens.help_about import HelpAboutScreen
+from manet.screens.history import HistoryScreen
 from manet.screens.main_workspace import MainWorkspace
 from manet.screens.simulation_workflow import SimulationWorkflowScreen
 from manet.widgets.notification_rail import NotificationRail
@@ -262,8 +263,8 @@ async def test_sim_start_command_opens_simulation_workflow():
 
 
 @pytest.mark.asyncio
-async def test_results_shortcut_triggers_notice():
-    """Verify pressing 'r' on MainWorkspace triggers results notice in NotificationRail."""
+async def test_results_shortcut_opens_history():
+    """Verify pressing 'r' on MainWorkspace opens session history with the rail staying silent (TUI-21, D-02)."""
     app = ManetApp()
     async with app.run_test() as pilot:
         assert isinstance(app.screen, MainWorkspace)
@@ -272,11 +273,14 @@ async def test_results_shortcut_triggers_notice():
 
         await pilot.press("r")
         await pilot.pause()
-        assert rail.display is True
-        notice = rail.get_active_notice()
-        assert notice is not None
-        assert "Phase 11" in notice
-        assert "Results" in notice
+        assert isinstance(app.screen, HistoryScreen)
+        assert rail.get_active_notice() is None
+        assert rail.display is False
+
+        await pilot.press("escape")
+        await pilot.pause()
+        assert isinstance(app.screen, MainWorkspace)
+        assert rail.display is False
 
 
 @pytest.mark.asyncio
@@ -326,24 +330,26 @@ async def test_console_typing_does_not_trigger_s_r_actions():
 
 
 @pytest.mark.asyncio
-async def test_repeated_shortcut_presses_bounded_queue():
-    """Verify rapid repeated pressing of 's' and 'r' stays within bounded queue and does not crash."""
+async def test_rapid_r_presses_bounded_no_crash():
+    """Verify 25 rapid 'r' presses open history once, do not stack screens or crash, and keep rail bounded."""
     app = ManetApp()
     async with app.run_test() as pilot:
         assert isinstance(app.screen, MainWorkspace)
         rail = app.screen.query_one("#notification-rail", NotificationRail)
 
-        # Press 'r' rapidly 25 times
+        # Press 'r' rapidly 25 times; first opens HistoryScreen, rest trigger its Refresh binding.
         for _ in range(25):
             await pilot.press("r")
         await pilot.pause()
 
-        # Check notification rail is still healthy and visible
-        assert rail.display is True
-        assert rail.get_active_notice() is not None
-        # Verify adapter queue is bounded (maxlen=20)
-        adapter = rail.adapter
-        assert len(adapter.get_history()) <= 20
+        assert isinstance(app.screen, HistoryScreen)
+        assert rail.get_active_notice() is None
+        # Adapter stays untouched; bounded-queue claim remains true (maxlen=20).
+        assert len(rail.adapter.get_history()) <= 20
+
+        await pilot.press("escape")
+        await pilot.pause()
+        assert isinstance(app.screen, MainWorkspace)
 
 
 @pytest.mark.asyncio

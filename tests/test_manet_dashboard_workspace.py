@@ -10,7 +10,7 @@ Verifies:
 - RecentExperimentsTable populates columns and rows accurately in a read-only manner
 - Full workspace mounts Executive Grid with top cards, lower split body, and persistent rails
 - Empty workspace shows CtaHeroPanel; populated workspace shows RecentExperimentsTable
-- Screen bindings ([S], [R], [Escape]) trigger notification notices safely
+- Screen bindings ([S] opens workflow, [R] opens history, [Escape] dismisses) behave safely
 - Periodic diagnostics refresh executes without freezing or crashing
 """
 
@@ -30,6 +30,7 @@ from manet.adapters.diagnostics import (
 from manet.adapters.status import StatusAdapter, WorkloadStatus
 from manet.adapters.workspace import ExperimentSummary, WorkspaceAdapter
 from manet.app import ManetApp
+from manet.screens.history import HistoryScreen
 from manet.screens.main_workspace import MainWorkspace
 from manet.screens.simulation_workflow import SimulationWorkflowScreen
 from manet.widgets.cta_hero import CtaHeroPanel
@@ -275,10 +276,11 @@ async def test_full_workspace_mount_with_cards_and_rails():
         assert isinstance(app.screen, MainWorkspace)
 
         await pilot.press("r")
-        assert notif_rail.display is True
-        assert "Phase 11" in notif_rail.get_active_notice()
+        assert isinstance(app.screen, HistoryScreen)
+        assert notif_rail.display is False
 
         await pilot.press("escape")
+        assert isinstance(app.screen, MainWorkspace)
         assert notif_rail.display is False
 
 
