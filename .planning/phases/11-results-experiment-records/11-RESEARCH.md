@@ -338,11 +338,13 @@ def compute_experiment_artifacts(experiment_dir: Path) -> dict[str, dict[str, An
     return artifacts
 ```
 **Lazy Verification on Open:**
-When `ResultsScreen` is opened, it compares the current hash of the file on disk against the hash recorded in `manifest.json["artifacts"]`:
+When `ResultsScreen` is opened, it compares the current hash of the file on disk against the hash recorded in `manifest.json["artifacts"]`. Per locked Context D-03, this verification is always executed in a dedicated Textual background thread worker (`@work(thread=True) def verify_artifacts_worker(self) -> None`) regardless of file size, ensuring zero event-loop latency:
+- While computing -> `[bold cyan]VERIFYING CHECKSUMS...[/]`
 - If file missing -> `[yellow]MISSING[/]`
 - If hash matches -> `[green]VERIFIED ✓ (sha256: {hash[:16]}...)[/]`
 - If hash mismatch -> `[bold red]CORRUPTED / TAMPERED ✗[/]`
 - If legacy manifest has no recorded hash -> `[cyan]RECORDED (sha256: {hash[:16]}...)[/]`
+- If read fails due to permission/OS error -> `[bold red]VERIFICATION ERROR[/]`
 
 ### Pattern 3: HistoryScreen with Real-Time Filtering and Sorting
 **What:** Full-screen DataTable listing past runs discovered in `.manet-workspace/`.
@@ -574,7 +576,7 @@ class PruneConfirmationModal(ModalScreen[bool]):
 
 | # | Claim | Section | Risk if Wrong |
 |---|-------|---------|---------------|
-| A1 | Reading small trace files for hash calculation (< 5MB) takes < 20ms and does not require async threading | Artifact Integrity | Low: if larger traces are used, hash computation can be moved into a Textual background worker |
+| A1 | Locked Context D-03 requires SHA-256 verification to execute in a Textual background thread worker (`@work(thread=True)`) regardless of file size, preventing any event-loop latency and providing thread-safe UI updates | Artifact Integrity | None: worker architecture adopted unconditionally per Context D-03 |
 | A2 | `.gitignore` can have `.manet-workspace/` appended without affecting existing git rules | Workspace Storage | None: tested and verified; `.manet-workspace/` was previously unignored |
 
 ---
