@@ -46,9 +46,6 @@ def test_preview_deletion_recursive_enumeration(tmp_path: Path) -> None:
     assert preview["experiment_id"] == "exp_a"
     assert preview["file_count"] == 3
     assert preview["total_bytes"] == sum(len(b) for b in [b"{}", b"a,b\n1,2\n", b"hi"])
-    rels = {f["relative_path"] for f in preview["files"]}
-    assert rels == {"manifest.json", "trace.csv", os.path.join("sub", "nested.txt").replace("\\", "/") or "sub/nested.txt"}
-    # normalize for windows
     rels_norm = {f["relative_path"].replace("\\", "/") for f in preview["files"]}
     assert rels_norm == {"manifest.json", "trace.csv", "sub/nested.txt"}
     for f in preview["files"]:

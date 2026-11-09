@@ -448,6 +448,94 @@ class WorkspaceAdapter:
                 exp_dir = self.workspace_root / candidate_id
                 counter += 1
 
+
+    def _resolve_experiment_dir(self, experiment_id: str) -> Path:
+        candidate_raw = self.workspace_root / experiment_id
+        if os.path.islink(candidate_raw):
+            raise ValueError(f"Symlinked experiment directory is prohibited: {experiment_id}")
+        target_dir = candidate_raw.resolve()
+        root_resolved = self.workspace_root.resolve()
+        if not target_dir.is_relative_to(root_resolved) or target_dir == root_resolved:
+            raise ValueError(f"Invalid experiment directory traversal attempt: {experiment_id}")
+        if not target_dir.is_dir():
+            raise FileNotFoundError(f"Experiment directory not found: {experiment_id}")
+        return target_dir
+
+    def preview_experiment_deletion(self, experiment_id: str) -> dict[str, Any]:
+        """Recursively enumerate experiment files with cryptographic fingerprint for safe deletion."""
+        target_dir = self._resolve_experiment_dir(experiment_id)
+        files: list[dict[str, Any]] = []
+        for root_dir, dirs, filenames in os.walk(target_dir, followlinks=False):
+            root_path = Path(root_dir)
+            for d in dirs:
+                dir_path = root_path / d
+                if os.path.islink(dir_path):
+                    raise ValueError(
+                        f"Symlinked directory inside experiment directory is prohibited: {dir_path}"
+                    )
+            for fname in filenames:
+                file_path = root_path / fname
+                if os.path.islink(file_path):
+                    raise ValueError(
+                        f"Symlinked file inside experiment directory is prohibited: {file_path}"
+                    )
+                st = os.lstat(file_path)
+                sha256, _, _ = _compute_file_hash_and_rows(file_path)
+                rel = file_path.relative_to(target_dir).as_posix()
+                files.append(
+                    {
+                        "relative_path": rel,
+                        "size_bytes": int(st.st_size),
+                        "mtime_ns": int(getattr(st, "st_mtime_ns", int(st.st_mtime * 1e9))),
+                        "content_sha256": sha256,
+                        "name": rel,
+                    }
+                )
+        files_sorted = sorted(files, key=lambda f: f["relative_path"])
+        fp_material = "\n".join(
+            f"{f['relative_path']}:{f['size_bytes']}:{f['mtime_ns']}:{f['content_sha256']}"
+            for f in files_sorted
+        )
+        fingerprint = hashlib.sha256(fp_material.encode("utf-8")).hexdigest()
+        total_bytes = sum(f["size_bytes"] for f in files_sorted)
+        return {
+            "experiment_id": experiment_id,
+            "path": str(target_dir),
+            "files": files_sorted,
+            "total_bytes": total_bytes,
+            "file_count": len(files_sorted),
+            "fingerprint": fingerprint,
+        }
+
+    def delete_experiment_run(
+        self, experiment_id: str, expected_preview: dict[str, Any] | None = None
+    ) -> int:
+        """Delete experiment directory after optional cryptographic revalidation."""
+        target_dir = self._resolve_experiment_dir(experiment_id)
+        if expected_preview is not None:
+            fresh = self.preview_experiment_deletion(experiment_id)
+            if fresh["fingerprint"] != expected_preview["fingerprint"]:
+                raise RuntimeError(
+                    "Experiment contents modified since deletion preview was generated. Aborting deletion."
+                )
+            total_bytes = int(fresh["total_bytes"])
+        else:
+            # compute for return value
+            try:
+                fresh = self.preview_experiment_deletion(experiment_id)
+                total_bytes = int(fresh["total_bytes"])
+            except Exception:
+                total_bytes = 0
+        try:
+            shutil.rmtree(target_dir)
+        except PermissionError as exc:
+            raise RuntimeError(
+                f"Cannot delete experiment run '{experiment_id}': files are locked by another Windows process. Please close any open handles."
+            ) from exc
+        except OSError as exc:
+            raise RuntimeError(str(exc)) from exc
+        return total_bytes
+
     compute_experiment_artifacts = staticmethod(compute_experiment_artifacts)
     verify_artifact_checksums = staticmethod(verify_artifact_checksums)
     get_experiment_manifest = staticmethod(get_experiment_manifest)
