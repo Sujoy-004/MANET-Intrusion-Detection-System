@@ -10,7 +10,7 @@
 - [x] **Phase 7: TUI Shell & Application Frame** - Textual package, launcher, keyboard-first navigation, command palette/console, cybersecurity theming (completed 2026-11-07)
 - [x] **Phase 8: Operational Dashboard** - Real capability diagnostics, workload/experiment snapshots, honest capability states (completed 2026-11-07)
 - [x] **Phase 9: Simulation Workflow** - Preset/custom run configuration, seed selection, IDS gating, review/confirm, workspace allocation (completed 2026-11-08)
-- [ ] **Phase 10: Background Execution & Live Feedback** - Non-blocking worker, bounded telemetry, safe interruption and stop
+- [x] **Phase 10: Background Execution & Live Feedback** - Non-blocking worker, bounded telemetry, safe interruption and stop (completed 2026-11-08)
 - [ ] **Phase 11: Results & Experiment Records** - Real metrics display, atomic manifests with checksums, session history
 - [ ] **Phase 12: Quality, Testing & Delivery** - Unweakened suite + new feature tests, CLI compatibility, README/CHANGELOG, honest completion report
 
@@ -79,7 +79,7 @@ Plans:
 **Depends on**: Phase 9
 **Requirements**: TUI-15, TUI-16, TUI-17, TUI-18
 **Success Criteria** (what must be TRUE):
-  1. The TUI remains interactive (navigation and repaints work) while a simulation runs in the background; the architecture supports one simulation workload and one ML workload at a time, with the simulation path implemented and verified in this delivery
+  1. The TUI remains interactive (navigation and repaints work) while a simulation runs in the background; the architecture supports one simulation workload and one ML workload at a time, with the simulation execution path implemented and verified in this delivery (ML workload runner deferred under TUI-MLWORK)
   2. The run view shows status, elapsed time, measurable progress, and current stage, with bounded live event/log streaming that never blocks the simulator and never retains unbounded telemetry in memory
   3. Ctrl+C, Esc, or application shutdown leaves result files uncorrupted; simulation event ordering and results are identical regardless of UI interaction, and UI callbacks cannot change simulation or IDS decisions
   4. Stop ends the run safely with partial traces preserved on disk and the run marked interrupted; worker exceptions surface actionable diagnostics with no silent retries and no mislabeling of partial runs as completed; pause/resume is visible but disabled (the runner does not support it)

@@ -402,18 +402,137 @@ async def test_active_workload_card_displays_live_state(tmp_path):
         await pilot.pause(0.6)  # allow 0.5s fast refresh to fire
         rendered = str(card.render())
         assert "RUNNING" in rendered
+        assert "Active" in rendered
         assert "[L] Live Monitor" in rendered
 
         # Transition to COMPLETED with metrics
         app.supervisor.state = WorkloadState.COMPLETED
         app.supervisor.stage = "COMPLETED"
-        app.supervisor.metrics = {"pdr": 0.94, "throughput_bps": 12000.0}
+        app.supervisor.metrics = {
+            "pdr": 0.94,
+            "throughput_bps": 12000.0,
+            "avg_delay_s": 0.0245,
+        }
 
         await pilot.pause(0.6)
         rendered_comp = str(card.render())
         assert "COMPLETED" in rendered_comp
         assert "94.0%" in rendered_comp
+        assert "12000 bps" in rendered_comp
+        assert "0.0245 s" in rendered_comp
+        assert "Protected (Completed)" in rendered_comp
         assert "[L] View Run" in rendered_comp
+
+
+@pytest.mark.asyncio
+async def test_active_workload_card_ids_disabled(tmp_path):
+    """Verify ActiveWorkloadCard shows Disabled when ids_enabled=False across states."""
+    from manet.adapters.handoff import SimulationLaunchRequest
+    from manet.runtime.supervisor import WorkloadState
+    from manet.widgets.dashboard_cards import ActiveWorkloadCard
+
+    app = ManetApp()
+    async with app.run_test() as pilot:
+        workspace = app.screen
+        assert isinstance(workspace, MainWorkspace)
+        card = workspace.query_one("#card-workload", ActiveWorkloadCard)
+
+        # IDLE
+        assert "Standby (Ready for deployment)" in str(card.render())
+
+        # Set request with ids_enabled=False
+        app.supervisor.current_request = SimulationLaunchRequest(
+            experiment_id="exp_ids_off",
+            scenario_name="e1_normal_30n",
+            seed=42,
+            config={"duration": 100.0},
+            workspace_dir=tmp_path,
+            created_at="2026-11-08T00:00:00Z",
+            ids_enabled=False,
+        )
+
+        # RUNNING
+        app.supervisor.state = WorkloadState.RUNNING
+        app.supervisor.stage = "SIMULATING"
+        await pilot.pause(0.6)
+        assert "Disabled" in str(card.render())
+
+        # STOPPING
+        app.supervisor.state = WorkloadState.STOPPING
+        app.supervisor.stage = "STOPPING"
+        await pilot.pause(0.6)
+        assert "Disabled" in str(card.render())
+
+        # INTERRUPTED
+        app.supervisor.state = WorkloadState.INTERRUPTED
+        app.supervisor.stage = "INTERRUPTED"
+        await pilot.pause(0.6)
+        assert "Disabled" in str(card.render())
+
+        # FAILED
+        app.supervisor.state = WorkloadState.FAILED
+        app.supervisor.stage = "FAILED"
+        await pilot.pause(0.6)
+        assert "Disabled" in str(card.render())
+
+        # COMPLETED
+        app.supervisor.state = WorkloadState.COMPLETED
+        app.supervisor.stage = "COMPLETED"
+        app.supervisor.metrics = {"pdr": 0.85, "throughput_bps": 8000.0, "avg_delay_s": 0.0350}
+        await pilot.pause(0.6)
+        comp_rendered = str(card.render())
+        assert "Disabled" in comp_rendered
+        assert "85.0%" in comp_rendered
+        assert "8000 bps" in comp_rendered
+        assert "0.0350 s" in comp_rendered
+
+
+@pytest.mark.asyncio
+async def test_status_bar_terminal_states_and_experiment_id(tmp_path):
+    """Verify StatusBar displays last run experiment ID for COMPLETED, INTERRUPTED, and FAILED."""
+    from manet.adapters.handoff import SimulationLaunchRequest
+    from manet.runtime.supervisor import WorkloadState
+    from manet.widgets.status_bar import StatusBar
+
+    app = ManetApp()
+    async with app.run_test() as pilot:
+        workspace = app.screen
+        assert isinstance(workspace, MainWorkspace)
+        status_bar = workspace.query_one("#status-bar", StatusBar)
+
+        app.supervisor.current_request = SimulationLaunchRequest(
+            experiment_id="exp_terminal_99",
+            scenario_name="e1_normal_30n",
+            seed=99,
+            config={"duration": 50.0},
+            workspace_dir=tmp_path,
+            created_at="2026-11-08T00:00:00Z",
+            ids_enabled=False,
+        )
+
+        # COMPLETED
+        app.supervisor.state = WorkloadState.COMPLETED
+        status_bar.update_status()
+        await pilot.pause()
+        rendered_comp = str(status_bar.render())
+        assert "exp_terminal_99" in rendered_comp
+        assert "COMPLETED" in rendered_comp
+
+        # INTERRUPTED
+        app.supervisor.state = WorkloadState.INTERRUPTED
+        status_bar.update_status()
+        await pilot.pause()
+        rendered_int = str(status_bar.render())
+        assert "exp_terminal_99" in rendered_int
+        assert "INTERRUPTED" in rendered_int
+
+        # FAILED
+        app.supervisor.state = WorkloadState.FAILED
+        status_bar.update_status()
+        await pilot.pause()
+        rendered_fail = str(status_bar.render())
+        assert "exp_terminal_99" in rendered_fail
+        assert "FAILED" in rendered_fail
 
 
 @pytest.mark.asyncio
@@ -443,4 +562,72 @@ async def test_safe_quit_confirmation_guard():
         assert isinstance(app.screen, MainWorkspace)
         assert app.supervisor.is_running is True
 
+
+@pytest.mark.asyncio
+async def test_safe_quit_confirmation_stop_and_quit():
+    """Verify confirming quit modal cancels simulation and starts async shutdown polling."""
+    from manet.app import QuitConfirmModal
+    from manet.runtime.supervisor import WorkloadState
+
+    app = ManetApp()
+    async with app.run_test() as pilot:
+        app.supervisor.state = WorkloadState.RUNNING
+
+        await pilot.press("ctrl+q")
+        await pilot.pause()
+        assert isinstance(app.screen, QuitConfirmModal)
+
+        # Confirm Stop & Quit
+        btn_confirm = app.screen.query_one("#btn-confirm")
+        btn_confirm.press()
+        await pilot.pause()
+
+        # Cancellation was triggered
+        assert app.supervisor.state == WorkloadState.STOPPING
+        assert app.supervisor.cancel_token.is_set()
+        assert app._shutdown_timer is not None
+
+        # Clean up timer so test closes cleanly
+        if app._shutdown_timer is not None:
+            app._shutdown_timer.stop()
+            app._shutdown_timer = None
+
+
+@pytest.mark.asyncio
+async def test_shutdown_finalization_failure_modal():
+    """Verify finalization failure during shutdown displays ShutdownErrorModal with dismiss and force exit."""
+    from manet.app import ShutdownErrorModal
+    from manet.runtime.supervisor import WorkloadState
+
+    app = ManetApp()
+    async with app.run_test() as pilot:
+        app.supervisor.state = WorkloadState.FAILED
+        app.supervisor.last_error = "Trace flush I/O failure during shutdown"
+
+        # Direct test of modal display
+        modal = ShutdownErrorModal(app.supervisor.last_error)
+        app.push_screen(modal)
+        await pilot.pause()
+
+        assert isinstance(app.screen, ShutdownErrorModal)
+        assert "Trace flush I/O failure during shutdown" in app.screen.error_message
+
+        # Dismiss button returns to workspace
+        btn_dismiss = app.screen.query_one("#btn-dismiss")
+        btn_dismiss.press()
+        await pilot.pause()
+        assert isinstance(app.screen, MainWorkspace)
+
+        # Re-push modal and test force exit action
+        modal2 = ShutdownErrorModal("Second error")
+        app.push_screen(modal2)
+        await pilot.pause()
+        assert isinstance(app.screen, ShutdownErrorModal)
+
+        exit_code_called = []
+        app.exit = lambda code=0: exit_code_called.append(code)
+        btn_force = app.screen.query_one("#btn-force-exit")
+        btn_force.press()
+        await pilot.pause()
+        assert exit_code_called == [1]
 

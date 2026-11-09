@@ -11,10 +11,9 @@ Enforces:
 from __future__ import annotations
 
 from enum import Enum
-from pathlib import Path
 import threading
 import time
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Dict, Optional
 
 from manet.adapters.execution import SimulationExecutorProtocol
 from manet.adapters.handoff import SimulationLaunchRequest
@@ -162,6 +161,7 @@ class WorkloadSupervisor:
 
         with self._lock:
             # Enforce terminal state precedence: FAILED > INTERRUPTED > COMPLETED
+            # Terminal states are only published after execution and required manifest updates succeed.
             if error_exc is not None:
                 self.state = WorkloadState.FAILED
                 self.stage = "FAILED"
@@ -173,12 +173,12 @@ class WorkloadSupervisor:
                             "FAILED",
                             error=str(error_exc),
                         )
-                    except Exception:
-                        pass
+                    except Exception as m_err:
+                        self.last_error = (
+                            f"{error_exc}; secondary manifest update failure: {m_err}"
+                        )
             elif self.cancel_token.is_set():
-                self.state = WorkloadState.INTERRUPTED
-                self.stage = "INTERRUPTED"
-                self.metrics = metrics
+                manifest_persisted = False
                 if self.current_request:
                     try:
                         update_manifest_status(
@@ -186,12 +186,28 @@ class WorkloadSupervisor:
                             "INTERRUPTED",
                             metrics=metrics,
                         )
-                    except Exception:
-                        pass
+                        manifest_persisted = True
+                    except Exception as m_err:
+                        self.state = WorkloadState.FAILED
+                        self.stage = "FAILED"
+                        self.last_error = f"Failed to persist INTERRUPTED manifest: {m_err}"
+                        try:
+                            update_manifest_status(
+                                self.current_request.workspace_dir,
+                                "FAILED",
+                                error=f"Interrupted run manifest persistence failed: {m_err}",
+                            )
+                        except Exception:
+                            pass
+                else:
+                    manifest_persisted = True
+
+                if manifest_persisted:
+                    self.state = WorkloadState.INTERRUPTED
+                    self.stage = "INTERRUPTED"
+                    self.metrics = metrics
             else:
-                self.state = WorkloadState.COMPLETED
-                self.stage = "COMPLETED"
-                self.metrics = metrics
+                manifest_persisted = False
                 if self.current_request:
                     try:
                         update_manifest_status(
@@ -199,8 +215,26 @@ class WorkloadSupervisor:
                             "COMPLETED",
                             metrics=metrics,
                         )
-                    except Exception:
-                        pass
+                        manifest_persisted = True
+                    except Exception as m_err:
+                        self.state = WorkloadState.FAILED
+                        self.stage = "FAILED"
+                        self.last_error = f"Failed to persist COMPLETED manifest: {m_err}"
+                        try:
+                            update_manifest_status(
+                                self.current_request.workspace_dir,
+                                "FAILED",
+                                error=f"Completed run manifest persistence failed: {m_err}",
+                            )
+                        except Exception:
+                            pass
+                else:
+                    manifest_persisted = True
+
+                if manifest_persisted:
+                    self.state = WorkloadState.COMPLETED
+                    self.stage = "COMPLETED"
+                    self.metrics = metrics
 
 
 __all__ = [

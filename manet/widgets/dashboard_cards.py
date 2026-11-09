@@ -136,34 +136,56 @@ class ActiveWorkloadCard(Static):
 
         lines: list[str] = ["[bold $primary]Active Workload[/]"]
 
-        # Supervisor metrics if available
+        # Supervisor metrics and request if available
         sup = getattr(self.status_adapter, "supervisor", None)
         metrics = getattr(sup, "metrics", None) if sup else None
+        req = getattr(sup, "current_request", None) if sup else None
+        ids_enabled = bool(getattr(req, "ids_enabled", False)) if req else False
 
         if workload_state == "RUNNING":
             lines.append(f"[bold]Workload State:[/] [green]RUNNING[/] [dim]({desc})[/]")
             lines.append(f"[bold]Routing Engine:[/] [green]{engine_state}[/]")
-            lines.append(f"[bold]IDS Protection:[/] [green]Active[/]")
+            if ids_enabled:
+                lines.append("[bold]IDS Protection:[/] [green]Active[/]")
+            else:
+                lines.append("[bold]IDS Protection:[/] [dim]Disabled[/]")
             lines.append("[bold $navigation-cyan]\\[L][/] Live Monitor")
         elif workload_state == "STOPPING":
             lines.append(f"[bold]Workload State:[/] [amber]STOPPING...[/] [dim]({desc})[/]")
             lines.append(f"[bold]Routing Engine:[/] [yellow]{engine_state}[/]")
+            if ids_enabled:
+                lines.append("[bold]IDS Protection:[/] [amber]Stopping...[/]")
+            else:
+                lines.append("[bold]IDS Protection:[/] [dim]Disabled[/]")
             lines.append("[bold $navigation-cyan]\\[L][/] Live Monitor")
         elif workload_state == "INTERRUPTED":
             lines.append(f"[bold]Workload State:[/] [amber]INTERRUPTED[/] [dim]({desc})[/]")
             lines.append(f"[bold]Routing Engine:[/] [dim]{engine_state}[/]")
+            if ids_enabled:
+                lines.append("[bold]IDS Protection:[/] [amber]Interrupted[/]")
+            else:
+                lines.append("[bold]IDS Protection:[/] [dim]Disabled[/]")
             lines.append("[bold $navigation-cyan]\\[L][/] View Run  [dim]|[/]  [bold $navigation-cyan]\\[S][/] New Simulation")
         elif workload_state == "FAILED":
             lines.append(f"[bold]Workload State:[/] [red]FAILED[/] [dim]({desc})[/]")
             lines.append(f"[bold]Routing Engine:[/] [dim]{engine_state}[/]")
+            if ids_enabled:
+                lines.append("[bold]IDS Protection:[/] [red]Failed[/]")
+            else:
+                lines.append("[bold]IDS Protection:[/] [dim]Disabled[/]")
             lines.append("[bold $navigation-cyan]\\[S][/] New Simulation")
         elif workload_state == "COMPLETED":
             lines.append(f"[bold]Workload State:[/] [bright_green]COMPLETED[/] [dim]({desc})[/]")
             lines.append(f"[bold]Routing Engine:[/] [green]{engine_state}[/]")
+            if ids_enabled:
+                lines.append("[bold]IDS Protection:[/] [green]Protected (Completed)[/]")
+            else:
+                lines.append("[bold]IDS Protection:[/] [dim]Disabled[/]")
             if metrics:
                 pdr = f"{metrics.get('pdr', 0.0) * 100:.1f}%"
                 thru = f"{metrics.get('throughput_bps', 0.0):.0f} bps"
-                lines.append(f"[bold]Results:[/] PDR: [green]{pdr}[/] | Thru: [cyan]{thru}[/]")
+                delay = f"{metrics.get('avg_delay_s', 0.0):.4f} s"
+                lines.append(f"[bold]Results:[/] PDR: [green]{pdr}[/] | Thru: [cyan]{thru}[/] | Delay: [yellow]{delay}[/]")
             lines.append("[bold $navigation-cyan]\\[L][/] View Run  [dim]|[/]  [bold $navigation-cyan]\\[S][/] New Simulation")
         else:
             lines.append(f"[bold]Workload State:[/] [cyan]IDLE[/] [dim]({desc})[/]")

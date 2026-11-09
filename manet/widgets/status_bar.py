@@ -49,9 +49,15 @@ class StatusBar(Static):
             elif state == "COMPLETED":
                 workspace_indicator = "[green]COMPLETED[/]"
                 engine_indicator = "[green]Offline Ready[/]"
-            elif state in ("INTERRUPTED", "FAILED"):
-                workspace_indicator = f"[red]{state}[/]"
+                status_text = workload_status.description
+            elif state == "INTERRUPTED":
+                workspace_indicator = "[amber]INTERRUPTED[/]"
                 engine_indicator = "[dim]Offline Ready[/]"
+                status_text = workload_status.description
+            elif state == "FAILED":
+                workspace_indicator = "[red]FAILED[/]"
+                engine_indicator = "[dim]Offline Ready[/]"
+                status_text = workload_status.description
 
         content = (
             f" [green]●[/] [bold]{status_text}[/]  "

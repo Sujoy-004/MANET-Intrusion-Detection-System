@@ -225,14 +225,19 @@ class SimulationWorkflowScreen(Screen):
         self.last_completed_launch_request = launch_req
         setattr(self.app, "last_launch_request", launch_req)
 
-        # 4. Start background simulation via WorkloadSupervisor if present
-        if hasattr(self.app, "supervisor") and self.app.supervisor is not None:
-            try:
-                self.app.supervisor.start_simulation(launch_req, self.app)
-            except Exception as exc:
-                review_widget = self.query_one("#step-preflight-review", StepReviewWidget)
-                review_widget.show_error(f"Failed to start simulation: {exc}")
-                return
+        # 4. Prepare and start background simulation via WorkloadSupervisor
+        if not hasattr(self.app, "supervisor") or self.app.supervisor is None or self.app.supervisor.executor is None:
+            review_widget = self.query_one("#step-preflight-review", StepReviewWidget)
+            review_widget.show_error("Execution engine unavailable: no simulation executor configured.")
+            return
+
+        try:
+            self.app.supervisor.prepare_simulation(launch_req)
+            self.app.supervisor.start_simulation(launch_req, self.app)
+        except Exception as exc:
+            review_widget = self.query_one("#step-preflight-review", StepReviewWidget)
+            review_widget.show_error(f"Failed to start simulation: {exc}")
+            return
 
         # 5. Defuse stale Step 3 review state and reset wizard to Step 1
         self.reset_workflow(clear_handoff=False)

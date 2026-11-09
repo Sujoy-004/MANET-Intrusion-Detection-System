@@ -280,6 +280,97 @@ def test_terminal_precedence_failed_over_interrupted(tmp_path: Path):
     assert "Crash during interrupted run" in manifest.get("error_details", "")
 
 
+def test_completed_manifest_write_failure_transitions_to_failed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Verify failure to persist COMPLETED manifest transitions state to FAILED and records error."""
+    req = _create_test_request(tmp_path / "completed_manifest_fail")
+    executor = DummyExecutor(metrics={"pdr": 0.95, "throughput_bps": 15000.0})
+    supervisor = WorkloadSupervisor(executor=executor)
+
+    real_update = update_manifest_status
+
+    def mock_update(workspace_dir, status, **kwargs):
+        if status == "COMPLETED":
+            raise OSError("Disk full while saving completed manifest")
+        return real_update(workspace_dir, status, **kwargs)
+
+    monkeypatch.setattr("manet.runtime.supervisor.update_manifest_status", mock_update)
+
+    app = MockApp(execute_inline=True)
+    supervisor.start_simulation(req, app)
+
+    assert supervisor.state == WorkloadState.FAILED
+    assert supervisor.stage == "FAILED"
+    assert "Failed to persist COMPLETED manifest" in (supervisor.last_error or "")
+    assert "Disk full while saving completed manifest" in (supervisor.last_error or "")
+
+    # Manifest should have best-effort FAILED status
+    manifest = json.loads((req.workspace_dir / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["status"] == "FAILED"
+
+
+def test_interrupted_manifest_write_failure_transitions_to_failed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Verify failure to persist INTERRUPTED manifest transitions state to FAILED and records error."""
+    req = _create_test_request(tmp_path / "interrupted_manifest_fail")
+    executor = DummyExecutor(step_delay=0.05)
+    supervisor = WorkloadSupervisor(executor=executor)
+
+    real_update = update_manifest_status
+
+    def mock_update(workspace_dir, status, **kwargs):
+        if status == "INTERRUPTED":
+            raise OSError("I/O error saving interrupted manifest")
+        return real_update(workspace_dir, status, **kwargs)
+
+    monkeypatch.setattr("manet.runtime.supervisor.update_manifest_status", mock_update)
+
+    app = MockApp(execute_inline=False)
+    supervisor.start_simulation(req, app)
+    supervisor.cancel_simulation()
+
+    for t in app.spawned_threads:
+        t.join(timeout=2.0)
+
+    assert supervisor.state == WorkloadState.FAILED
+    assert supervisor.stage == "FAILED"
+    assert "Failed to persist INTERRUPTED manifest" in (supervisor.last_error or "")
+    assert "I/O error saving interrupted manifest" in (supervisor.last_error or "")
+
+    manifest = json.loads((req.workspace_dir / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["status"] == "FAILED"
+
+
+def test_secondary_manifest_failure_preserves_original_cause(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Verify worker execution error with secondary manifest failure retains original cause."""
+    req = _create_test_request(tmp_path / "secondary_fail_run")
+    executor = DummyExecutor(raise_exc=RuntimeError("Primary executor explosion"))
+    supervisor = WorkloadSupervisor(executor=executor)
+
+    real_update = update_manifest_status
+
+    def mock_update(workspace_dir, status, **kwargs):
+        if status == "FAILED":
+            raise OSError("Secondary disk write failure")
+        return real_update(workspace_dir, status, **kwargs)
+
+    monkeypatch.setattr("manet.runtime.supervisor.update_manifest_status", mock_update)
+
+    app = MockApp(execute_inline=True)
+    supervisor.start_simulation(req, app)
+
+    assert supervisor.state == WorkloadState.FAILED
+    assert supervisor.stage == "FAILED"
+    assert "Primary executor explosion" in (supervisor.last_error or "")
+    assert "secondary manifest update failure: Secondary disk write failure" in (
+        supervisor.last_error or ""
+    )
+
+
 def test_atomic_manifest_updates(tmp_path: Path):
     """Verify update_manifest_status preserves existing attributes, writes atomically, and updates fields."""
     exp_dir = tmp_path / "atomic_manifest"

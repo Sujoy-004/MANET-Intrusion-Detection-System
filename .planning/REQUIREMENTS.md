@@ -29,10 +29,10 @@ Locale note: REQ-IDs follow the v1.0 convention ([CATEGORY]-[NN]). New category 
 
 ### Execution & Live Feedback
 
-- [ ] **TUI-15**: User can interact with the TUI without it freezing while a simulation runs in the background, with architecture supporting one simulation workload and one ML workload at a time (simulation execution implemented and verified in this delivery)
-- [ ] **TUI-16**: User sees run status, elapsed time, measurable progress, and current stage, with bounded live event/log streaming that never blocks the simulator and never retains unbounded telemetry in memory
-- [ ] **TUI-17**: User can Ctrl+C, Esc, or shut down the application without corrupting result files; existing simulation semantics (event ordering, results) are preserved regardless of UI interaction, and UI callbacks cannot change simulation or IDS decisions
-- [ ] **TUI-18**: User can stop a running simulation safely; pause/resume is presented as disabled because the runner does not support it safely; an interrupted run preserves partial traces and is marked interrupted; worker exceptions surface actionable diagnostics with no silent retries and no mislabeling of partial runs as completed
+- [x] **TUI-15**: User can interact with the TUI without it freezing while a simulation runs in the background, with architecture supporting one simulation workload and one ML workload at a time (simulation execution implemented and verified in this delivery)
+- [x] **TUI-16**: User sees run status, elapsed time, measurable progress, and current stage, with bounded live event/log streaming that never blocks the simulator and never retains unbounded telemetry in memory
+- [x] **TUI-17**: User can Ctrl+C, Esc, or shut down the application without corrupting result files; existing simulation semantics (event ordering, results) are preserved regardless of UI interaction, and UI callbacks cannot change simulation or IDS decisions
+- [x] **TUI-18**: User can stop a running simulation safely; pause/resume is presented as disabled because the runner does not support it safely; an interrupted run preserves partial traces and is marked interrupted; worker exceptions surface actionable diagnostics with no silent retries and no mislabeling of partial runs as completed
 
 ### Results & Experiment Records
 
@@ -81,10 +81,10 @@ Locale note: REQ-IDs follow the v1.0 convention ([CATEGORY]-[NN]). New category 
 | TUI-12 | Phase 9 — Simulation Workflow | Satisfied (09-01, 09-02, 09-03) |
 | TUI-13 | Phase 9 — Simulation Workflow | Satisfied (09-01, 09-02, 09-03) |
 | TUI-14 | Phase 9 — Simulation Workflow | Satisfied (09-01, 09-02, 09-03) |
-| TUI-15 | Phase 10 — Background Execution & Live Feedback | Pending |
-| TUI-16 | Phase 10 — Background Execution & Live Feedback | Pending |
-| TUI-17 | Phase 10 — Background Execution & Live Feedback | Pending |
-| TUI-18 | Phase 10 — Background Execution & Live Feedback | Pending |
+| TUI-15 | Phase 10 — Background Execution & Live Feedback | Satisfied (10-01, 10-02, 10-03) |
+| TUI-16 | Phase 10 — Background Execution & Live Feedback | Satisfied (10-01, 10-02, 10-03) |
+| TUI-17 | Phase 10 — Background Execution & Live Feedback | Satisfied (10-01, 10-02, 10-03) |
+| TUI-18 | Phase 10 — Background Execution & Live Feedback | Satisfied (10-01, 10-02, 10-03) |
 | TUI-19 | Phase 11 — Results & Experiment Records | Pending |
 | TUI-20 | Phase 11 — Results & Experiment Records | Pending |
 | TUI-21 | Phase 11 — Results & Experiment Records | Pending |

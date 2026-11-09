@@ -17,7 +17,7 @@ from typing import Any, Callable, Dict, Optional
 from simpy.core import EmptySchedule, StopSimulation
 from simpy.events import Event, URGENT
 
-from manet.adapters.execution import SimulationExecutorProtocol, TelemetryEvent
+from manet.adapters.execution import TelemetryEvent
 from manet.adapters.handoff import SimulationLaunchRequest
 from manet.app import ManetApp
 from manet.runtime.paths import get_project_root
@@ -107,21 +107,21 @@ class ConcreteSimulationExecutor:
 
         runner.log_event = hooked_log_event
 
-        runner.initialize_nodes()
-        runner.initialize_traffic()
-
-        stage_cb("SIMULATING")
-        progress_cb(0.0, runner.duration)
-
-        # Schedule URGENT until event at duration to guarantee clean boundary completion
-        until = Event(runner.env)
-        until._ok = True
-        until._value = None
-        runner.env.schedule(until, URGENT, max(0.0, runner.duration - runner.env.now))
-        until.callbacks.append(StopSimulation.callback)
-
         step_count = 0
         try:
+            runner.initialize_nodes()
+            runner.initialize_traffic()
+
+            stage_cb("SIMULATING")
+            progress_cb(0.0, runner.duration)
+
+            # Schedule URGENT until event at duration to guarantee clean boundary completion
+            until = Event(runner.env)
+            until._ok = True
+            until._value = None
+            runner.env.schedule(until, URGENT, max(0.0, runner.duration - runner.env.now))
+            until.callbacks.append(StopSimulation.callback)
+
             while True:
                 if cancel_token.is_set():
                     break
@@ -134,7 +134,7 @@ class ConcreteSimulationExecutor:
         except EmptySchedule:
             pass
         except Exception as exc:
-            # Robust best-effort finalization on execution failure
+            # Robust best-effort finalization on execution failure (initialization or stepping)
             finalization_err = None
             try:
                 runner.write_traces()

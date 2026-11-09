@@ -303,38 +303,52 @@ def test_partial_trace_persistence_on_simulation_exception(tmp_path: Path):
         ids_enabled=False,
     )
 
-    class FailingExecutor(ConcreteSimulationExecutor):
-        def execute_simulation(self, launch_request, cancel_token, telemetry_sink, stage_cb, progress_cb):
-            # Inject exception after runner initializes and runs a few steps
-            stage_cb("INITIALIZING")
-            runner = SimulationRunner(
-                scenario_config=launch_request.config,
-                seed=launch_request.seed,
-                out_path=launch_request.workspace_dir / "trace.csv",
-            )
-            runner.initialize_nodes()
-            runner.initialize_traffic()
-            stage_cb("SIMULATING")
+def test_real_executor_mid_run_failure_preserves_partial_trace_and_isolation_log(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Verify real ConcreteSimulationExecutor persists partial traces and isolation log on mid-run crash."""
+    import simpy
+    repo_root = Path(__file__).resolve().parent.parent
+    scenario_path = repo_root / "scenarios/e2_blackhole_30n.json"
 
-            try:
-                # Step 50 times to produce trace rows
-                for _ in range(50):
-                    runner.env.step()
-                # Now inject unexpected error
-                raise ValueError("Simulated catastrophic mid-run crash!")
-            except Exception as exc:
-                finalization_err = None
-                try:
-                    runner.write_traces()
-                except Exception as f_err:
-                    finalization_err = f_err
-                if finalization_err:
-                    raise RuntimeError("Both failed") from exc
-                raise exc
+    with open(scenario_path, "r", encoding="utf-8") as f:
+        cfg = json.load(f)
 
-    failing_exec = FailingExecutor()
+    cfg["duration"] = 15.0
+    cfg["ids"] = {
+        "enabled": True,
+        "model_path": "ml/models/best_model.joblib",
+        "window_size": 2.0,
+        "eval_interval": 1.0,
+        "threshold": 0.5,
+    }
+
+    work_dir = tmp_path / "mid_run_fail_exp"
+    launch_request = SimulationLaunchRequest(
+        experiment_id="mid_run_fail_exp",
+        scenario_name="mid_run_fail_test",
+        seed=42,
+        config=cfg,
+        workspace_dir=work_dir,
+        created_at="2026-11-08T00:00:00Z",
+        ids_enabled=True,
+    )
+
+    real_step = simpy.Environment.step
+    step_count = 0
+
+    def faulty_step(env_self):
+        nonlocal step_count
+        step_count += 1
+        if step_count >= 50:
+            raise ValueError("Simulated catastrophic mid-run crash!")
+        return real_step(env_self)
+
+    monkeypatch.setattr(simpy.Environment, "step", faulty_step)
+
+    executor = ConcreteSimulationExecutor()
     with pytest.raises(ValueError, match="Simulated catastrophic mid-run crash"):
-        failing_exec.execute_simulation(
+        executor.execute_simulation(
             launch_request=launch_request,
             cancel_token=threading.Event(),
             telemetry_sink=TelemetrySink(),
@@ -347,6 +361,61 @@ def test_partial_trace_persistence_on_simulation_exception(tmp_path: Path):
     assert trace_path.is_file(), "trace.csv was not persisted upon simulation exception"
     lines = trace_path.read_text(encoding="utf-8").splitlines()
     assert len(lines) > 1, "trace.csv has no data rows"
+
+    # Isolation log MUST also be persisted
+    isolation_path = work_dir / "isolation_log.json"
+    assert isolation_path.is_file(), "isolation_log.json was not persisted on mid-run crash"
+    iso_lines = isolation_path.read_text(encoding="utf-8").splitlines()
+    assert len(iso_lines) >= 1, "isolation_log.json is empty"
+    assert "sim_time" in iso_lines[0]
+
+
+def test_real_executor_initialization_failure_preserves_trace(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Verify failure during initialization after runner creation persists trace and fails supervisor."""
+    repo_root = Path(__file__).resolve().parent.parent
+    scenario_path = repo_root / "scenarios/e1_normal_30n.json"
+
+    with open(scenario_path, "r", encoding="utf-8") as f:
+        cfg = json.load(f)
+
+    work_dir = tmp_path / "init_fail_exp"
+    launch_request = SimulationLaunchRequest(
+        experiment_id="init_fail_exp",
+        scenario_name="init_fail_test",
+        seed=42,
+        config=cfg,
+        workspace_dir=work_dir,
+        created_at="2026-11-08T00:00:00Z",
+        ids_enabled=False,
+    )
+
+    def faulty_initialize_traffic(self):
+        self.log_event(
+            sim_time=0.0,
+            src=0,
+            dst=1,
+            pkt_id=1,
+            pkt_type="NODE_STATUS",
+            hop_count=0,
+        )
+        raise RuntimeError("Simulated failure during traffic initialization")
+
+    monkeypatch.setattr(SimulationRunner, "initialize_traffic", faulty_initialize_traffic)
+
+    executor = ConcreteSimulationExecutor()
+    with pytest.raises(RuntimeError, match="Simulated failure during traffic initialization"):
+        executor.execute_simulation(
+            launch_request=launch_request,
+            cancel_token=threading.Event(),
+            telemetry_sink=TelemetrySink(),
+            stage_cb=lambda s: None,
+            progress_cb=lambda now, dur: None,
+        )
+
+    trace_path = work_dir / "trace.csv"
+    assert trace_path.is_file(), "trace.csv was not persisted upon initialization failure"
 
 
 def test_cooperative_cancellation_preserves_partial_trace(tmp_path: Path):

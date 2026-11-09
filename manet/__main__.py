@@ -7,8 +7,6 @@ from __future__ import annotations
 
 import sys
 
-from manet.app import ManetApp
-
 
 def main() -> None:
     """Launch the MANET IDS terminal application with composition root injection."""
@@ -17,10 +15,10 @@ def main() -> None:
         app = create_app()
     except (ImportError, ModuleNotFoundError) as err:
         sys.stderr.write(
-            f"WARNING: bootstrap.py composition root failed to load ({err}). "
-            "Running with offline fallback (executor=None).\n"
+            f"ERROR: Failed to load bootstrap composition root ({err}).\n"
+            "Execution engine unavailable. Ensure bootstrap.py is present at the repository root.\n"
         )
-        app = ManetApp(executor=None)
+        sys.exit(1)
     app.run()
 
 

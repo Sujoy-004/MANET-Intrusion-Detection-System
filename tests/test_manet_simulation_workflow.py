@@ -765,3 +765,97 @@ async def test_step3_preview_respects_custom_workspace_root(tmp_path: Path):
         assert "Target Directory Pattern:" in rendered_text
 
 
+@pytest.mark.asyncio
+async def test_wizard_handoff_calls_prepare_and_start_simulation(tmp_path: Path):
+    """Verify production wizard handoff executes IDLE -> CONFIGURED -> RUNNING lifecycle."""
+    from manet.runtime.supervisor import WorkloadSupervisor, WorkloadState
+
+    ws_root = tmp_path / ".manet-workspace"
+    ws_adapter = WorkspaceAdapter(workspace_root=ws_root)
+    workflow_screen = SimulationWorkflowScreen(workspace_adapter=ws_adapter)
+
+    observed_states: list[WorkloadState] = []
+
+    class MockExecutor:
+        def execute_simulation(self, *args, **kwargs):
+            return {"pdr": 1.0}
+
+    class SupervisorHarnessApp(App[None]):
+        def __init__(self):
+            super().__init__()
+            self.supervisor = WorkloadSupervisor(executor=MockExecutor())
+
+        def compose(self) -> ComposeResult:
+            yield workflow_screen
+
+        def run_worker(self, fn, **kwargs):
+            # Record state at worker dispatch time
+            observed_states.append(self.supervisor.state)
+            return None
+
+    app = SupervisorHarnessApp()
+    async with app.run_test() as pilot:
+        # Advance Step 1 -> 2 -> 3
+        btn_mode_next = app.query_one("#btn-mode-next", Button)
+        btn_mode_next.press()
+        await pilot.pause()
+
+        btn_params_next = app.query_one("#btn-params-next", Button)
+        btn_params_next.press()
+        await pilot.pause()
+
+        # Step 3: Launch
+        assert app.supervisor.state == WorkloadState.IDLE
+        btn_launch = app.query_one("#btn-review-launch", Button)
+        btn_launch.press()
+        await pilot.pause()
+
+        # Worker was dispatched with supervisor in RUNNING (after CONFIGURED)
+        assert WorkloadState.RUNNING in observed_states
+
+
+@pytest.mark.asyncio
+async def test_wizard_launch_with_missing_executor_fails_fast_on_review(tmp_path: Path):
+    """Verify launch when supervisor has executor=None surfaces actionable error and does not switch screen."""
+    from manet.runtime.supervisor import WorkloadSupervisor, WorkloadState
+
+    ws_root = tmp_path / ".manet-workspace"
+    ws_adapter = WorkspaceAdapter(workspace_root=ws_root)
+    workflow_screen = SimulationWorkflowScreen(workspace_adapter=ws_adapter)
+
+    class MissingExecutorApp(App[None]):
+        def __init__(self):
+            super().__init__()
+            self.supervisor = WorkloadSupervisor(executor=None)
+            self._installed_screens = {"live_run": True}
+
+        def compose(self) -> ComposeResult:
+            yield workflow_screen
+
+        def is_screen_installed(self, name: str) -> bool:
+            return name in self._installed_screens
+
+        def switch_screen(self, name: str) -> None:
+            raise AssertionError(f"Should not switch screen to {name} on failed launch")
+
+    app = MissingExecutorApp()
+    async with app.run_test() as pilot:
+        btn_mode_next = app.query_one("#btn-mode-next", Button)
+        btn_mode_next.press()
+        await pilot.pause()
+
+        btn_params_next = app.query_one("#btn-params-next", Button)
+        btn_params_next.press()
+        await pilot.pause()
+
+        btn_launch = app.query_one("#btn-review-launch", Button)
+        btn_launch.press()
+        await pilot.pause()
+
+        # Review screen must show error
+        review_widget = workflow_screen.query_one("#step-preflight-review", StepReviewWidget)
+        err_box = review_widget.query_one("#review-errors-display", Static)
+        assert "no simulation executor configured" in str(err_box.render()).lower()
+        assert not app.supervisor.is_running
+
+

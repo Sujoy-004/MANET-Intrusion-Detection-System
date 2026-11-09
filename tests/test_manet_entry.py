@@ -45,3 +45,36 @@ def test_manet_package_surface_and_side_effects():
     )
     assert not hasattr(manet, "App"), "manet root must not leak Textual App"
     assert not hasattr(manet, "Screen"), "manet root must not leak Textual Screen"
+
+
+def test_manet_main_bootstrap_failure_exits_with_error(monkeypatch, capsys):
+    """Verify main() fails fast with actionable stderr diagnostic if bootstrap cannot load."""
+    import builtins
+    import sys
+
+    orig_import = builtins.__import__
+
+    def failing_import(name, *args, **kwargs):
+        if name == "bootstrap":
+            raise ImportError("No module named bootstrap")
+        return orig_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", failing_import)
+
+    exit_code = None
+
+    def mock_exit(code):
+        nonlocal exit_code
+        exit_code = code
+        raise SystemExit(code)
+
+    monkeypatch.setattr(sys, "exit", mock_exit)
+
+    import pytest
+    with pytest.raises(SystemExit):
+        main()
+
+    assert exit_code == 1
+    captured = capsys.readouterr()
+    assert "ERROR: Failed to load bootstrap composition root" in captured.err
+    assert "Execution engine unavailable" in captured.err

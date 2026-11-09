@@ -18,14 +18,13 @@ from typing import Any, Optional
 from rich.markup import escape
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Container, Horizontal, Vertical
+from textual.containers import Horizontal, Vertical
 from textual.screen import Screen
 from textual.timer import Timer
 from textual.widgets import Button, Footer, Header, ProgressBar, RichLog, Static
 
 from manet.runtime.keymap import (
     BINDING_BACKGROUND,
-    BINDING_LIVE_RUN,
     BINDING_STOP,
 )
 from manet.runtime.supervisor import WorkloadState, WorkloadSupervisor
