@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -163,3 +164,80 @@ def test_delete_experiment_run_traversal_and_root(tmp_path: Path) -> None:
     # The implementation should reject target == workspace root
     with pytest.raises((ValueError, FileNotFoundError, RuntimeError)):
         adapter.preview_experiment_deletion(".")
+
+# ========================= Phase 11 Task 1: gitignore + modal tests =========================
+
+
+def test_git_check_ignore_workspace(tmp_path: Path) -> None:
+    """.gitignore isolates .manet-workspace/ via actual git check-ignore (TUI-21)."""
+    repo_root = Path(__file__).resolve().parent.parent
+    gitignore = repo_root / ".gitignore"
+    content = gitignore.read_text(encoding="utf-8")
+    assert ".manet-workspace/" in content
+    # preserve existing semantics
+    assert "traces/" in content
+    assert "data/" in content
+    assert "results/*" in content
+    result = subprocess.run(
+        ["git", "check-ignore", ".manet-workspace/exp_1/trace.csv"],
+        cwd=str(repo_root),
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, f"git check-ignore failed: {result.stdout} {result.stderr}"
+    assert ".manet-workspace" in (result.stdout + result.stderr)
+
+
+@pytest.mark.asyncio
+async def test_prune_confirmation_modal_preview_composition() -> None:
+    """PruneConfirmationModal renders preview and returns boolean confirmation."""
+    from textual.app import App, ComposeResult
+    from textual.widgets import Static
+
+    from manet.screens.prune_modal import PruneConfirmationModal
+
+    preview = {
+        "experiment_id": "exp_test_42",
+        "path": "/tmp/ws/exp_test_42",
+        "files": [
+            {"relative_path": "trace.csv", "size_bytes": 2048},
+            {"relative_path": "manifest.json", "size_bytes": 512},
+            {"relative_path": "isolation_log.csv", "size_bytes": 128},
+        ],
+        "total_bytes": 2688,
+    }
+
+    class ModalTestApp(App[bool | None]):
+        def __init__(self) -> None:
+            super().__init__()
+            self.result: bool | None = None
+
+        def on_mount(self) -> None:
+            self.push_screen(PruneConfirmationModal(preview), self._capture)
+
+        def _capture(self, value: bool | None) -> None:
+            self.result = value
+            self.exit(value)
+
+    # Cancel via action
+    app_cancel = ModalTestApp()
+    async with app_cancel.run_test() as pilot:
+        await pilot.pause(0.1)
+        modal = app_cancel.screen
+        assert isinstance(modal, PruneConfirmationModal)
+        text = "\n".join(str(w.render()) for w in modal.query(Static))
+        assert "exp_test_42" in text
+        assert "trace.csv" in text
+        assert "2.0 KB" in text or "2.00 KB" in text  # 2048 bytes
+        assert "2688" in text or "2.6 KB" in text
+        await pilot.press("escape")
+        await pilot.pause(0.1)
+    assert app_cancel.result is False
+
+    # Confirm via Delete button
+    app_confirm = ModalTestApp()
+    async with app_confirm.run_test() as pilot:
+        await pilot.pause(0.1)
+        await pilot.click("#btn-delete")
+        await pilot.pause(0.1)
+    assert app_confirm.result is True

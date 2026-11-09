@@ -1,6 +1,7 @@
 # Generated simulation output — reproducible from a seed, never commit (guide §4)
 traces/
 data/
+.manet-workspace/
 
 # Experiment output: keep plots, drop bulk per-run records
 results/*
