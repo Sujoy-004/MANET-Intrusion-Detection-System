@@ -3,9 +3,9 @@ gsd_state_version: "1.0"
 milestone: v2.0
 milestone_name: Interactive TUI Application
 status: phase_complete
-stopped_at: Phase 10 completion
-last_updated: "2026-11-08T23:35:00.000Z"
-state_head: 1daeeb5
+stopped_at: Phase 11 context gathered
+last_updated: "2026-11-09T04:53:07.224Z"
+state_head: 2246e35fb0657f26825d0464712c38a7b36e5c9b
 progress:
   total_phases: 6
   completed_phases: 4
@@ -26,7 +26,7 @@ current_phase_name: Background Execution & Live Feedback
 ## Current Position
 
 - **Phase:** 10 of 12 (Background Execution & Live Feedback) — COMPLETED (3 plans: 10-01-PLAN.md, 10-02-PLAN.md, 10-03-PLAN.md)
-- **Status:** Phase 10 execution and verification completed — ready for Phase 11 planning
+- **Status:** Phase 10 execution, audit reconciliation, and verification completed — ready for Phase 11 planning
 - **Progress:**
   [████░░] 4/6 phases complete (v2.0)
 
@@ -39,7 +39,7 @@ current_phase_name: Background Execution & Live Feedback
 | Plans pending (Phase 10) | 0 |
 | Requirements mapped | 24 / 24 (TUI-01..21, DELV-01..03) |
 | Requirements satisfied | 18 / 24 (TUI-01..18 satisfied; TUI-19..21, DELV-01..03 pending) |
-| Test suite | 227 tests passing (79 baseline + 148 manet/tui tests) |
+| Test suite | 239 tests passing (79 baseline + 160 manet/tui tests) |
 
 ## Requirements Coverage Snapshot
 
@@ -61,13 +61,13 @@ current_phase_name: Background Execution & Live Feedback
 - Advanced ML/data-lab/IDS-admin/reporting screens DEFERRED out of v2.0 — modular placeholders only
 - Existing CLI entry points (`python -m simulator.run_scenario`, `scripts/*`, `ml.train/evaluate`) must remain byte-for-byte unchanged
 - `.manet-workspace/` is the only new write target; never overwrite `traces/`, `data/`, `models/`, `results/`
+- In-process thread worker adopted via Textual Worker API (D-01); decoupled execution protocol via `bootstrap.py` composition root
 
 ### Research Flags
 
 - Never block the Textual loop — `SimulationRunner` must run in a worker, never inside a blocking UI callback
 - Bounded telemetry required: bounded queue, drop-oldest, capped live rows (unbounded retention forbidden)
 - Honest capability states mandatory: model metadata Grayhole F1 = 0.0 must be surfaced as not-effective detection
-- Worker choice (thread vs process fallback) to be evaluated at planning of Phase 10
 - Pause/resume presented as disabled — runner has no safe checkpointing
 
 ### Blockers
@@ -88,10 +88,10 @@ current_phase_name: Background Execution & Live Feedback
 
 ## Session Continuity
 
-**Last session:** 2026-11-08T22:50:00.000Z
-**Stopped at:** Phase 10 plan review
-**Resume file:** .planning/phases/10-background-execution-live-feedback/10-01-PLAN.md
+**Last session:** 2026-11-09T04:53:05.725Z
+**Stopped at:** Phase 11 context gathered
+**Resume file:** .planning/phases/11-results-experiment-records/11-CONTEXT.md
 
-- **Last action:** Phase 10 planning correction audit completed: P0 and P1 audit findings addressed across CONTEXT, RESEARCH, 10-01-PLAN, 10-02-PLAN, 10-03-PLAN, and VALIDATION.
-- **Next up:** `/gsd-execute-phase 10`
-- **Environment notes:** Windows-native, Python 3.11.8; 187 passing tests verified; Textual 8.2.8 installed
+- **Last action:** Phase 10 audit findings resolved: terminal state contract enforced, partial trace persistence guaranteed on initialization/stepping failure, dashboard & status widgets truthful, full regression suite passing (239 tests).
+- **Next up:** Phase 11 planning (`/gsd-plan-phase 11`)
+- **Environment notes:** Windows-native, Python 3.11.8; 239 passing tests verified; Textual 8.2.8 installed
