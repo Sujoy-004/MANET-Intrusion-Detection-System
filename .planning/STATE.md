@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 milestone: v2.0
 milestone_name: Interactive TUI Application
 status: phase_complete
-stopped_at: Phase 11 context gathered
-last_updated: "2026-11-09T07:28:28.306Z"
-state_head: 16e261c96eb5f93583797c8a060da4d32141a36c
+stopped_at: Phase 11 verified complete
+last_updated: "2026-11-10T06:25:00.000Z"
+state_head: 9fee649
 progress:
   total_phases: 6
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 17
-  completed_plans: 14
+  completed_plans: 17
   pending_plans: 0
-current_phase_name: Results & Experiment Records
+current_phase_name: Quality, Testing & Delivery
 ---
 
 # STATE: Machine Learning-Based Intrusion Detection System for MANET
@@ -25,21 +25,21 @@ current_phase_name: Results & Experiment Records
 
 ## Current Position
 
-- **Phase:** 10 of 12 (Background Execution & Live Feedback) — COMPLETED (3 plans: 10-01-PLAN.md, 10-02-PLAN.md, 10-03-PLAN.md)
-- **Status:** Phase 10 execution, audit reconciliation, and verification completed — ready for Phase 11 planning
+- **Phase:** 11 of 12 (Results & Experiment Records) — COMPLETED & VERIFIED (3 plans: 11-01-PLAN.md, 11-02-PLAN.md, 11-03-PLAN.md; 27/27 automated checks + 4/4 UAT items verified)
+- **Status:** Phase 11 UAT gaps remediated and verified — ready for Phase 12 planning
 - **Progress:**
-  [████░░] 4/6 phases complete (v2.0)
+  [█████░] 5/6 phases complete (v2.0)
 
 ## Performance Metrics
 
 | Metric | Value |
 |--------|-------|
-| Phases complete (v2.0) | 4 / 6 |
-| Plans complete (v2.0) | 14 / 14 |
-| Plans pending (Phase 10) | 0 |
+| Phases complete (v2.0) | 5 / 6 |
+| Plans complete (v2.0) | 17 / 17 |
+| Plans pending (Phase 11) | 0 |
 | Requirements mapped | 24 / 24 (TUI-01..21, DELV-01..03) |
-| Requirements satisfied | 18 / 24 (TUI-01..18 satisfied; TUI-19..21, DELV-01..03 pending) |
-| Test suite | 239 tests passing (79 baseline + 160 manet/tui tests) |
+| Requirements satisfied | 21 / 24 (TUI-01..21 satisfied; DELV-01..03 pending for Phase 12) |
+| Test suite | 282 passed, 3 skipped (79 baseline + 203 manet/tui tests) |
 
 ## Requirements Coverage Snapshot
 
@@ -49,7 +49,7 @@ current_phase_name: Results & Experiment Records
 | 8 - Operational Dashboard | TUI-06..08 | Complete (08-01..08-03 verified) |
 | 9 - Simulation Workflow | TUI-09..14 | Complete & Verified (09-01..09-03) |
 | 10 - Background Execution & Live Feedback | TUI-15..18 | Complete & Verified (10-01..10-03) |
-| 11 - Results & Experiment Records | TUI-19..21 | Pending |
+| 11 - Results & Experiment Records | TUI-19..21 | Complete & Verified (11-01..11-03) |
 | 12 - Quality, Testing & Delivery | DELV-01..03 | Pending |
 
 ## Accumulated Context
@@ -89,10 +89,15 @@ current_phase_name: Results & Experiment Records
 
 ## Session Continuity
 
-**Last session:** 2026-11-09T04:53:05.725Z
-**Stopped at:** Phase 11 context gathered
-**Resume file:** .planning/phases/11-results-experiment-records/11-CONTEXT.md
+**Last session:** 2026-11-10T06:25:00Z
+**Stopped at:** Phase 11 verified complete (UAT gaps G-11-1 and G-11-2 remediated & full test suite passing)
+**Resume file:** .planning/phases/11-results-experiment-records/11-VERIFICATION.md
 
-- **Last action:** Phase 10 audit findings resolved: terminal state contract enforced, partial trace persistence guaranteed on initialization/stepping failure, dashboard & status widgets truthful, full regression suite passing (239 tests).
-- **Next up:** Phase 11 planning (`/gsd-plan-phase 11`)
-- **Environment notes:** Windows-native, Python 3.11.8; 239 passing tests verified; Textual 8.2.8 installed
+- **Last action:** Remediated both UAT gaps:
+  - G-11-1: Modal default focus fixed to `#btn-delete` in `manet/screens/prune_modal.py` (`AUTO_FOCUS = "#btn-delete"`).
+  - G-11-2: Non-atomic experiment deletion fixed via atomic directory rename before deletion in `manet/adapters/workspace.py` (`delete_experiment_run`).
+  - Added regression test `test_delete_experiment_run_atomic_rollback_on_lock` and keyboard interaction tests in `tests/test_manet_workspace_pruning.py`.
+  - Re-ran full regression suite: 282 passed, 3 skipped, 0 failures.
+  - Updated 11-UAT.md (4/4 passed) and 11-VERIFICATION.md (status: passed).
+- **Next up:** Phase 12 (Quality, Testing & Delivery) planning (`/gsd-plan-phase 12`).
+- **Environment notes:** Windows-native, Python 3.11.8; 282 passing tests; Textual 8.2.8 installed.

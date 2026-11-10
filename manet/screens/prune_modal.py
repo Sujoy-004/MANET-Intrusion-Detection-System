@@ -24,6 +24,8 @@ class PruneConfirmationModal(ModalScreen[bool]):
     cancelled via [Esc] or the Cancel button. Does not execute deletion.
     """
 
+    AUTO_FOCUS = "#btn-delete"
+
     BINDINGS = [
         Binding("escape", "cancel_delete", "Cancel", show=True),
         Binding("enter", "confirm_delete", "Delete", show=True),

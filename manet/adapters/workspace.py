@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import time
 from typing import Any
 
 import manet
@@ -526,13 +527,47 @@ class WorkspaceAdapter:
                 total_bytes = int(fresh["total_bytes"])
             except Exception:
                 total_bytes = 0
+        # Atomic deletion:
+        # Instead of calling shutil.rmtree directly on target_dir (which deletes files
+        # sequentially and can leave an experiment half-deleted if a file like trace.csv
+        # is locked by another Windows process), atomically rename target_dir to a staging
+        # trash directory first.
+        #
+        # 1. On Windows, if any file inside target_dir is held open without FILE_SHARE_DELETE
+        #    (such as in Excel or a viewer), the rename of target_dir fails immediately with
+        #    PermissionError/OSError.
+        # 2. Because failure occurs on the directory rename, ZERO files inside target_dir are
+        #    deleted or modified — manifest.json and all artifacts remain completely intact.
+        # 3. Only once safely renamed is shutil.rmtree executed on the trash directory.
+        # 4. If rmtree fails unexpectedly after rename, rollback by renaming trash_dir back
+        #    to target_dir is attempted before raising.
+        trash_dir = target_dir.parent / f".deleting_{target_dir.name}_{time.time_ns()}"
         try:
-            shutil.rmtree(target_dir)
+            target_dir.rename(trash_dir)
         except PermissionError as exc:
             raise RuntimeError(
                 f"Cannot delete experiment run '{experiment_id}': files are locked by another Windows process. Please close any open handles."
             ) from exc
         except OSError as exc:
+            raise RuntimeError(str(exc)) from exc
+
+        try:
+            shutil.rmtree(trash_dir)
+        except PermissionError as exc:
+            if trash_dir.exists() and not target_dir.exists():
+                try:
+                    trash_dir.rename(target_dir)
+                except Exception:
+                    pass
+            raise RuntimeError(
+                f"Cannot delete experiment run '{experiment_id}': files are locked by another Windows process. Please close any open handles."
+            ) from exc
+        except OSError as exc:
+            if trash_dir.exists() and not target_dir.exists():
+                try:
+                    trash_dir.rename(target_dir)
+                except Exception:
+                    pass
             raise RuntimeError(str(exc)) from exc
         return total_bytes
 

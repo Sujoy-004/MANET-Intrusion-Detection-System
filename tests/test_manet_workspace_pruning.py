@@ -241,3 +241,60 @@ async def test_prune_confirmation_modal_preview_composition() -> None:
         await pilot.click("#btn-delete")
         await pilot.pause(0.1)
     assert app_confirm.result is True
+
+    # Confirm via immediate Enter key (verifying AUTO_FOCUS = "#btn-delete")
+    app_enter = ModalTestApp()
+    async with app_enter.run_test() as pilot:
+        await pilot.pause(0.1)
+        assert app_enter.screen.focused is not None
+        assert app_enter.screen.focused.id == "btn-delete"
+        await pilot.press("enter")
+        await pilot.pause(0.1)
+    assert app_enter.result is True
+
+    # Cancel via Tab to Cancel button + Enter
+    app_tab_cancel = ModalTestApp()
+    async with app_tab_cancel.run_test() as pilot:
+        await pilot.pause(0.1)
+        await pilot.press("tab")
+        await pilot.pause(0.1)
+        assert app_tab_cancel.screen.focused is not None
+        assert app_tab_cancel.screen.focused.id == "btn-cancel"
+        await pilot.press("enter")
+        await pilot.pause(0.1)
+    assert app_tab_cancel.result is False
+
+
+def test_delete_experiment_run_atomic_rollback_on_lock(tmp_path: Path) -> None:
+    """Windows file-lock contention leaves experiment directory completely intact (G-11-2)."""
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    exp_dir = _make_exp(
+        ws,
+        "exp_atomic_lock",
+        {
+            "manifest.json": b'{"id": "exp_atomic_lock"}',
+            "trace.csv": b"time,node_id,event\n0.1,1,send\n",
+            "isolation_log.csv": b"time,node_id,reason\n",
+        },
+    )
+    adapter = WorkspaceAdapter(workspace_root=ws)
+    preview = adapter.preview_experiment_deletion("exp_atomic_lock")
+
+    trace_file = exp_dir / "trace.csv"
+    with open(trace_file, "r", encoding="utf-8") as _locked_handle:
+        with pytest.raises(RuntimeError, match="files are locked by another Windows process"):
+            adapter.delete_experiment_run("exp_atomic_lock", expected_preview=preview)
+
+        # CRITICAL: Verify directory and ALL files are untouched and intact!
+        assert exp_dir.exists(), "Target directory must not be deleted on locked failure"
+        assert (exp_dir / "manifest.json").exists(), "manifest.json must remain intact"
+        assert (exp_dir / "manifest.json").read_bytes() == b'{"id": "exp_atomic_lock"}'
+        assert (exp_dir / "trace.csv").exists(), "trace.csv must remain intact"
+        assert (exp_dir / "isolation_log.csv").exists(), "isolation_log.csv must remain intact"
+
+    # Once handle is closed, deletion succeeds cleanly
+    reclaimed = adapter.delete_experiment_run("exp_atomic_lock")
+    assert not exp_dir.exists()
+    assert reclaimed > 0
+
