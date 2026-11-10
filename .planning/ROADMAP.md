@@ -123,7 +123,13 @@ Plans:
   2. `python -m simulator.run_scenario`, `scripts/*`, and `python -m ml.train` / `ml.evaluate` behave exactly as before the TUI was added
   3. Updated README documents the launch command, TUI dependency installation, supported terminals, limitations, and keyboard shortcuts; CHANGELOG.md records the feature; no untested cross-platform claims appear
   4. A completion report lists changed files, architecture and framework rationale, commands run with exact test results, and clearly enumerated known limitations and deferred features
-**Plans**: TBD
+**Plans**: 2 plans
+
+**Wave 1**
+- [ ] 12-01-PLAN.md — Hermetic test workspace isolation and behavioral subprocess regression harness for legacy CLIs and scripts
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 12-02-PLAN.md — Root pinned requirements manifest, environment verification script, full test suite regression gate, and honest verification report
 
 ## Progress
 
@@ -134,7 +140,7 @@ Plans:
 | 9. Simulation Workflow | 3/3 | Complete | 2026-11-08 |
 | 10. Background Execution & Live Feedback | 3/3 | Complete | 2026-11-08 |
 | 11. Results & Experiment Records | 3/3 | Complete | 2026-11-10 |
-| 12. Quality, Testing & Delivery | 0/? | Not started | - |
+| 12. Quality, Testing & Delivery | 0/2 | Not started | - |
 
 ## Deferred (out of v2.0 scope)
 
