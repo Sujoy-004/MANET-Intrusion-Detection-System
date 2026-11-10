@@ -25,8 +25,12 @@ Thumbs.db
 .idea/
 .vscode/
 
-# GSD local planning (commit_docs: false)
+# GSD local planning & runtime state (commit_docs: false)
 .opencode/
+.gsd/
+
+# MCP runtime artifacts & scratch logs
+.playwright-mcp/
 
 # Personal / uncommitted tools & archify diagrams (Phase 6 personal artifacts)
 .archify/
