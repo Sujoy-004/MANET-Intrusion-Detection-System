@@ -47,3 +47,5 @@ credentials/
 
 # Gemini instructions
 GEMINI.md
+# OpenCode/we worktree runtime artifacts (worker records, logs)
+.claude/
