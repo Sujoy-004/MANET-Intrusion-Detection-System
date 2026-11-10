@@ -124,7 +124,6 @@ Plans:
   3. Updated README documents the launch command, TUI dependency installation, supported terminals, limitations, and keyboard shortcuts; CHANGELOG.md records the feature; no untested cross-platform claims appear
   4. A completion report lists changed files, architecture and framework rationale, commands run with exact test results, and clearly enumerated known limitations and deferred features
 **Plans**: 2 plans
-
 **Wave 1**
 - [ ] 12-01-PLAN.md — Hermetic test workspace isolation and behavioral subprocess regression harness for legacy CLIs and scripts
 
