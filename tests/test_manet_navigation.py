@@ -542,6 +542,16 @@ async def test_status_bar_terminal_states_and_experiment_id(tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_quit_idle_exits_cleanly():
+    """Verify pressing ctrl+q when idle exits application cleanly with exit code 0."""
+    app = ManetApp()
+    async with app.run_test() as pilot:
+        await pilot.press("ctrl+q")
+        assert app.is_running is False
+        assert app.return_code == 0
+
+
+@pytest.mark.asyncio
 async def test_safe_quit_confirmation_guard():
     """Verify quitting with active simulation prompts QuitConfirmModal."""
     from manet.app import QuitConfirmModal

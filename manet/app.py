@@ -152,7 +152,8 @@ class ManetApp(App):
         Binding(BINDING_CONSOLE, "show_console", "Console", show=True),
         Binding(BINDING_HELP, "show_help", "Help", show=True),
         Binding(BINDING_PALETTE, "command_palette", "Palette", show=True),
-        Binding(BINDING_QUIT, "quit", "Quit", show=True),
+        Binding(BINDING_QUIT, "quit", "Quit", show=True, priority=True),
+        Binding("ctrl+c", "quit", "Quit", show=False, priority=True),
     ]
 
     def __init__(self, *args: Any, executor: Optional[Any] = None, **kwargs: Any) -> None:
@@ -201,7 +202,7 @@ class ManetApp(App):
         if hasattr(self, "supervisor") and self.supervisor.is_running:
             self.push_screen(QuitConfirmModal(), self._handle_quit_confirm)
         else:
-            super().action_quit()
+            self.exit()
 
     def _handle_quit_confirm(self, confirmed: bool | None) -> None:
         """Handle quit confirmation modal result."""
@@ -221,7 +222,7 @@ class ManetApp(App):
             if self.supervisor.state == WorkloadState.FAILED and self.supervisor.last_error:
                 self.push_screen(ShutdownErrorModal(self.supervisor.last_error))
             else:
-                super().action_quit()
+                self.exit()
 
     def action_simulation(self) -> None:
         """Switch to simulation workflow wizard screen."""
