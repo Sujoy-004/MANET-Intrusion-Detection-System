@@ -1,5 +1,25 @@
 # Project Milestones: Machine Learning-Based Intrusion Detection System for MANET
 
+## v2.0 Interactive TUI Application (Shipped: 2026-11-11)
+
+**Phases completed:** 6 phases, 19 plans, 21 tasks
+
+**Key accomplishments:**
+- Launchable Textual TUI skeleton for `manet` package featuring SOC cybersecurity dark theme, single-source keymap, MainWorkspace screen, and headless pilot launch testing.
+- Single-source application command registry, AST import-boundary enforcement against business and OS execution primitives, and fuzzy Textual command palette provider with honest workspace action wiring.
+- Structured in-memory command console driver and screen (`ctrl+o`), contextual help and metadata screen (`f1`), and keyboard-first screen navigation with Esc dismiss cycles.
+- High-contrast cybersecurity theme, reduced-motion accessibility, session-only settings, and responsive breakpoint adaptation for compact terminal displays.
+- Decoupled scenario discovery adapter, two-tier parameter validator with champion model gating, and collision-free workspace directory allocator with launch manifest recording.
+- Interactive 3-step simulation workflow wizard with authentic preset discovery, progressive disclosure parameter configuration with blur validation, strict champion model IDS gating, and pre-flight review confirmation.
+- End-to-end compatibility proof that wizard-generated scenario configurations (preset and custom) execute through the real `SimulationRunner` with canonical trace schema and manifest parity — plus verified `[S]`/`sim:start` wizard wiring and zero import-boundary violations; full suite 176 passed.
+- Atomic manifest finalization, chunked SHA-256 artifact verification, and safe fingerprint-gated workspace pruning for MANET experiment records.
+- Academic MANET results inspection with a QoS scorecard and a thread-verified, split-pane ResultsScreen for artifacts, isolation logs, and execution configuration
+- Full-screen session history, safe workspace pruning, .manet-workspace Git isolation, and end-to-end results/history navigation wired across the MANET IDS TUI.
+- Hermetic pytest workspace isolation (autouse WorkspaceAdapter patch with `real_workspace_defaults` marker opt-out) plus a 9-test subprocess CLI regression harness covering simulator/ml/scripts with exit-code, banner, and schema contracts; full suite green at 290 passed / 3 skipped.
+- Exact-pinned requirements.txt + on-demand verify_environment.py (exit 0), full unweakened suite gate 290 passed / 3 expected symlink skips / 0 failures in 410.03s, AST boundaries 7/7 clean, and the honest 12-VERIFICATION.md delivery audit per D-02/D-03/D-04.
+
+---
+
 ## v1.0 MVP / Initial Release (Shipped: 2026-10-28)
 
 **Delivered:** Pure-Python Windows-native MANET discrete-event simulator with RFC 3561 AODV routing, decoupled Blackhole/Grayhole attack injections, sliding-window anti-leakage feature engineering, cost-sensitive ML intrusion detection (FPR <= 1.0%), dynamic closed-loop route isolation proving 92.9% QoS recovery, and publication-grade deliverables with B.Tech thesis documentation.

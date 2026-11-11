@@ -3,7 +3,7 @@
 ## Milestones
 
 - 🏁 **v1.0 MVP / Initial Release** - Phases 1-6 (shipped 2026-10-28, archived in `.planning/milestones/v1.0-phases`)
-- 🚧 **v2.0 Interactive TUI Application** - Phases 7-12 (current)
+- 🏁 **v2.0 Interactive TUI Application** - Phases 7-12 (shipped 2026-11-11, archived in `.planning/milestones/v2.0-phases`)
 
 ## Phases
 
