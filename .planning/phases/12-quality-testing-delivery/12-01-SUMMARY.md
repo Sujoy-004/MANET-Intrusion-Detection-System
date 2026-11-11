@@ -125,3 +125,10 @@ None - no external service configuration required.
 ---
 *Phase: 12-quality-testing-delivery*
 *Completed: 2026-11-11*
+
+## Self-Check: PASSED
+
+- Files: tests/conftest.py, tests/test_legacy_cli_compat.py, 12-01-SUMMARY.md all exist
+- Commits: 7b96aa6 (task 1), 972e840 (task 2), b5a9580 (docs) all present in git log
+- Full-suite verification: 290 passed, 3 skipped, 0 failures (565.59s)
+- DELV-01 checkbox left Pending by design (12-02-PLAN.md also declares DELV-01; flips when 12-02 completes)
