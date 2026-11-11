@@ -1,9 +1,9 @@
 ---
 phase: "12"
 slug: "quality-testing-delivery"
-status: draft
+status: validated
 nyquist_compliant: true
-wave_0_complete: false
+wave_0_complete: true
 created: "2026-11-10"
 ---
 
@@ -38,11 +38,11 @@ created: "2026-11-10"
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 12-01-01 | 01 | 1 | DELV-01 | T-12-01 | Tests execute in hermetic tmp_path without mutating workspace | unit | `python -m pytest tests/test_manet_dashboard_workspace.py -q` | ❌ W0 | ⬜ pending |
-| 12-01-02 | 01 | 1 | DELV-01 | T-12-02 | Legacy simulator & ML CLI commands execute with exit code 0 and valid schema | integration | `python -m pytest tests/test_legacy_cli_compat.py -q` | ❌ W0 | ⬜ pending |
-| 12-02-01 | 02 | 2 | DELV-01 | T-12-03 | Pinned dependencies installed and verified without drift | operational | `python scripts/verify_environment.py` | ❌ W0 | ⬜ pending |
-| 12-02-02 | 02 | 2 | DELV-01 | T-12-04 | AST boundaries assert presentation layer never imports business logic | static | `python -m pytest tests/test_manet_import_boundaries.py tests/test_import_boundaries.py -q` | ✅ | ⬜ pending |
-| 12-02-03 | 02 | 2 | DELV-03 | — | Complete unweakened test suite passes on host | audit | `python -m pytest -q` | ✅ | ⬜ pending |
+| 12-01-01 | 01 | 1 | DELV-01 | T-12-01 | Tests execute in hermetic tmp_path without mutating workspace | unit | `python -m pytest tests/test_manet_dashboard_workspace.py -q` | ✅ | ✅ green |
+| 12-01-02 | 01 | 1 | DELV-01 | T-12-02 | Legacy simulator & ML CLI commands execute with exit code 0 and valid schema | integration | `python -m pytest tests/test_legacy_cli_compat.py -q` | ✅ | ✅ green |
+| 12-02-01 | 02 | 2 | DELV-01 | T-12-03 | Pinned dependencies installed and verified without drift | operational | `python scripts/verify_environment.py` | ✅ | ✅ green |
+| 12-02-02 | 02 | 2 | DELV-01 | T-12-04 | AST boundaries assert presentation layer never imports business logic | static | `python -m pytest tests/test_manet_import_boundaries.py tests/test_import_boundaries.py -q` | ✅ | ✅ green |
+| 12-02-03 | 02 | 2 | DELV-03 | — | Complete unweakened test suite passes on host | audit | `python -m pytest -q` | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -50,10 +50,10 @@ created: "2026-11-10"
 
 ## Wave 0 Requirements
 
-- [ ] `tests/conftest.py` — autouse fixture isolating `.manet-workspace` for all tests
-- [ ] `tests/test_legacy_cli_compat.py` — subprocess regression suite for `simulator.run_scenario`, `ml.train`, `ml.evaluate`, `scripts/*`
-- [ ] `requirements.txt` — root pinned package manifest
-- [ ] `scripts/verify_environment.py` — standalone environment verification script
+- [x] `tests/conftest.py` — autouse fixture isolating `.manet-workspace` for all tests
+- [x] `tests/test_legacy_cli_compat.py` — subprocess regression suite for `simulator.run_scenario`, `ml.train`, `ml.evaluate`, `scripts/*`
+- [x] `requirements.txt` — root pinned package manifest
+- [x] `scripts/verify_environment.py` — standalone environment verification script
 
 ---
 
@@ -77,3 +77,11 @@ created: "2026-11-10"
 - [x] `nyquist_compliant: true` set in frontmatter
 
 **Approval:** approved 2026-11-10
+
+## Validation Audit 2026-11-11
+
+| Metric | Count |
+|---|---|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
