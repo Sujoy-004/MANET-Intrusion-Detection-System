@@ -14,6 +14,7 @@ from manet.screens.simulation_workflow import SimulationWorkflowScreen
 from manet.widgets.wizard_step_review import StepReviewWidget
 
 
+@pytest.mark.real_workspace_defaults
 def test_repo_root_anchoring_outside_cwd(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     """Verify default adapters, validators, and widgets resolve to repo root when cwd is outside repo (IN-06)."""
     repo_root = get_project_root()
