@@ -1,0 +1,295 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "architecture",
+  "quality": "showcase",
+  "specification": {
+    "path": "C:\\Users\\KIIT0001\\Documents\\projects\\Machine Learning-Based Intrusion Detection System for MANET\\.archify\\architecture-manet-ids-20261111-132000\\candidate.json",
+    "sha256": "a7e9d2dcc52c07b6e00ad2eab0effff11510e715a2715932d7676437d8749582",
+    "bytes": 21880
+  },
+  "artifact": {
+    "path": "C:\\Users\\KIIT0001\\Documents\\projects\\Machine Learning-Based Intrusion Detection System for MANET\\.archify\\architecture-manet-ids-20261111-132000\\manet-ids.html",
+    "sha256": "99f9b637d156f0014370e3ae817cf795b131ab8a07a948400b866ce503596b10",
+    "bytes": 897611
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "pass"
+  },
+  "diagnostics": [],
+  "diagnosticSummary": {
+    "total": 0,
+    "shown": 0,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "C:\\Users\\KIIT0001\\Documents\\projects\\Machine Learning-Based Intrusion Detection System for MANET\\.archify\\architecture-manet-ids-20261111-132000\\manet-ids.finalize.json",
+    "summaryReceipt": "C:\\Users\\KIIT0001\\Documents\\projects\\Machine Learning-Based Intrusion Detection System for MANET\\.archify\\architecture-manet-ids-20261111-132000\\manet-ids.finalize-summary.json",
+    "browserCheckReceipt": "C:\\Users\\KIIT0001\\Documents\\projects\\Machine Learning-Based Intrusion Detection System for MANET\\.archify\\architecture-manet-ids-20261111-132000\\manet-ids.browser-check.json"
+  },
+  "update": {
+    "status": "current",
+    "installedVersion": "3.2.0",
+    "availableVersion": "3.2.0",
+    "releaseNotes": null,
+    "checkedAt": "2026-11-11T07:54:56.288Z",
+    "source": "network",
+    "noticeRequired": false,
+    "noticeText": null
+  },
+  "visualReview": "not-requested",
+  "durationMs": 11451,
+  "browserCheck": {
+    "requested": true,
+    "ran": true
+  },
+  "visualReviewRecommendation": {
+    "action": "inspect-route-readability",
+    "signals": {
+      "resolvedCrossovers": 6,
+      "routesOverSuggestedBends": 5,
+      "routesOverSuggestedStretch": 1
+    },
+    "reason": "Automated gates passed, but crossings or detours still need perceptual review before claiming visual quality.",
+    "affectedRoutes": {
+      "crossings": [
+        {
+          "left": {
+            "id": "c-mobility-pos",
+            "from": "mobility_engine",
+            "to": "radio_channel",
+            "label": "node positions",
+            "collectionIndex": 8,
+            "artifactIndex": 9
+          },
+          "right": {
+            "id": "c-attack-grayhole",
+            "from": "grayhole",
+            "to": "aodv_router",
+            "label": "selective drop",
+            "collectionIndex": 11,
+            "artifactIndex": 12
+          },
+          "point": [
+            708,
+            487
+          ]
+        },
+        {
+          "left": {
+            "id": "c-radio-neighbors",
+            "from": "radio_channel",
+            "to": "aodv_router",
+            "label": "neighbor links",
+            "collectionIndex": 9,
+            "artifactIndex": 10
+          },
+          "right": {
+            "id": "c-attack-grayhole",
+            "from": "grayhole",
+            "to": "aodv_router",
+            "label": "selective drop",
+            "collectionIndex": 11,
+            "artifactIndex": 12
+          },
+          "point": [
+            616,
+            487
+          ],
+          "sharedNode": "aodv_router"
+        },
+        {
+          "left": {
+            "id": "c-attack-blackhole",
+            "from": "blackhole",
+            "to": "aodv_router",
+            "label": "fake RREP &amp; drop",
+            "collectionIndex": 10,
+            "artifactIndex": 11
+          },
+          "right": {
+            "id": "c-router-trace",
+            "from": "aodv_router",
+            "to": "trace_store",
+            "label": "logs events",
+            "collectionIndex": 12,
+            "artifactIndex": 13
+          },
+          "point": [
+            814,
+            332.4
+          ],
+          "sharedNode": "aodv_router"
+        },
+        {
+          "left": {
+            "id": "c-attack-grayhole",
+            "from": "grayhole",
+            "to": "aodv_router",
+            "label": "selective drop",
+            "collectionIndex": 11,
+            "artifactIndex": 12
+          },
+          "right": {
+            "id": "c-router-trace",
+            "from": "aodv_router",
+            "to": "trace_store",
+            "label": "logs events",
+            "collectionIndex": 12,
+            "artifactIndex": 13
+          },
+          "point": [
+            814,
+            487
+          ],
+          "sharedNode": "aodv_router"
+        },
+        {
+          "left": {
+            "id": "c-metrics-results",
+            "from": "metrics_calc",
+            "to": "results_screen",
+            "label": "PDR &amp; delay QoS",
+            "collectionIndex": 14,
+            "artifactIndex": 15
+          },
+          "right": {
+            "id": "c-manifest-history",
+            "from": "manifest_store",
+            "to": "history_screen",
+            "label": "session history",
+            "collectionIndex": 23,
+            "artifactIndex": 24
+          },
+          "point": [
+            315,
+            577
+          ]
+        },
+        {
+          "left": {
+            "id": "c-trace-features",
+            "from": "trace_store",
+            "to": "feature_extractor",
+            "label": "trace windows",
+            "collectionIndex": 15,
+            "artifactIndex": 16
+          },
+          "right": {
+            "id": "c-isolation-results",
+            "from": "isolation_store",
+            "to": "results_screen",
+            "label": "audit trail",
+            "collectionIndex": 22,
+            "artifactIndex": 23
+          },
+          "point": [
+            715,
+            733
+          ]
+        }
+      ],
+      "detours": [
+        {
+          "relationship": {
+            "id": "c-delegate-exec",
+            "from": "supervisor",
+            "to": "composition_root",
+            "label": "delegates execution",
+            "collectionIndex": 4,
+            "artifactIndex": 5
+          },
+          "bends": 3,
+          "stretch": 1.32
+        },
+        {
+          "relationship": {
+            "id": "c-attack-grayhole",
+            "from": "grayhole",
+            "to": "aodv_router",
+            "label": "selective drop",
+            "collectionIndex": 11,
+            "artifactIndex": 12
+          },
+          "bends": 6,
+          "stretch": 2.422
+        },
+        {
+          "relationship": {
+            "id": "c-router-trace",
+            "from": "aodv_router",
+            "to": "trace_store",
+            "label": "logs events",
+            "collectionIndex": 12,
+            "artifactIndex": 13
+          },
+          "bends": 3,
+          "stretch": 1.11,
+          "directCorridorBlockers": [
+            {
+              "id": "mobility_engine",
+              "label": "Random Waypoint",
+              "box": [
+                640,
+                420,
+                150,
+                64
+              ]
+            },
+            {
+              "id": "radio_channel",
+              "label": "Radio Channel",
+              "box": [
+                640,
+                550,
+                150,
+                64
+              ]
+            }
+          ]
+        },
+        {
+          "relationship": {
+            "id": "c-trace-features",
+            "from": "trace_store",
+            "to": "feature_extractor",
+            "label": "trace windows",
+            "collectionIndex": 15,
+            "artifactIndex": 16
+          },
+          "bends": 3,
+          "stretch": 1.065
+        },
+        {
+          "relationship": {
+            "id": "c-isolation-results",
+            "from": "isolation_store",
+            "to": "results_screen",
+            "label": "audit trail",
+            "collectionIndex": 22,
+            "artifactIndex": 23
+          },
+          "bends": 3,
+          "stretch": 1.07
+        }
+      ],
+      "truncated": false
+    },
+    "hints": [
+      "mobility_engine → radio_channel crosses grayhole → aodv_router: move the node of whichever is a branch, return, or second entrance to the other side of the main path, so that relationship runs through an empty corridor.",
+      "radio_channel → aodv_router and grayhole → aodv_router cross next to aodv_router: move node radio_channel or grayhole so the two reach aodv_router from different sides (for example one level with it, one directly above or below it).",
+      "blackhole → aodv_router and aodv_router → trace_store cross next to aodv_router: move node blackhole or trace_store so the two reach aodv_router from different sides (for example one level with it, one directly above or below it).",
+      "grayhole → aodv_router and aodv_router → trace_store cross next to aodv_router: move node grayhole or trace_store so the two reach aodv_router from different sides (for example one level with it, one directly above or below it).",
+      "metrics_calc → results_screen crosses manifest_store → history_screen: move the node of whichever is a branch, return, or second entrance to the other side of the main path, so that relationship runs through an empty corridor.",
+      "trace_store → feature_extractor crosses isolation_store → results_screen: move the node of whichever is a branch, return, or second entrance to the other side of the main path, so that relationship runs through an empty corridor.",
+      "supervisor → composition_root needs 3 bends: move node supervisor or composition_root so they share a row or column with matching centers, or sit diagonally with a clear corner.",
+      "grayhole → aodv_router needs 6 bends: move node grayhole or aodv_router so they share a row or column with matching centers, or sit diagonally with a clear corner."
+    ],
+    "repair": "Trace these relationships at the desktop viewport. For Architecture, use references/architecture-layout-repair.md: reflow a blocked main path or tangled connected scene, and repair an isolated defect locally only when the surrounding composition is accepted. Preserve all semantic content and user-fixed geometry. Rerun finalize once after the edit."
+  }
+}

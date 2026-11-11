@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Closed-Loop MANET Intrusion Detection & Route Invalidation Sequence",
+    "output": "closed_loop_sequence.html",
+    "viewBox": [1080, 1080],
+    "column_fit": "spread",
+    "animation": "trace",
+    "quality_profile": "showcase"
+  },
+  "participants": [
+    { "id": "traffic", "type": "frontend", "label": "Traffic Src", "sublabel": "CBR flow agent" },
+    { "id": "honest", "type": "backend", "label": "Honest Node", "sublabel": "AODV router" },
+    { "id": "attacker", "type": "security", "label": "Attacker", "sublabel": "Blackhole / Gray" },
+    { "id": "logger", "type": "database", "label": "Trace Logger", "sublabel": "packet events" },
+    { "id": "ids", "type": "security", "label": "OnlineIDS", "sublabel": "controller" },
+    { "id": "ml", "type": "cloud", "label": "ML Engine", "sublabel": "Random Forest" },
+    { "id": "quarantine", "type": "database", "label": "Quarantine", "sublabel": "2-strike filter" },
+    { "id": "rtable", "type": "backend", "label": "Route Table", "sublabel": "AODV routing" }
+  ],
+  "segments": [
+    { "from": 150, "to": 415, "label": "Route Hijack & Packet Dropping" },
+    { "from": 425, "to": 705, "label": "Sliding-Window Inference & 2-Strike Confirmation" },
+    { "from": 715, "to": 950, "label": "Route Invalidation & QoS Recovery" }
+  ],
+  "messages": [
+    { "id": "m1", "from": "traffic", "to": "honest", "y": 170, "label": "broadcast RREQ (find dest)", "variant": "default" },
+    { "id": "m2", "from": "honest", "to": "attacker", "y": 208, "label": "forward RREQ", "variant": "default" },
+    { "id": "m3", "from": "attacker", "to": "honest", "y": 246, "label": "spoofed RREP (SeqNum=2^32-1)", "variant": "security" },
+    { "id": "m4", "from": "honest", "to": "rtable", "y": 284, "label": "install route via attacker", "variant": "emphasis" },
+    { "id": "m5", "from": "traffic", "to": "honest", "y": 322, "label": "CBR UDP data flow", "variant": "emphasis" },
+    { "id": "m6", "from": "honest", "to": "attacker", "y": 360, "label": "forward data packet", "variant": "emphasis" },
+    { "id": "m7", "from": "attacker", "to": "logger", "y": 398, "label": "silent packet drop", "variant": "security" },
+    { "id": "m8", "from": "ids", "to": "logger", "y": 445, "label": "query window events (t=5s)", "variant": "default" },
+    { "id": "m9", "from": "logger", "to": "ids", "y": 485, "label": "return 9 aggregated features", "variant": "return" },
+    { "id": "m10", "from": "ids", "to": "ml", "y": 525, "label": "predict_proba(features)", "variant": "emphasis" },
+    { "id": "m11", "from": "ml", "to": "ids", "y": 565, "label": "P(malicious) = 0.89 >= tau", "variant": "return" },
+    { "id": "m12", "from": "ids", "to": "quarantine", "y": 605, "label": "record Strike 1", "variant": "security" },
+    { "id": "m13", "from": "ids", "to": "ml", "y": 645, "label": "evaluate window (t=10s)", "variant": "emphasis" },
+    { "id": "m14", "from": "ml", "to": "ids", "y": 685, "label": "confirmed malicious (P=0.92)", "variant": "return" },
+    { "id": "m15", "from": "ids", "to": "quarantine", "y": 735, "label": "Strike 2 -> Quarantine 30s", "variant": "security" },
+    { "id": "m16", "from": "quarantine", "to": "ids", "y": 775, "label": "quarantine active (blacklist)", "variant": "return" },
+    { "id": "m17", "from": "ids", "to": "rtable", "y": 815, "label": "invalidate_routes_through(attacker)", "variant": "emphasis" },
+    { "id": "m18", "from": "rtable", "to": "honest", "y": 855, "label": "purge invalid route entries", "variant": "return" },
+    { "id": "m19", "from": "honest", "to": "rtable", "y": 895, "label": "rediscover path bypassing attacker", "variant": "default" },
+    { "id": "m20", "from": "traffic", "to": "honest", "y": 935, "label": "CBR data delivered (PDR recovered)", "variant": "emphasis" }
+  ],
+  "activations": [
+    { "participant": "traffic", "from": 165, "to": 330, "type": "frontend" },
+    { "participant": "honest", "from": 170, "to": 370, "type": "backend" },
+    { "participant": "attacker", "from": 205, "to": 405, "type": "security" },
+    { "participant": "logger", "from": 390, "to": 495, "type": "database" },
+    { "participant": "ids", "from": 440, "to": 825, "type": "security" },
+    { "participant": "ml", "from": 520, "to": 695, "type": "cloud" },
+    { "participant": "quarantine", "from": 600, "to": 785, "type": "database" },
+    { "participant": "rtable", "from": 280, "to": 905, "type": "backend" },
+    { "participant": "honest", "from": 850, "to": 945, "type": "backend" }
+  ],
+  "cards": [
+    {
+      "dot": "rose",
+      "title": "Adversarial Exploitation",
+      "items": [
+        "Attacker abuses RFC 3561 sequence freshness rule",
+        "Fabricates maximum sequence number to win route election",
+        "Silently intercepts and discards all downstream UDP traffic"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Dual-Window Confirmation",
+      "items": [
+        "Sliding window W=5.0s aggregates non-leaking traffic features",
+        "Strike 1 flags anomaly; Strike 2 confirms malicious intent",
+        "Eliminates transient route flutter and false positives"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Dynamic Remediation",
+      "items": [
+        "OnlineIDS triggers targeted route invalidation through blacklisted node",
+        "AODV discovers alternate multi-hop path around attacker",
+        "PDR restored from 14.2% back to 61.0% with minimal overhead"
+      ]
+    }
+  ]
+}

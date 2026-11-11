@@ -32,8 +32,7 @@ Thumbs.db
 # MCP runtime artifacts & scratch logs
 .playwright-mcp/
 
-# Personal / uncommitted tools & archify diagrams (Phase 6 personal artifacts)
-.archify/
+# Personal / uncommitted tools (Phase 6 personal artifacts)
 .open-design/
 
 

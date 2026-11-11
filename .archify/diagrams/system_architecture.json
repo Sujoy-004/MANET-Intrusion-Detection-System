@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "MANET ML Intrusion Detection & Closed-Loop Response Architecture",
+    "output": "system_architecture.html",
+    "viewBox": [1200, 720],
+    "quality_profile": "showcase"
+  },
+  "components": [
+    { "id": "traffic_gen", "type": "backend", "label": "CBR Traffic Generator", "sublabel": "8 UDP flows, 10 pps, 512B", "pos": [80, 80], "size": [180, 52] },
+    { "id": "aodv_router", "type": "backend", "label": "RFC 3561 AODV Node", "sublabel": "RREQ flood, RREP unicast, RERR", "pos": [80, 200], "size": [180, 52], "tag": "Core Routing" },
+    { "id": "radio_channel", "type": "backend", "label": "Dynamic Radio Graph", "sublabel": "Range R=250m, NetworkX graph", "pos": [80, 320], "size": [180, 52] },
+    { "id": "rwp_mobility", "type": "backend", "label": "RWP Mobility Engine", "sublabel": "v in [1, 10] m/s, uniform waypoint", "pos": [80, 440], "size": [180, 52] },
+    { "id": "simpy_clock", "type": "cloud", "label": "SimPy Discrete Clock", "sublabel": "Event scheduler (env.timeout)", "pos": [80, 560], "size": [180, 52] },
+
+    { "id": "attack_strategy", "type": "security", "label": "Adversary Strategy", "sublabel": "Blackhole (SeqNum spoof) / Grayhole", "pos": [350, 80], "size": [190, 54], "tag": "Attacker" },
+    { "id": "flow_intercept", "type": "security", "label": "Flow Interception Seam", "sublabel": "Dynamic transit route hijacking", "pos": [350, 180], "size": [190, 52] },
+    { "id": "trace_logger", "type": "database", "label": "Packet Trace Logger", "sublabel": "Streaming event CSV (no labels)", "pos": [350, 290], "size": [190, 52], "tag": "Telemetry" },
+    { "id": "sliding_window", "type": "backend", "label": "Sliding-Window Aggregator", "sublabel": "Window W=5.0s, 9 traffic features", "pos": [350, 400], "size": [190, 54] },
+    { "id": "feature_scaler", "type": "backend", "label": "Standard Scaler", "sublabel": "Z-score normalization & neutral fill", "pos": [350, 510], "size": [190, 52] },
+
+    { "id": "rf_classifier", "type": "cloud", "label": "Random Forest Champion", "sublabel": "100 trees, balanced weights", "pos": [620, 180], "size": [190, 54], "tag": "F1=75.9%" },
+    { "id": "baseline_models", "type": "backend", "label": "Baseline Classifiers", "sublabel": "Decision Tree (depth=5), SVM", "pos": [620, 300], "size": [190, 52] },
+    { "id": "operational_gate", "type": "security", "label": "Security Operational Gate", "sublabel": "Enforces FPR <= 0.01 (0.99% actual)", "pos": [620, 420], "size": [190, 52], "tag": "Gate Pass" },
+
+    { "id": "online_ids", "type": "security", "label": "OnlineIDS Controller", "sublabel": "Periodic 5.0s evaluation loop", "pos": [890, 80], "size": [190, 54], "tag": "Response" },
+    { "id": "strike_filter", "type": "security", "label": "2-Strike Confirmation Filter", "sublabel": "K=2 windows, threshold tau=0.50", "pos": [890, 180], "size": [190, 52] },
+    { "id": "quarantine_mgr", "type": "database", "label": "Quarantine Cooling Table", "sublabel": "30.0s expiration decay timer", "pos": [890, 290], "size": [190, 52] },
+    { "id": "endpoint_filter", "type": "security", "label": "Flow Endpoint Guard", "sublabel": "Prevents source/dest self-severing", "pos": [890, 400], "size": [190, 52] },
+    { "id": "route_invalidator", "type": "backend", "label": "Route Invalidation Engine", "sublabel": "Purges bad next_hop, triggers RREQ", "pos": [890, 510], "size": [190, 54], "tag": "Recovery" }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "SimPy Discrete-Event Simulation Subsystem", "wraps": ["traffic_gen", "aodv_router", "radio_channel", "rwp_mobility", "simpy_clock"] },
+    { "kind": "security-group", "label": "Adversarial Injection Subsystem", "wraps": ["attack_strategy", "flow_intercept"] },
+    { "kind": "region", "label": "Telemetry & Sliding-Window Feature Pipeline", "wraps": ["trace_logger", "sliding_window", "feature_scaler"] },
+    { "kind": "region", "label": "Machine Learning Detection Engine", "wraps": ["rf_classifier", "baseline_models", "operational_gate"] },
+    { "kind": "security-group", "label": "Closed-Loop Response & Isolation Subsystem", "wraps": ["online_ids", "strike_filter", "quarantine_mgr", "endpoint_filter", "route_invalidator"] }
+  ],
+  "connections": [
+    { "id": "gen-to-aodv", "from": "traffic_gen", "to": "aodv_router", "label": "CBR packets", "variant": "emphasis" },
+    { "id": "mob-to-radio", "from": "rwp_mobility", "to": "radio_channel", "label": "coordinates" },
+    { "id": "radio-to-aodv", "from": "radio_channel", "to": "aodv_router", "label": "1-hop neighbors" },
+    { "id": "clock-to-aodv", "from": "simpy_clock", "to": "aodv_router", "fromSide": "left", "toSide": "left", "via": [[30, 586], [30, 226]], "label": "clock ticks", "variant": "dashed" },
+    { "id": "attack-to-intercept", "from": "attack_strategy", "to": "flow_intercept", "label": "attack policy", "variant": "security" },
+    { "id": "intercept-to-aodv", "from": "flow_intercept", "to": "aodv_router", "label": "spoofed RREP", "variant": "security" },
+    { "id": "aodv-to-trace", "from": "aodv_router", "to": "trace_logger", "label": "packet events", "variant": "emphasis" },
+    { "id": "trace-to-window", "from": "trace_logger", "to": "sliding_window", "label": "streamed events" },
+    { "id": "window-to-scaler", "from": "sliding_window", "to": "feature_scaler", "label": "9 raw metrics" },
+    { "id": "scaler-to-rf", "from": "feature_scaler", "to": "rf_classifier", "fromSide": "right", "toSide": "left", "via": [[580, 536], [580, 207]], "label": "scaled vectors", "variant": "emphasis" },
+    { "id": "scaler-to-baseline", "from": "feature_scaler", "to": "baseline_models", "label": "eval features", "variant": "dashed" },
+    { "id": "rf-to-gate", "from": "rf_classifier", "to": "operational_gate", "label": "P(malicious) >= 0.50", "variant": "security" },
+    { "id": "gate-to-ids", "from": "operational_gate", "to": "online_ids", "fromSide": "right", "toSide": "left", "via": [[850, 446], [850, 107]], "label": "verified alerts", "variant": "emphasis" },
+    { "id": "ids-to-strike", "from": "online_ids", "to": "strike_filter", "label": "window anomaly" },
+    { "id": "strike-to-quarantine", "from": "strike_filter", "to": "quarantine_mgr", "label": "K=2 confirmation", "variant": "security" },
+    { "id": "quarantine-to-guard", "from": "quarantine_mgr", "to": "endpoint_filter", "label": "quarantine candidate", "variant": "security" },
+    { "id": "guard-to-inval", "from": "endpoint_filter", "to": "route_invalidator", "label": "confirmed target" },
+    { "id": "inval-to-aodv", "from": "route_invalidator", "to": "aodv_router", "fromSide": "bottom", "toSide": "left", "via": [[985, 650], [20, 650], [20, 226]], "label": "blacklist & purge routes", "variant": "emphasis" }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Closed-Loop Recovery",
+      "items": [
+        "Blackhole PDR recovers from 14.2% to 61.0% (92.9% recovery ratio)",
+        "Grayhole PDR recovers to 69.4% (118.6% recovery ratio)",
+        "Routing overhead penalty tightly bounded to +0.0307 packets/data"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Machine Learning Rigor",
+      "items": [
+        "Champion Random Forest meets operational gate with 0.99% FPR",
+        "Strict seed-based splitting (train: seeds 42-43, test: seed 44)",
+        "Zero data leakage: features computed strictly from observed traces"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "2-Strike Quarantine Policy",
+      "items": [
+        "K=2 consecutive windows prevent route flapping from transient drops",
+        "30.0s cooling table enables dynamic node rehabilitation after mobility",
+        "Endpoint protection prevents severing communicating source or destination"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,908 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "MANET Intrusion Detection & Response System - Complete Architecture",
+    "output": ".archify/architecture-manet-ids-20261111-132000/manet-ids.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/Sujoy-004/MANET-Intrusion-Detection-System.git",
+      "revision": "1e2e78781857a9972083d1967fea74f923c51b7a"
+    },
+    "views": [
+      {
+        "id": "end-to-end",
+        "label": "End-to-End Execution",
+        "focus": [
+          "cli_entry",
+          "tui_app",
+          "supervisor",
+          "composition_root",
+          "sim_runner",
+          "aodv_router",
+          "online_ids",
+          "metrics_calc",
+          "results_screen"
+        ],
+        "note": "Full execution loop from TUI launcher and background stepping to closed-loop IDS mitigation and QoS scorecard display."
+      },
+      {
+        "id": "sim-engine",
+        "label": "Simulator & Attacks",
+        "focus": [
+          "sim_runner",
+          "traffic_gen",
+          "mobility_engine",
+          "radio_channel",
+          "aodv_router",
+          "blackhole",
+          "grayhole",
+          "trace_store"
+        ],
+        "note": "Pure-Python discrete-event SimPy engine orchestrating CBR traffic, random mobility, radio links, and attack strategies."
+      },
+      {
+        "id": "ml-pipeline",
+        "label": "Offline ML Pipeline",
+        "focus": [
+          "trace_store",
+          "feature_extractor",
+          "dataset_builder",
+          "model_trainer",
+          "champion_model"
+        ],
+        "note": "Sliding-window feature engineering (9 metrics), non-leaking GroupShuffleSplit, and cost-sensitive classifier training."
+      },
+      {
+        "id": "closed-loop",
+        "label": "Closed-Loop Defense",
+        "focus": [
+          "champion_model",
+          "online_ids",
+          "aodv_router",
+          "blackhole",
+          "grayhole",
+          "isolation_store"
+        ],
+        "note": "Runtime feature inspection, real-time classifier inference, dynamic blacklist exclusion, and RERR route revocation."
+      },
+      {
+        "id": "tui-framework",
+        "label": "TUI Presentation",
+        "focus": [
+          "cli_entry",
+          "tui_app",
+          "supervisor",
+          "wizard_screen",
+          "monitor_screen",
+          "results_screen",
+          "history_screen",
+          "manifest_store"
+        ],
+        "note": "Terminal UI architecture with asynchronous workload supervisor, wizard parameter validation, and session history."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "cli_entry",
+      "type": "external",
+      "label": "CLI Launcher",
+      "sublabel": "python -m manet",
+      "icon": "person",
+      "pos": [
+        40,
+        40
+      ],
+      "size": [
+        150,
+        60
+      ],
+      "sources": [
+        {
+          "path": "manet/__main__.py",
+          "line": 11,
+          "end_line": 23,
+          "label": "CLI Entry Point"
+        }
+      ]
+    },
+    {
+      "id": "scenario_configs",
+      "type": "database",
+      "label": "Scenario Presets",
+      "sublabel": "scenarios/*.json",
+      "icon": "database",
+      "pos": [
+        440,
+        40
+      ],
+      "size": [
+        150,
+        60
+      ],
+      "sources": [
+        {
+          "path": "scenarios/e1_normal_30n.json",
+          "line": 1,
+          "end_line": 76,
+          "label": "Scenario Config Schema"
+        }
+      ]
+    },
+    {
+      "id": "model_trainer",
+      "type": "backend",
+      "label": "Model Trainer",
+      "sublabel": "ml/train.py (FPR <= 1%)",
+      "icon": "backend",
+      "pos": [
+        1040,
+        40
+      ],
+      "size": [
+        150,
+        60
+      ],
+      "sources": [
+        {
+          "path": "ml/train.py",
+          "line": 102,
+          "end_line": 261,
+          "label": "tune_and_save"
+        }
+      ]
+    },
+    {
+      "id": "tui_app",
+      "type": "frontend",
+      "label": "ManetApp (TUI)",
+      "sublabel": "Textual SOC Theme",
+      "icon": "frontend",
+      "pos": [
+        40,
+        160
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "sources": [
+        {
+          "path": "manet/app.py",
+          "line": 136,
+          "end_line": 298,
+          "label": "ManetApp Class"
+        }
+      ]
+    },
+    {
+      "id": "supervisor",
+      "type": "backend",
+      "label": "Workload Supervisor",
+      "sublabel": "Thread & State Machine",
+      "icon": "active",
+      "pos": [
+        240,
+        160
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "sources": [
+        {
+          "path": "manet/runtime/supervisor.py",
+          "line": 36,
+          "end_line": 237,
+          "label": "WorkloadSupervisor"
+        }
+      ]
+    },
+    {
+      "id": "composition_root",
+      "type": "backend",
+      "label": "Composition Root",
+      "sublabel": "bootstrap.py (DI Bridge)",
+      "icon": "backend",
+      "pos": [
+        440,
+        160
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "sources": [
+        {
+          "path": "bootstrap.py",
+          "line": 28,
+          "end_line": 167,
+          "label": "ConcreteSimulationExecutor"
+        }
+      ]
+    },
+    {
+      "id": "sim_runner",
+      "type": "backend",
+      "label": "SimulationRunner",
+      "sublabel": "SimPy Discrete Clock",
+      "icon": "backend",
+      "pos": [
+        640,
+        160
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "sources": [
+        {
+          "path": "simulator/run_scenario.py",
+          "line": 45,
+          "end_line": 572,
+          "label": "SimulationRunner"
+        }
+      ]
+    },
+    {
+      "id": "champion_model",
+      "type": "database",
+      "label": "Champion Model",
+      "sublabel": "best_model.joblib",
+      "icon": "database",
+      "pos": [
+        1040,
+        160
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "sources": [
+        {
+          "path": "ml/evaluate.py",
+          "line": 122,
+          "end_line": 161,
+          "label": "select_champion"
+        }
+      ]
+    },
+    {
+      "id": "wizard_screen",
+      "type": "frontend",
+      "label": "Simulation Wizard",
+      "sublabel": "Presets, Seed, Gating",
+      "icon": "frontend",
+      "pos": [
+        40,
+        290
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "sources": [
+        {
+          "path": "manet/screens/simulation_workflow.py",
+          "line": 23,
+          "end_line": 255,
+          "label": "SimulationWorkflowScreen"
+        }
+      ]
+    },
+    {
+      "id": "monitor_screen",
+      "type": "frontend",
+      "label": "Live Monitor",
+      "sublabel": "Bounded Telemetry & Stop",
+      "icon": "frontend",
+      "pos": [
+        240,
+        290
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "sources": [
+        {
+          "path": "manet/screens/live_run.py",
+          "line": 47,
+          "end_line": 378,
+          "label": "LiveRunScreen"
+        }
+      ]
+    },
+    {
+      "id": "aodv_router",
+      "type": "backend",
+      "label": "AODVNode Router",
+      "sublabel": "RFC 3561 RREQ/RREP/RERR",
+      "icon": "backend",
+      "pos": [
+        640,
+        290
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "sources": [
+        {
+          "path": "simulator/aodv.py",
+          "line": 65,
+          "end_line": 600,
+          "label": "AODVNode Router"
+        }
+      ]
+    },
+    {
+      "id": "online_ids",
+      "type": "security",
+      "label": "Online IDS Controller",
+      "sublabel": "ml/response.py (Sliding-Win)",
+      "icon": "security",
+      "pos": [
+        840,
+        290
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "sources": [
+        {
+          "path": "ml/response.py",
+          "line": 55,
+          "end_line": 415,
+          "label": "OnlineIDS Controller"
+        }
+      ]
+    },
+    {
+      "id": "feature_extractor",
+      "type": "backend",
+      "label": "Feature Extractor",
+      "sublabel": "extract_features.py (9 feats)",
+      "icon": "backend",
+      "pos": [
+        1040,
+        290
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "sources": [
+        {
+          "path": "feature_extraction/extract_features.py",
+          "line": 32,
+          "end_line": 222,
+          "label": "extract_features_from_trace"
+        }
+      ]
+    },
+    {
+      "id": "results_screen",
+      "type": "frontend",
+      "label": "Results Screen",
+      "sublabel": "Academic QoS Scorecard",
+      "icon": "frontend",
+      "pos": [
+        40,
+        420
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "sources": [
+        {
+          "path": "manet/screens/results.py",
+          "line": 25,
+          "end_line": 380,
+          "label": "ResultsScreen"
+        }
+      ]
+    },
+    {
+      "id": "history_screen",
+      "type": "frontend",
+      "label": "Session History",
+      "sublabel": "Workspace Pruning & Runs",
+      "icon": "frontend",
+      "pos": [
+        240,
+        420
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "sources": [
+        {
+          "path": "manet/screens/history.py",
+          "line": 42,
+          "end_line": 390,
+          "label": "HistoryScreen"
+        }
+      ]
+    },
+    {
+      "id": "traffic_gen",
+      "type": "backend",
+      "label": "CBR Traffic Gen",
+      "sublabel": "simulator/traffic.py",
+      "icon": "backend",
+      "pos": [
+        440,
+        420
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "sources": [
+        {
+          "path": "simulator/traffic.py",
+          "line": 1,
+          "end_line": 101,
+          "label": "CBRTraffic"
+        }
+      ]
+    },
+    {
+      "id": "mobility_engine",
+      "type": "backend",
+      "label": "Random Waypoint",
+      "sublabel": "simulator/mobility.py",
+      "icon": "backend",
+      "pos": [
+        640,
+        420
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "sources": [
+        {
+          "path": "simulator/mobility.py",
+          "line": 1,
+          "end_line": 80,
+          "label": "RandomWaypoint"
+        }
+      ]
+    },
+    {
+      "id": "blackhole",
+      "type": "security",
+      "label": "Blackhole Attack",
+      "sublabel": "attacks/blackhole.py",
+      "icon": "security",
+      "pos": [
+        840,
+        420
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "sources": [
+        {
+          "path": "attacks/blackhole.py",
+          "line": 15,
+          "end_line": 37,
+          "label": "BlackholeStrategy"
+        }
+      ]
+    },
+    {
+      "id": "dataset_builder",
+      "type": "backend",
+      "label": "Dataset Builder",
+      "sublabel": "ml/dataset.py (GroupSplit)",
+      "icon": "backend",
+      "pos": [
+        1040,
+        420
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "sources": [
+        {
+          "path": "ml/dataset.py",
+          "line": 1,
+          "end_line": 252,
+          "label": "Dataset & GroupShuffleSplit"
+        }
+      ]
+    },
+    {
+      "id": "radio_channel",
+      "type": "backend",
+      "label": "Radio Channel",
+      "sublabel": "simulator/radio.py",
+      "icon": "backend",
+      "pos": [
+        640,
+        550
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "sources": [
+        {
+          "path": "simulator/radio.py",
+          "line": 1,
+          "end_line": 77,
+          "label": "Radio Propagation & Neighbors"
+        }
+      ]
+    },
+    {
+      "id": "grayhole",
+      "type": "security",
+      "label": "Grayhole Attack",
+      "sublabel": "attacks/grayhole.py",
+      "icon": "security",
+      "pos": [
+        840,
+        550
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "sources": [
+        {
+          "path": "attacks/grayhole.py",
+          "line": 18,
+          "end_line": 70,
+          "label": "GrayholeStrategy"
+        }
+      ]
+    },
+    {
+      "id": "manifest_store",
+      "type": "database",
+      "label": "Manifest Store",
+      "sublabel": "manifest.json (SHA-256)",
+      "icon": "database",
+      "pos": [
+        240,
+        670
+      ],
+      "size": [
+        150,
+        60
+      ],
+      "sources": [
+        {
+          "path": "manet/adapters/workspace.py",
+          "line": 1,
+          "end_line": 590,
+          "label": "Workspace Manifest Verification"
+        }
+      ]
+    },
+    {
+      "id": "metrics_calc",
+      "type": "backend",
+      "label": "Metrics Engine",
+      "sublabel": "simulator/metrics.py",
+      "icon": "backend",
+      "pos": [
+        440,
+        670
+      ],
+      "size": [
+        150,
+        60
+      ],
+      "sources": [
+        {
+          "path": "simulator/metrics.py",
+          "line": 15,
+          "end_line": 120,
+          "label": "compute_metrics"
+        }
+      ]
+    },
+    {
+      "id": "trace_store",
+      "type": "database",
+      "label": "Trace Store",
+      "sublabel": "trace.csv (Events)",
+      "icon": "database",
+      "pos": [
+        640,
+        670
+      ],
+      "size": [
+        150,
+        60
+      ],
+      "sources": [
+        {
+          "path": "simulator/run_scenario.py",
+          "line": 480,
+          "end_line": 550,
+          "label": "write_traces"
+        }
+      ]
+    },
+    {
+      "id": "isolation_store",
+      "type": "database",
+      "label": "Isolation Log",
+      "sublabel": "isolation_log.json",
+      "icon": "database",
+      "pos": [
+        840,
+        670
+      ],
+      "size": [
+        150,
+        60
+      ],
+      "sources": [
+        {
+          "path": "ml/response.py",
+          "line": 350,
+          "end_line": 415,
+          "label": "write_isolation_log"
+        }
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Interactive Terminal Application (manet/)",
+      "wraps": [
+        "tui_app",
+        "supervisor",
+        "wizard_screen",
+        "monitor_screen",
+        "results_screen",
+        "history_screen"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "Discrete-Event Network Simulator (simulator/)",
+      "wraps": [
+        "sim_runner",
+        "aodv_router",
+        "mobility_engine",
+        "radio_channel"
+      ]
+    },
+    {
+      "kind": "security-group",
+      "label": "Attack Injections (attacks/)",
+      "wraps": [
+        "blackhole",
+        "grayhole"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "Offline ML Pipeline (ml/)",
+      "wraps": [
+        "model_trainer",
+        "champion_model",
+        "feature_extractor",
+        "dataset_builder"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "c-launch",
+      "from": "cli_entry",
+      "to": "tui_app",
+      "label": "launches"
+    },
+    {
+      "id": "c-wizard",
+      "from": "tui_app",
+      "to": "wizard_screen",
+      "label": "navigation"
+    },
+    {
+      "id": "c-presets",
+      "from": "scenario_configs",
+      "to": "wizard_screen",
+      "label": "loads presets"
+    },
+    {
+      "id": "c-start-sim",
+      "from": "wizard_screen",
+      "to": "supervisor",
+      "label": "launch request"
+    },
+    {
+      "id": "c-delegate-exec",
+      "from": "supervisor",
+      "to": "composition_root",
+      "label": "delegates execution"
+    },
+    {
+      "id": "c-inject-sim",
+      "from": "composition_root",
+      "to": "sim_runner",
+      "label": "steps 200 events"
+    },
+    {
+      "id": "c-telemetry-live",
+      "from": "composition_root",
+      "to": "monitor_screen",
+      "label": "stream event"
+    },
+    {
+      "id": "c-cbr-traffic",
+      "from": "traffic_gen",
+      "to": "aodv_router",
+      "label": "data packets"
+    },
+    {
+      "id": "c-mobility-pos",
+      "from": "mobility_engine",
+      "to": "radio_channel",
+      "label": "node positions"
+    },
+    {
+      "id": "c-radio-neighbors",
+      "from": "radio_channel",
+      "to": "aodv_router",
+      "label": "neighbor links"
+    },
+    {
+      "id": "c-attack-blackhole",
+      "from": "blackhole",
+      "to": "aodv_router",
+      "label": "fake RREP & drop",
+      "variant": "security"
+    },
+    {
+      "id": "c-attack-grayhole",
+      "from": "grayhole",
+      "to": "aodv_router",
+      "label": "selective drop",
+      "variant": "security"
+    },
+    {
+      "id": "c-router-trace",
+      "from": "aodv_router",
+      "to": "trace_store",
+      "label": "logs events"
+    },
+    {
+      "id": "c-trace-metrics",
+      "from": "trace_store",
+      "to": "metrics_calc",
+      "label": "evaluates trace"
+    },
+    {
+      "id": "c-metrics-results",
+      "from": "metrics_calc",
+      "to": "results_screen",
+      "label": "PDR & delay QoS"
+    },
+    {
+      "id": "c-trace-features",
+      "from": "trace_store",
+      "to": "feature_extractor",
+      "label": "trace windows"
+    },
+    {
+      "id": "c-features-dataset",
+      "from": "feature_extractor",
+      "to": "dataset_builder",
+      "label": "9 features"
+    },
+    {
+      "id": "c-dataset-trainer",
+      "from": "dataset_builder",
+      "to": "model_trainer",
+      "label": "train / test splits"
+    },
+    {
+      "id": "c-trainer-model",
+      "from": "model_trainer",
+      "to": "champion_model",
+      "label": "best_model.joblib"
+    },
+    {
+      "id": "c-model-online",
+      "from": "champion_model",
+      "to": "online_ids",
+      "label": "loads classifier"
+    },
+    {
+      "id": "c-online-isolate",
+      "from": "online_ids",
+      "to": "aodv_router",
+      "label": "isolate & RERR",
+      "variant": "security"
+    },
+    {
+      "id": "c-online-log",
+      "from": "online_ids",
+      "to": "isolation_store",
+      "label": "mitigation record"
+    },
+    {
+      "id": "c-isolation-results",
+      "from": "isolation_store",
+      "to": "results_screen",
+      "label": "audit trail"
+    },
+    {
+      "id": "c-manifest-history",
+      "from": "manifest_store",
+      "to": "history_screen",
+      "label": "session history"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Interactive TUI Architecture",
+      "items": [
+        "Built with Textual 8.2.8 with SOC cybersecurity dark theme and high-contrast accessibility",
+        "Single-source keymap in manet/runtime/keymap.py preserves standard shortcut contracts",
+        "WorkloadSupervisor drives non-blocking execution in a daemon thread with threading.Event cancellation",
+        "Simulation workflow wizard provides 3-step preset discovery, parameter blur-validation, and IDS gating",
+        "ResultsScreen displays split-pane academic QoS scorecards, isolation audit logs, and manifest checksums"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Discrete-Event Network Simulation",
+      "items": [
+        "Pure-Python discrete-event engine powered by SimPy 4.1.2 without external C/C++ compilation",
+        "RFC 3561 AODV routing protocol with RREQ broadcast, RREP path setup, and RERR invalidation",
+        "Continuous 2D Random Waypoint mobility model with configurable speed bounds and pause times",
+        "RadioChannel dynamically computes link connectivity and neighbor sets based on Euclidean transmission range",
+        "SimulationRunner steps execution in 200-event discrete slices for responsive UI telemetry"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Attack Vectors & Threat Models",
+      "items": [
+        "BlackholeStrategy intercepts RREQ and fabricates RREP with max sequence 65535, dropping 100% data",
+        "GrayholeStrategy selectively drops packets based on deterministic drop probability or periodic cycles",
+        "Modular architecture decouples attack behavior from legitimate AODV routing logic via strategy hooks",
+        "Deterministic scenario seeding ensures 100% reproducible malicious trace generation"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Closed-Loop ML Intrusion Detection",
+      "items": [
+        "OnlineIDS extracts 9 non-leaking behavioral features across sliding time windows during active simulation",
+        "Champion scikit-learn classifier (RandomForest/DecisionTree) evaluated under strict FPR <= 1.0% constraint",
+        "Real-time node classification triggers dynamic blacklisting and immediate route table purging",
+        "Active RERR broadcast invalidates routes through attacker, restoring Packet Delivery Ratio to ~92.9%"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Data Integrity & Reproducibility",
+      "items": [
+        "Strict scenario-based GroupShuffleSplit prevents row-level data leakage between train and test sets",
+        "Atomic experiment workspace allocation (.manet-workspace) with SHA-256 artifact verification",
+        "AST import boundaries prevent UI package (manet/) from importing core simulation logic directly",
+        "External composition root (bootstrap.py) injects execution dependencies preserving strict decoupling"
+      ]
+    }
+  ]
+}

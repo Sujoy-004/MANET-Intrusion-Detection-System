@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "0580f608-d417-40de-ae28-18ba06ec0884",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "C:\\Users\\KIIT0001\\Documents\\projects\\Machine Learning-Based Intrusion Detection System for MANET\\.archify\\architecture-manet-ids-20261111-132000\\candidate.json",
+  "output": "C:\\Users\\KIIT0001\\Documents\\projects\\Machine Learning-Based Intrusion Detection System for MANET\\.archify\\architecture-manet-ids-20261111-132000\\manet-ids.html",
+  "specification": {
+    "sha256": "a7e9d2dcc52c07b6e00ad2eab0effff11510e715a2715932d7676437d8749582",
+    "bytes": 21880
+  },
+  "artifact": {
+    "sha256": "99f9b637d156f0014370e3ae817cf795b131ab8a07a948400b866ce503596b10",
+    "bytes": 897611
+  }
+}
