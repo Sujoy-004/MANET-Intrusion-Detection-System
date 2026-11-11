@@ -1,18 +1,16 @@
 ---
-gsd_state_version: "1.0"
+gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Interactive TUI Application
-status: phase_complete
-stopped_at: Phase 12 context gathered
-last_updated: "2026-11-10T17:24:02.915Z"
-state_head: f8c305aa2f73590cb5496ca315c502b31518404b
+status: in_progress
+stopped_at: Completed 12-01-PLAN.md (plan 1/2 of Phase 12)
+last_updated: "2026-11-11T03:31:54.627Z"
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 19
-  completed_plans: 17
-  pending_plans: 0
-current_phase_name: Quality, Testing & Delivery
+  completed_plans: 18
+  percent: 95
 ---
 
 # STATE: Machine Learning-Based Intrusion Detection System for MANET
@@ -25,21 +23,22 @@ current_phase_name: Quality, Testing & Delivery
 
 ## Current Position
 
-- **Phase:** 11 of 12 (Results & Experiment Records) — COMPLETED & VERIFIED (3 plans: 11-01-PLAN.md, 11-02-PLAN.md, 11-03-PLAN.md; 27/27 automated checks + 4/4 UAT items verified)
-- **Status:** Phase 11 UAT gaps remediated and verified — ready for Phase 12 planning
+- **Phase:** 12 of 12 (Quality, Testing & Delivery) — plan 1/2 complete (12-01 verified: 290 passed, 3 skipped, 0 failures)
+- **Status:** 12-01-PLAN.md complete — proceeding to 12-02 (delivery verification)
 - **Progress:**
-  [█████░] 5/6 phases complete (v2.0)
+  [██████████] 95%
 
 ## Performance Metrics
 
 | Metric | Value |
 |--------|-------|
 | Phases complete (v2.0) | 5 / 6 |
-| Plans complete (v2.0) | 17 / 17 |
-| Plans pending (Phase 11) | 0 |
+| Plans complete (v2.0) | 18 / 19 |
+| Plans pending (Phase 12) | 1 (12-02) |
 | Requirements mapped | 24 / 24 (TUI-01..21, DELV-01..03) |
-| Requirements satisfied | 21 / 24 (TUI-01..21 satisfied; DELV-01..03 pending for Phase 12) |
-| Test suite | 282 passed, 3 skipped (79 baseline + 203 manet/tui tests) |
+| Requirements satisfied | 21 / 24 (TUI-01..21 satisfied; DELV-01 partial via 12-01, DELV-02..03 pending) |
+| Test suite | 290 passed, 3 skipped (79 baseline + 203 manet/tui + 8 CLI compat) |
+| Phase 12 P01 execution | 43min, 2 tasks, 3 files |
 
 ## Requirements Coverage Snapshot
 
@@ -50,7 +49,7 @@ current_phase_name: Quality, Testing & Delivery
 | 9 - Simulation Workflow | TUI-09..14 | Complete & Verified (09-01..09-03) |
 | 10 - Background Execution & Live Feedback | TUI-15..18 | Complete & Verified (10-01..10-03) |
 | 11 - Results & Experiment Records | TUI-19..21 | Complete & Verified (11-01..11-03) |
-| 12 - Quality, Testing & Delivery | DELV-01..03 | Pending |
+| 12 - Quality, Testing & Delivery | DELV-01..03 | In Progress (12-01 complete; DELV-01 CLI-compat clause satisfied, checkbox pending 12-02) |
 
 ## Accumulated Context
 
@@ -62,6 +61,10 @@ current_phase_name: Quality, Testing & Delivery
 - Existing CLI entry points (`python -m simulator.run_scenario`, `scripts/*`, `ml.train/evaluate`) must remain byte-for-byte unchanged
 - `.manet-workspace/` is the only new write target; never overwrite `traces/`, `data/`, `models/`, `results/`
 - In-process thread worker adopted via Textual Worker API (D-01); decoupled execution protocol via `bootstrap.py` composition root
+- [Phase 12]: Hermetic test isolation via WorkspaceAdapter.__init__ patch with real_workspace_defaults marker opt-out (12-01)
+- [Phase 12]: Staircase synthetic ML dataset (fixed 3-decimal jitter grid) defeats RBF SVM grid so ml.evaluate champion is deterministically a tree; refit_with_probability hang inert (12-01)
+- [Phase 12]: Module-scoped trained_models fixture trains all 3 legacy models once via ml.train subprocess, timeout 90s - RF grid n_jobs=-1 pool overhead is CLI-inherent (12-01)
+- [Phase 12]: verify_gate2_impact.py tested via real benchmark run (no argparse, GATE 2 PASSED); CLI compat harness 9 subprocess tests assert exit codes, banners, schemas per D-01 (12-01)
 
 ### Research Flags
 
@@ -89,15 +92,14 @@ current_phase_name: Quality, Testing & Delivery
 
 ## Session Continuity
 
-**Last session:** 2026-11-10T16:53:01.295Z
-**Stopped at:** Phase 12 context gathered
-**Resume file:** .planning/phases/12-quality-testing-delivery/12-CONTEXT.md
+**Last session:** 2026-11-11T03:31:03.772Z
+**Stopped at:** Completed 12-01-PLAN.md (plan 1/2 of Phase 12)
+**Resume file:** .planning/phases/12-quality-testing-delivery/12-02-PLAN.md
 
-- **Last action:** Remediated both UAT gaps:
-  - G-11-1: Modal default focus fixed to `#btn-delete` in `manet/screens/prune_modal.py` (`AUTO_FOCUS = "#btn-delete"`).
-  - G-11-2: Non-atomic experiment deletion fixed via atomic directory rename before deletion in `manet/adapters/workspace.py` (`delete_experiment_run`).
-  - Added regression test `test_delete_experiment_run_atomic_rollback_on_lock` and keyboard interaction tests in `tests/test_manet_workspace_pruning.py`.
-  - Re-ran full regression suite: 282 passed, 3 skipped, 0 failures.
-  - Updated 11-UAT.md (4/4 passed) and 11-VERIFICATION.md (status: passed).
-- **Next up:** Phase 12 (Quality, Testing & Delivery) planning (`/gsd-plan-phase 12`).
-- **Environment notes:** Windows-native, Python 3.11.8; 282 passing tests; Textual 8.2.8 installed.
+- **Last action:** Executed 12-01-PLAN.md (test isolation & CLI regression harness):
+  - `tests/conftest.py`: autouse `isolate_manet_workspace` fixture (WorkspaceAdapter default root → tmp_path) with `real_workspace_defaults` marker opt-out; 1-line marker added to `test_repo_root_anchoring_outside_cwd`.
+  - `tests/test_legacy_cli_compat.py`: 9 subprocess CLI contract tests (run_scenario, ml.train, ml.evaluate, verify_gate2_impact, build_dataset --help, 4 negative paths) per D-01.
+  - Full suite re-run: 290 passed, 3 skipped, 0 failures (net +8 tests, 2 formerly failing dashboard tests fixed).
+  - Commits: 7b96aa6 (task 1), 972e840 (task 2).
+- **Next up:** 12-02-PLAN.md (delivery verification: verify_environment.py, requirements pinning, README/CHANGELOG).
+- **Environment notes:** Windows-native, Python 3.11.8; 290 passing tests; Textual 8.2.8 installed.
