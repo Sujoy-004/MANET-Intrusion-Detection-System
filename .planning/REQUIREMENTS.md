@@ -43,8 +43,8 @@ Locale note: REQ-IDs follow the v1.0 convention ([CATEGORY]-[NN]). New category 
 ### Quality & Delivery
 
 - [x] **DELV-01**: User enjoys unchanged behavior: existing CLI entry points still work, existing tests pass unweakened, and the full suite plus new feature tests (launcher/command parsing, capability detection incl. missing artifacts, scenario discovery/validation, worker success/failure/cancel/partial, manifest atomicity/checksums/history, CLI compatibility, import boundaries, bounded telemetry under load) pass on the current host
-- [ ] **DELV-02**: User can follow updated README documentation for the launch command, TUI dependency installation, limitations, supported terminals, and keyboard shortcuts, and CHANGELOG.md records the feature; documentation matches executable behavior with no untested cross-platform claims
-- [ ] **DELV-03**: User gets an honest completion report: changed files, architecture and framework rationale, commands run with exact test results, and clearly listed known limitations and deferred features
+- [x] **DELV-02**: User can follow updated README documentation for the launch command, TUI dependency installation, limitations, supported terminals, and keyboard shortcuts, and CHANGELOG.md records the feature; documentation matches executable behavior with no untested cross-platform claims
+- [x] **DELV-03**: User gets an honest completion report: changed files, architecture and framework rationale, commands run with exact test results, and clearly listed known limitations and deferred features
 
 ## Future Requirements (deferred)
 
@@ -89,7 +89,7 @@ Locale note: REQ-IDs follow the v1.0 convention ([CATEGORY]-[NN]). New category 
 | TUI-20 | Phase 11 — Results & Experiment Records | Pending |
 | TUI-21 | Phase 11 — Results & Experiment Records | Pending |
 | DELV-01 | Phase 12 — Quality, Testing & Delivery | Complete |
-| DELV-02 | Phase 12 — Quality, Testing & Delivery | Pending |
-| DELV-03 | Phase 12 — Quality, Testing & Delivery | Pending |
+| DELV-02 | Phase 12 — Quality, Testing & Delivery | Complete |
+| DELV-03 | Phase 12 — Quality, Testing & Delivery | Complete |
 
 Deferred (not on this roadmap): TUI-ADV, TUI-MLWORK, TUI-PAUSE (plus project-level ATK-04, VIZ-01, XAI-01).
