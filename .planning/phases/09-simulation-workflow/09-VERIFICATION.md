@@ -1,11 +1,11 @@
 ---
 phase: 09-simulation-workflow
-verified: 2026-11-08T11:42:00Z
+verified: 2026-11-11T06:05:00Z
 status: passed
 score: 8/8 must-haves verified
 overrides_applied: 0
 covered_files: [".planning/phases/09-simulation-workflow/09-01-PLAN.md", ".planning/phases/09-simulation-workflow/09-01-SUMMARY.md", ".planning/phases/09-simulation-workflow/09-02-PLAN.md", ".planning/phases/09-simulation-workflow/09-02-SUMMARY.md", ".planning/phases/09-simulation-workflow/09-03-PLAN.md", ".planning/phases/09-simulation-workflow/09-03-SUMMARY.md", "manet/__init__.py", "manet/adapters/__init__.py", "manet/adapters/handoff.py", "manet/adapters/scenario.py", "manet/adapters/simulation_config.py", "manet/adapters/workspace.py", "manet/app.py", "manet/commands/registry.py", "manet/runtime/keymap.py", "manet/screens/__init__.py", "manet/screens/main_workspace.py", "manet/screens/simulation_workflow.py", "manet/widgets/__init__.py", "manet/widgets/wizard_step_mode.py", "manet/widgets/wizard_step_params.py", "manet/widgets/wizard_step_review.py", "tests/test_manet_command_palette.py", "tests/test_manet_dashboard_workspace.py", "tests/test_manet_import_boundaries.py", "tests/test_manet_navigation.py", "tests/test_manet_scenario_adapter.py", "tests/test_manet_simulation_config.py", "tests/test_manet_simulation_runner_compat.py", "tests/test_manet_simulation_workflow.py", "tests/test_manet_workspace_allocation.py"]
-covered_digest: "v4:sha256:cb5aa349f248a25814b4843a7e5819f5ebccbad8bf3409b2b6b4bfe32404123f"
+covered_digest: "v4:sha256:a2dc3ab83425f130c4c1b19c2a77272b0940d587b9f93ebbd3dcaa6331a96d34"
 human_verification:
   - test: "Launch `python -m manet` in an 80x24 terminal, press [S], cycle Steps 1-3 with Enter/Escape, expand the Advanced Collapsible, and enter an invalid node count then blur."
     expected: "No clipped text or awkward wrapping at 80x24; the wizard reflows cleanly across all three steps and compact/normal breakpoint classes hold."

@@ -1,4 +1,6 @@
 ---
+status: complete
+date: "2026-11-06"
 phase: quick-261106-dbl-fix-fresh-clone-reproducibility-document
 plan: 01
 subsystem: documentation
