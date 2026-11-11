@@ -5,22 +5,49 @@ This document provides a comprehensive technical overview of the software archit
 
 ## High-Level Overview
 
-The system is designed as a modular, pure-Python pipeline replacing heavyweight C++ network simulators (such as NS-3) with a lightweight, deterministic discrete-event engine based on SimPy and NetworkX. The system operates in two distinct operational paradigms:
+The system is designed as a modular, pure-Python architecture replacing heavyweight C++ network simulators (such as NS-3) with a lightweight, deterministic discrete-event engine based on SimPy and NetworkX, paired with Scikit-learn machine learning classifiers and a Textual 8.2.8 Interactive Terminal UI.
 
-1. **Offline Training & Generalization Pipeline:**
-   Runs simulated scenarios across independent seeds $\rightarrow$ outputs discrete packet event traces $\rightarrow$ extracts non-leaking sliding-window tabular features $\rightarrow$ partitions datasets strictly by seed/scenario $\rightarrow$ trains and validates cost-sensitive classifiers under a locked False Positive Rate gate ($\text{FPR} \le 1.0\%$).
+The system operates across three primary tiers:
 
-2. **Online Closed-Loop Detection & Mitigation Pipeline:**
-   Couples the serialized champion ML model directly to runtime network routing $\rightarrow$ feeds live packet events to an in-memory `OnlineIDS` controller $\rightarrow$ periodically infers node behaviors $\rightarrow$ applies a 2-strike confirmation filter $\rightarrow$ dynamically injects blacklist exclusions into RFC 3561 AODV routing nodes and purges poisoned routing entries.
+1. **Discrete-Event Simulation & Attack Injection Tier (`simulator/`, `attacks/`):**
+   Executes RFC 3561 Ad hoc On-Demand Distance Vector (AODV) routing over 2D Random Waypoint mobility and unit-disk radio propagation. Decoupled attack strategies (Blackhole and Grayhole) are dynamically injected at runtime at the composition root without contaminating core protocol code.
+
+2. **Feature Engineering & Machine Learning Tier (`feature_extraction/`, `ml/`):**
+   Transforms discrete packet event traces into non-leaking sliding-window tabular features. Partitions datasets strictly by seed/scenario (zero random-row leakage), tunes cost-sensitive classifiers under a locked False Positive Rate gate ($\text{FPR} \le 1.0\%$), and executes closed-loop mitigation via `OnlineIDS` with two-strike confirmation and route invalidation.
+
+3. **Interactive Terminal UI Presentation Tier (`manet/`, `bootstrap.py`):**
+   A full-screen, keyboard-first operational flight deck (`python -m manet`, app name `MANET IDS`) built with Textual 8.2.8. Features real-time simulation progress monitoring, scenario configuration wizards, post-run QoS scorecards, manifest inspect views, and safe workspace pruning.
+
+---
 
 ## System Component Diagram
 
 ```mermaid
 graph TD
+    subgraph Presentation_Layer [TUI Presentation Layer - manet/ (Textual 8.2.8)]
+        MainWorkspace[screens/main_workspace.py - Flight Deck]
+        Wizard[screens/simulation_workflow.py - 3-Step Wizard]
+        LiveRun[screens/live_run.py - SOC Monitor]
+        Results[screens/results.py - QoS Scorecard]
+        History[screens/history.py - Manifest Ledger]
+        Adapters[adapters/ - Workspace, Diagnostics, Scenario]
+        MainWorkspace --> Adapters
+        Wizard --> Adapters
+        LiveRun --> Adapters
+        Results --> Adapters
+        History --> Adapters
+    end
+
+    subgraph Composition_Bridge [Composition Root - Repo Root]
+        Bootstrap[bootstrap.py - ConcreteSimulationExecutor]
+        Adapters -. Bridge Protocol .-> Bootstrap
+    end
+
     subgraph Discrete_Event_Simulator [Simulator Core - SimPy & NetworkX]
         Mobility[mobility.py - Random Waypoint] --> Topology[radio.py - Euclidean Radio Graph]
         Traffic[traffic.py - CBR/UDP Application Flows] --> AODV[aodv.py - RFC 3561 AODV Protocol]
         Topology --> AODV
+        Bootstrap --> AODV
     end
 
     subgraph Adversarial_Injection [Attacks Module - Decoupled]
@@ -31,9 +58,9 @@ graph TD
     end
 
     subgraph Telemetry_And_Features [Telemetry & Feature Pipeline]
-        AODV --> TraceLogger[run_scenario.py - 10-Column Packet Event Logger]
-        TraceLogger --> RawTraces[(traces/*.csv)]
-        RawTraces --> FeatureExtractor[extract_features.py - Sliding Window Extractor]
+        AODV --> TraceLogger[run_scenario.py - 10-Column Trace Logger]
+        TraceLogger --> RawTraces[(traces/*.csv or .manet-workspace/)]
+        RawTraces --> FeatureExtractor[extract_features.py - Sliding Extractor]
         FeatureExtractor --> Dataset[(data/train.csv & data/test.csv)]
     end
 
@@ -50,81 +77,119 @@ graph TD
     end
 ```
 
-## Architectural Separation of Concerns
+---
 
-A fundamental architectural constraint is the strict decoupling between the simulator core and adversarial strategies:
-- **Zero In-Tree Attack Imports:** The core simulator (`simulator/aodv.py`, `simulator/radio.py`, `simulator/traffic.py`) never imports from `attacks/`.
-- **Runtime Strategy Hooking:** Attacker behaviors are injected at runtime via the composition root (`simulator/run_scenario.py`) using duck-typed strategy hooks on the `AODVNode` class:
-  - `recv_rreq_hook(rreq)`: Intercepts incoming route requests to advertise falsified destination sequence numbers.
-  - `forward_data_hook(packet)`: Intercepts transit data packets to silently drop them (unconditionally in Blackhole, selectively or probabilistically in Grayhole).
-- **Clean Baselines:** Because attack logic is completely decoupled, running a scenario with zero attack strategies produces a mathematically pure, uncompromised baseline for rigorous QoS comparisons.
+## Architectural Separation of Concerns & AST Boundary Enforcement
+
+The codebase strictly enforces clean layer separation via static AST (`ast.parse`/`ast.walk`) test suites (`tests/test_manet_import_boundaries.py` and `tests/test_import_boundaries.py`):
+
+1. **One-Way Presentation Boundary (D-12, TUI-02):**
+   - The `manet/` package is a pure presentation layer. It **NEVER** imports from business logic packages (`simulator`, `attacks`, `feature_extraction`, `ml`).
+   - Business packages never import `manet/`.
+   - The composition root `bootstrap.py` exists only at the repository root and serves as the sole bridge wiring `manet` to the underlying simulator and ML pipeline.
+2. **Command Package Safety (D-10, T-7-01):**
+   - `manet/commands/` never imports OS execution primitives (`subprocess`, `shutil`, `os`). All operational commands are routed through internal application handlers.
+3. **Decoupled Attack Strategies:**
+   - `simulator/` core modules never import from `attacks/`.
+   - `simulator/run_scenario.py` and `bootstrap.py` act as the only sanctioned composition roots where adversarial strategies are injected via dynamic duck-typed hooks (`recv_rreq_hook`, `forward_data_hook`).
+   - `attacks/` never imports from `simulator/`.
+
+---
+
+## Presentation Layer Architecture (`manet/`)
+
+The presentation layer is structured into 6 focused subpackages:
+
+1. **`manet/adapters/` (10 modules):**
+   Provides one-way data models and interfaces between Textual widgets and the underlying file system or simulation runner. Includes `diagnostics.py`, `execution.py`, `handoff.py`, `navigation.py`, `notifications.py`, `scenario.py`, `simulation_config.py`, `status.py`, and `workspace.py`.
+2. **`manet/screens/` (9 modules):**
+   Textual screen containers designed for an 80×24 minimum geometry:
+   - `main_workspace.py`: Operational flight deck with Executive Grid cards.
+   - `simulation_workflow.py`: 3-step configuration and pre-flight validation wizard.
+   - `live_run.py`: Real-time SOC monitor with virtual-time progress tracking and live packet counters.
+   - `results.py`: Post-simulation QoS scorecard and trace inspector.
+   - `history.py`: Experiment history browser with manifest validation.
+   - `prune_modal.py`: Confirmation modal for safe workspace pruning.
+   - `console.py`: In-app telemetry log viewer.
+   - `help_about.py`: Keyboard shortcuts and system documentation viewer.
+3. **`manet/widgets/` (9 modules):**
+   Reusable UI components: executive status cards, QoS scorecard, navigation rails, recent experiments table, notification toast rails, and wizard step panes.
+4. **`manet/runtime/` (6 modules):**
+   Runtime facilities: `telemetry.py` (bounded thread-safe ring-buffer), `supervisor.py` (background thread worker coordinator), `settings.py` (in-memory session display toggles), `theme.py` (SOC dark palette and high-contrast modes), `paths.py` (centralized path resolution), and `keymap.py` (global keybindings).
+5. **`manet/commands/` (4 modules):**
+   Command palette registry, search filtering, and action dispatchers.
+6. **`manet/app.py` & `manet/__main__.py`:**
+   Application initialization, keymap registration, screen stack management, and CLI launcher.
+
+---
+
+## Execution Mechanisms: CLI vs In-Process Stepping
+
+The system supports two distinct execution modes:
+
+### 1. Batch Subprocess Runner (`SimulationRunner`)
+- Executed via `python -m simulator.run_scenario --scenario <json> --seed <int> --out <dir>`.
+- Runs the SimPy event loop (`env.run(until=duration)`) to completion in a dedicated process.
+- Outputs complete CSV traces and emits stdout metric summaries.
+
+### 2. Cooperative In-Process Stepping Engine (`ConcreteSimulationExecutor`)
+- Implemented in `bootstrap.py` for background TUI execution without GUI thread freezing.
+- Executes SimPy stepping using micro-intervals (`env.run(until=next_step)`), feeding intermediate progress and packet events into the synchronized ring buffer.
+- **Byte-Identical Trace Parity:** Formally proven in `tests/test_manet_stepping_equivalence.py` to yield byte-for-byte identical packet event traces and exact metric parity with the batch runner across preset scenarios and seeds (1, 42, 99).
+
+---
+
+## Telemetry & Workspace Manifest Pipeline
+
+### 1. Bounded Thread-Safe Telemetry Sink (`TelemetrySink`)
+- Synchronized ring buffer (`collections.deque(maxlen=500)`) with drop-oldest eviction.
+- Tracks cumulative packet counters (`DATA_SENT`, `DATA_FWD`, `DATA_RECV`, `DATA_DROP`, `OVERFLOW`) across dropped frames.
+- Drains immutable batch snapshots for 20Hz UI rendering without lock contention.
+
+### 2. Atomic Workspace Manifests (`WorkspaceAdapter`)
+- Every simulation executed via the TUI generates a unique experiment directory in `.manet-workspace/<experiment_id>/`.
+- Directory contents:
+  - `scenario.json`: Snapshot of the configuration used.
+  - `trace.csv`: Full 10-column packet event log.
+  - `manifest.json`: Atomic metadata record containing:
+    - Experiment metadata (`experiment_id`, `run_tag`, timestamps, run type).
+    - Status (`RUNNING`, `COMPLETED`, `INTERRUPTED`, `FAILED`).
+    - Computed QoS scorecard (PDR, throughput, delay, routing overhead).
+    - SHA-256 checksums of all generated artifacts for tamper detection.
+    - IDS isolation logs (if enabled).
+
+---
 
 ## Data Flow & Event Lifecycles
 
-### 1. Packet Event Generation & Logging
-1. Application CBR flows (`traffic.py`) enqueue UDP packets at regular intervals.
-2. Source node issues an AODV Route Request (`RREQ`) if no valid route to destination exists.
-3. Intermediate nodes broadcast the RREQ if within radio transmission range ($d \le R$).
-4. The destination (or an attacker node spoofing a route) unicasts an AODV Route Reply (`RREP`) back along the reverse path.
-5. All node packet events (`SEND`, `RECV`, `FWD`, `DROP`, `DATA_DROP`, `RREQ_DROP`) and periodic node state rows (`NODE_STATUS`) are appended to a CSV trace with a 10-column schema:
-   `time, src, dst, pkt_id, type, hop_count, dropped_by, node_id, speed, neighbor_count`
+### 1. Packet Event Logging
+All node packet events (`SEND`, `RECV`, `FWD`, `DROP`, `DATA_DROP`, `RREQ_DROP`) and periodic node state rows (`NODE_STATUS`) are appended to a CSV trace with a 10-column canonical schema:
+`time, src, dst, pkt_id, type, hop_count, dropped_by, node_id, speed, neighbor_count`
 
 ### 2. Sliding-Window Feature Extraction
 1. `feature_extraction/extract_features.py` divides the simulation duration into overlapping sliding windows $[t - W, t]$ with step size $S$ (default: $W = 10.0\text{ s}, S = 2.0\text{ s}$).
-2. For each node active in window $w$, backward aggregation computes 9 non-leaking behavioral features:
-   - `packet_forward_ratio`: Forwarded data packets / received data packets meant for forwarding.
-   - `packet_drop_ratio`: Dropped data packets / received data packets meant for forwarding.
-   - `avg_delay`: Mean latency between packet receipt and transmission.
-   - `route_request_rate`: RREQs sent per second in window.
-   - `route_reply_rate`: RREPs sent per second in window.
-   - `throughput`: Total payload bytes successfully delivered or forwarded per second.
-   - `hop_count`: Average hop count of forwarded traffic.
-   - `neighbor_count`: Number of 1-hop reachable nodes.
-   - `mobility_speed`: Current kinematic velocity in m/s.
+2. Backward aggregation computes 9 non-leaking behavioral features:
+   - `packet_forward_ratio`, `packet_drop_ratio`, `avg_delay`, `route_request_rate`, `route_reply_rate`, `throughput`, `hop_count`, `neighbor_count`, `mobility_speed`.
 3. Anti-Leakage Protocol: Feature matrix $X$ contains zero identity tags, coordinate positions, or oracle flags. Changing ground-truth attack labels leaves $X$ 100% numerically invariant.
 
-### 3. Closed-Loop Online Mitigation Lifecycle
-1. During active network operation, every node packet event is streamed to an in-memory sliding buffer in `OnlineIDS`.
-2. Every $\Delta t = 5.0\text{ s}$, `OnlineIDS.step()` vectors current sliding statistics through the fitted `StandardScaler` and into the champion classifier.
-3. **2-Strike Confirmation Filter:** To prevent benign route disruptions, an anomaly prediction must persist for $K=2$ consecutive evaluation windows before isolation is triggered.
-4. **Dynamic Route Invalidation:** When node $m$ is isolated:
-   - AODV node callback `is_blacklisted_cb(node_id)` marks node $m$ quarantined.
-   - Future RREPs and RREQs from $m$ are dropped immediately.
-   - `AodvNode.invalidate_routes_through(m)` purges all routing table entries listing node $m$ as next-hop or transit hop.
-   - Active sources immediately trigger route rediscoveries, steering data packets along honest alternative multi-hop paths.
-5. **Quarantine Decay:** Quarantined nodes remain isolated for a configurable decay window (default: 30.0 s), allowing transient congestion to clear without permanent network fragmentation.
+### 3. Closed-Loop Online Mitigation
+1. Packet events stream to `OnlineIDS`.
+2. Every $\Delta t = 5.0\text{ s}$, `OnlineIDS.step()` infers node behaviors through the champion classifier.
+3. **2-Strike Confirmation:** Malicious classification must persist for 2 consecutive windows before isolation triggers.
+4. **Route Invalidation:** Quarantined nodes are silenced from RREPs/RREQs, and all routing entries routing through the attacker are expunged.
+5. **Quarantine Decay:** Quarantined nodes remain isolated for 30.0s before probationary reintegration.
 
-### 4. AODV Route Discovery & Recovery Lifecycle
-To ensure robust, deterministic recovery after temporary network partitions while preventing broadcast storms and buffer bloat:
-1. **Per-Destination Discovery State Machine:** Each node maintains structured discovery state (`DiscoveryState` in `simulator/aodv.py`) tracking active status, current retry count ($0 \le r \le 2$), dynamic timeout interval, and scheduled timer token generation IDs.
-2. **Bounded Retries with Exponential Backoff:** Initial discovery timeout is scheduled at `DEFAULT_RREQ_TIMEOUT = 2.0` seconds. Upon timeout without an RREP, retries back off exponentially (`DEFAULT_BACKOFF_MULT = 2.0`). With `DEFAULT_RREQ_RETRIES = 2`, the timeout progression is deterministically bounded to $2.0\text{s} \to 4.0\text{s} \to 8.0\text{s}$ across 3 total attempts (1 initial attempt + 2 retries; no separate `MAX_RREQ_TIMEOUT` constant is required).
-3. **Timer-Generation Stale Callback Protection:** Each scheduled timeout callback carries a unique `timer_token`. If an RREP arrives or retries are cancelled before the timer fires, the token mismatch ensures stale callbacks are discarded harmlessly without aborting subsequent discoveries.
-4. **Discovery Cooldown:** If discovery retries are exhausted without an RREP, the destination enters a `DEFAULT_DISCOVERY_COOLDOWN = 2.0` second quiet period. Subsequent packet arrivals buffer within limits but do not trigger repetitive RREQ floods.
-5. **Bounded Packet Buffering & TTL Expiration:** Data packets awaiting route establishment are enqueued in `packet_buffer[dest]`. Queues are capped at `DEFAULT_MAX_BUFFER_PER_DEST = 100` packets (oldest dropped first) and enforce `DEFAULT_MAX_BUFFER_TIME = 20.0` seconds TTL. Stale packets that exceed TTL during partitions are pruned automatically.
-6. **Strict RREP Ingress & Buffer Flush Guards:** Upon receiving an RREP, nodes verify the sender is not blacklisted before updating routes. Valid RREPs establish the route and flush eligible buffered packets; rejected blacklisted RREPs leave legitimate pending discoveries untouched and never flush buffers into the black hole.
-7. **Quarantine Local Egress Guard:** `handle_rreq()` explicitly checks `self.is_node_blacklisted(self.node_id)`. Quarantined nodes are completely silenced from generating or transmitting local RREPs, eliminating rogue control packets at the point of origin.
+---
 
 ## Key Abstractions
 
 | Class / Component | Module Path | Responsibility |
 |---|---|---|
+| `ManetApp` | [manet/app.py](file:///C:/Users/KIIT0001/Documents/projects/Machine%20Learning-Based%20Intrusion%20Detection%20System%20for%20MANET/manet/app.py) | Full-screen Textual application shell, screen routing, and keybindings. |
+| `ConcreteSimulationExecutor` | [bootstrap.py](file:///C:/Users/KIIT0001/Documents/projects/Machine%20Learning-Based%20Intrusion%20Detection%20System%20for%20MANET/bootstrap.py) | Composition root bridging TUI to simulator; in-process SimPy stepping engine. |
+| `WorkloadSupervisor` | [manet/runtime/supervisor.py](file:///C:/Users/KIIT0001/Documents/projects/Machine%20Learning-Based%20Intrusion%20Detection%20System%20for%20MANET/manet/runtime/supervisor.py) | Background worker thread coordinator, lifecycle state transitions. |
+| `TelemetrySink` | [manet/runtime/telemetry.py](file:///C:/Users/KIIT0001/Documents/projects/Machine%20Learning-Based%20Intrusion%20Detection%20System%20for%20MANET/manet/runtime/telemetry.py) | Synchronized bounded ring-buffer for high-throughput UI decoupling. |
+| `WorkspaceAdapter` | [manet/adapters/workspace.py](file:///C:/Users/KIIT0001/Documents/projects/Machine%20Learning-Based%20Intrusion%20Detection%20System%20for%20MANET/manet/adapters/workspace.py) | Experiment workspace directory management, atomic manifests, SHA-256 checks. |
 | `SimulationRunner` | [simulator/run_scenario.py](file:///C:/Users/KIIT0001/Documents/projects/Machine%20Learning-Based%20Intrusion%20Detection%20System%20for%20MANET/simulator/run_scenario.py) | Scenario orchestrator, SimPy environment lifecycle, strategy injector, and trace recorder. |
 | `AodvNode` | [simulator/aodv.py](file:///C:/Users/KIIT0001/Documents/projects/Machine%20Learning-Based%20Intrusion%20Detection%20System%20for%20MANET/simulator/aodv.py) | RFC 3561 AODV protocol implementation with sequence numbers, routing table expiry, and blacklist hook. |
-| `RandomWaypointMobility` | [simulator/mobility.py](file:///C:/Users/KIIT0001/Documents/projects/Machine%20Learning-Based%20Intrusion%20Detection%20System%20for%20MANET/simulator/mobility.py) | 2D kinematic model calculating node velocity, waypoint targets, pause times, and coordinates. |
-| `RadioModel` | [simulator/radio.py](file:///C:/Users/KIIT0001/Documents/projects/Machine%20Learning-Based%20Intrusion%20Detection%20System%20for%20MANET/simulator/radio.py) | Unit-disk propagation model maintaining dynamic NetworkX pairwise neighbor connectivity. |
-| `TrafficGenerator` | [simulator/traffic.py](file:///C:/Users/KIIT0001/Documents/projects/Machine%20Learning-Based%20Intrusion%20Detection%20System%20for%20MANET/simulator/traffic.py) | Constant Bit Rate (CBR) UDP traffic flow generator scheduling discrete packet transmissions. |
-| `AttackStrategy` | [attacks/base.py](file:///C:/Users/KIIT0001/Documents/projects/Machine%20Learning-Based%20Intrusion%20Detection%20System%20for%20MANET/attacks/base.py) | Abstract base class defining routing hook signatures for adversarial behavior injection. |
-| `BlackholeStrategy` | [attacks/blackhole.py](file:///C:/Users/KIIT0001/Documents/projects/Machine%20Learning-Based%20Intrusion%20Detection%20System%20for%20MANET/attacks/blackhole.py) | Spoofs high destination sequence number in RREP and drops 100% of intercepted data packets. |
-| `GrayholeStrategy` | [attacks/grayhole.py](file:///C:/Users/KIIT0001/Documents/projects/Machine%20Learning-Based%20Intrusion%20Detection%20System%20for%20MANET/attacks/grayhole.py) | Cooperates in AODV route discovery while selectively or probabilistically dropping data packets. |
 | `OnlineIDS` | [ml/response.py](file:///C:/Users/KIIT0001/Documents/projects/Machine%20Learning-Based%20Intrusion%20Detection%20System%20for%20MANET/ml/response.py) | Real-time sliding window controller with 2-strike confirmation and quarantine route invalidation. |
-
-## Directory Structure Rationale
-
-- `simulator/`: Encapsulates all discrete-event networking code, ensuring that network protocol dynamics remain completely decoupled from machine learning code.
-- `attacks/`: Contains independent attack strategy implementations. Top-level placement enforces the architectural rule that the simulator never imports attack logic directly.
-- `feature_extraction/`: Isolated preprocessing module converting raw packet events into ML-ready tabular datasets.
-- `ml/`: Model training, evaluation, persistence, generalization analysis, and online mitigation controllers.
-- `scenarios/`: Declarative JSON configurations decoupling experiment parameters (node counts, velocities, packet rates) from executable code.
-- `scripts/`: Authoritative benchmark drivers for automated dataset generation, cross-scenario generalization testing, and 3-way QoS evaluation.
-- `tests/`: Comprehensive pytest verification suite ensuring mathematical determinism and protocol correctness.
-- `docs/`: Technical manuals, getting started guides, and formal academic thesis documentation.

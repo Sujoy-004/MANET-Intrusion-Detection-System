@@ -1,37 +1,98 @@
 <!-- generated-by: gsd-doc-writer -->
 # Machine Learning-Based Intrusion Detection System for MANET
 
-A Windows-native, pure-Python discrete-event network simulator and machine learning-driven intrusion detection and mitigation framework for Mobile Ad-Hoc Networks (MANET).
+A Windows-native, pure-Python discrete-event network simulator, machine learning-driven intrusion detection and mitigation framework, and full-screen Interactive Terminal UI (TUI) for Mobile Ad-Hoc Networks (MANET).
 
 ## Overview
 
 Mobile Ad-Hoc Networks (MANETs) lack centralized routing infrastructure, exposing them to routing disruptions such as Blackhole (false high-sequence route spoofing) and Grayhole (selective or probabilistic packet dropping) attacks. This project provides a complete, reproducible software suite that couples:
-1. An in-repo discrete-event MANET simulator (SimPy + NetworkX) executing RFC 3561 Ad hoc On-Demand Distance Vector (AODV) routing over dynamic Random Waypoint mobility.
-2. Decoupled attack injection behaviors that manipulate routing tables and drop forwarded data packets.
-3. Sliding-window, non-leaking feature extraction deriving tabular traffic metrics from packet event traces.
-4. Cost-sensitive Scikit-learn classification models tuned under a strict False Positive Rate gate ($\text{FPR} \le 1.0\%$).
-5. A dynamic closed-loop Online IDS response engine that isolates confirmed malicious nodes, invalidates poisoned routing table entries, and restores packet delivery ratio (achieving 62.93% PDR vs. 18.10% under attack in the 300s Seed-42 benchmark).
+1. **Discrete-Event MANET Simulator:** An in-repo pure-Python simulator (SimPy + NetworkX) executing RFC 3561 Ad hoc On-Demand Distance Vector (AODV) routing over dynamic Random Waypoint mobility.
+2. **Decoupled Adversarial Injection:** Swappable attack strategies (Blackhole and Grayhole) injected at the composition root without contaminating core protocol code.
+3. **Anti-Leakage Feature Extraction:** Sliding-window traffic aggregation deriving 10-column tabular metrics without ground-truth label or identity leakage.
+4. **FPR-Gated Machine Learning:** Cost-sensitive Scikit-learn classifiers operating under an enforced False Positive Rate gate ($\text{FPR} \le 1.0\%$) to prevent false-alarm network fragmentation.
+5. **Closed-Loop Mitigation:** Dynamic `OnlineIDS` controller with a 2-strike confirmation filter that isolates confirmed malicious nodes and expunges poisoned routes (recovering 95.51% of baseline delivery in the 300s Seed-42 benchmark).
+6. **Interactive Terminal UI (TUI):** A full-screen, keyboard-first presentation layer (`python -m manet`, app name `MANET IDS`) built with Textual 8.2.8, offering real-time SOC monitoring, scenario configuration wizards, QoS scorecards, and experiment management.
+
+---
 
 ## Prerequisites & Installation
 
-- **Operating System:** Windows 10/11 native (no WSL, Linux VM, or Docker required)
-- **Python Version:** Python 3.11+ (verified on 3.11.8)
+- **Operating System:** Windows 10 / Windows 11 native (no WSL, Linux VM, Docker, or external C/C++ compiler required).
+- **Python Version:** Python 3.11+ (verified on native CPython 3.11.8 64-bit).
 
-Install the required dependencies using `pip`:
+### 1. Install Dependencies
 
-```bash
-python -m pip install simpy==4.1.2 networkx==3.6.1 scikit-learn==1.8.0 pandas==3.0.2 numpy==1.26.4 matplotlib==3.10.8 seaborn==0.13.2 pytest==9.0.2 joblib==1.5.3
+Clone the repository and install the exact pinned dependency stack from [requirements.txt](requirements.txt):
+
+```powershell
+git clone https://github.com/Sujoy-004/MANET-Intrusion-Detection-System.git
+cd "MANET-Intrusion-Detection-System"
+python -m pip install -r requirements.txt
 ```
 
-## Quick Start
+### 2. Verify Environment Health
 
-> **Simulator-only workflows need no ML prep.** Steps 1–2 (baseline and blackhole runs without `--ids`) depend only on the simulator dependencies and are fully independent of the ML pipeline. Only Step 3 (`--ids`) and the ML/evaluation workflows require the first-time model preparation from §0 below.
+Run the on-demand environment verification script to assert runtime version, dependency exact pins, CLI entry points, and presentation layer wiring:
+
+```powershell
+python scripts/verify_environment.py
+```
+
+Expected output: All runtime and dependency checks report `[OK]`, artifact availability is checked, and the script exits with code `0`.
+
+---
+
+## Interactive Terminal UI (TUI)
+
+The v2.0 milestone introduces an interactive, full-screen terminal application providing an operational flight deck for configuring simulations, monitoring live packet traffic, and evaluating IDS mitigation metrics.
+
+### Launching the Application
+
+Launch the TUI from the repository root:
+
+```powershell
+python -m manet
+```
+
+### Key TUI Features
+
+- **Executive Dashboard:** Live status cards for system diagnostics, ML model readiness, active workload state, and quick CTA actions.
+- **Scenario Wizard (`[S]`):** 3-step interactive wizard for selecting presets or custom parameters, configuring mobility/traffic, setting duration/seed, and previewing pre-flight checks.
+- **Live Run Monitor (`[R]`):** Real-time SOC-style monitor with SimPy virtual-time progress bar, wall-clock timer, live packet counters (`SENT`, `FWD`, `RECV`, `DROP`), throttled RichLog packet event stream, and safe cooperative cancellation (`[X]`).
+- **Results & QoS Scorecard:** Post-run evaluation screen displaying delivery metrics (PDR, throughput, delay, routing overhead), color-coded threshold badges, raw packet trace viewers, and isolation event ledgers.
+- **Experiment Records & Workspace (`[O]`):** History screen listing past runs from `.manet-workspace/`, manifest inspect views with SHA-256 checksum validation, and safe workspace pruning modal (`[D]`).
+- **Diagnostics Probe (`[P]`):** Real-time system health card displaying Python version, dependency checks, model artifact paths, and active process metrics.
+- **Command Palette (`[Ctrl+P]`):** Searchable command launcher for jumping to any screen, toggling settings, or triggering actions.
+
+### Global Keyboard Shortcuts
+
+| Shortcut | Action | Description |
+|---|---|---|
+| `[S]` | **Simulate** | Open Scenario Configuration Wizard |
+| `[R]` | **Live Run** | Jump to Live Simulation Monitor |
+| `[O]` | **Records** | View Experiment History & Artifacts |
+| `[P]` | **Diagnostics** | Open System & Environment Diagnostics |
+| `[Ctrl+P]` | **Palette** | Open Quick Command Palette |
+| `[F1]` | **Help** | View Shortcuts & Documentation |
+| `[Esc]` | **Back / Close** | Return to Main Workspace or close modal |
+| `[Ctrl+Q]` | **Quit** | Safe exit with confirmation modal |
+
+### Terminal Requirements & Limitations
+
+- **Minimum Geometry:** 80 columns × 24 rows minimum geometry recommended. Screen layouts adaptively reflow; geometries below 80×24 may truncate panels.
+- **Supported Terminals:** Verified on native Windows Terminal and standard Windows Console host (`conhost.exe`). Untested on PuTTY or tmux.
+- **Session Settings:** Display toggles (High Contrast, Reduced Motion, Compact Density) are session-only and reside in-memory.
+- **Symlink Fallback:** On non-elevated Windows without Developer Mode, workspace pruning automatically falls back to copy-based operations.
+
+---
+
+## Quick Start (CLI Workflows)
+
+All legacy CLI workflows remain 100% operational, backward-compatible, and regression-tested.
 
 ### 0. First-Time Model Preparation (After Fresh Clone)
 
-The trained model artifacts (`ml/models/*.joblib`, including `ml/models/best_model.joblib`) are intentionally excluded from version control via the `.gitignore` rule `ml/models/*.joblib`. They are deterministic products of seeded simulations, so they are regenerated locally with three commands — this keeps the repository small and keeps every result reproducible. `ml/models/model_metadata.json` is tracked, while `data/` and `traces/` are generated locally only.
-
-Run the following canonical sequence from the repository root in PowerShell:
+Trained model artifacts (`ml/models/*.joblib`) are excluded from Git via `.gitignore` to keep the repository lightweight and deterministic. Generate the champion model locally:
 
 ```powershell
 python scripts/build_dataset.py --multi-attack
@@ -39,84 +100,81 @@ python -m ml.train
 python -m ml.evaluate
 ```
 
-Expected outputs (verified reference run): the dataset totals 52,200 rows, with a training split of 34,800 rows (seeds 42 & 43) and a held-out test split of 17,400 rows (seed 44). Training writes candidate models to `ml/models/`, and evaluation selects the FPR-gated champion — Random Forest with F1 0.7593 and FPR 0.0099 (0.99%) — persisted to `ml/models/best_model.joblib` alongside `ml/models/model_metadata.json`.
-
-**Expected artifacts:** `data/train.csv`, `data/test.csv`, `ml/models/random_forest.joblib`, `ml/models/decision_tree.joblib`, `ml/models/svm.joblib`, `ml/models/best_model.joblib`, `ml/models/model_metadata.json`.
-
-**FPR acceptance gate:** `ml/evaluate.py` enforces a locked gate of `FPR <= 1.0%` (`FPR_GATE = 0.01`). Any candidate classifier exceeding 1.0% FPR is disqualified from champion selection, and evaluation aborts if no candidate passes. The verified champion (Random Forest, F1 0.7593, FPR 0.0099 = 0.99%) sits under the gate.
+- **Dataset:** 52,200 total window rows (34,800 train on seeds 42 & 43; 17,400 held-out test on seed 44).
+- **FPR Gate:** `ml/evaluate.py` enforces `FPR <= 1.0%`. Champion Random Forest achieves **F1 0.7593, FPR 0.0099 (0.99%)**, persisted to `ml/models/best_model.joblib`.
 
 ### 1. Run Baseline Normal Simulation
 
-Execute a 30-node normal MANET simulation with Random Waypoint mobility:
-
-```bash
+```powershell
 python -m simulator.run_scenario --scenario scenarios/e1_normal_30n.json --seed 42 --out traces/baseline_normal
 ```
 
-This generates packet-level CSV event traces in `traces/baseline_normal/trace_seed42.csv` and prints end-to-end metrics (Packet Delivery Ratio, throughput, latency, routing overhead).
-
 ### 2. Run Blackhole Attack Simulation
 
-Run an identical scenario with an active Blackhole attacker injected:
-
-```bash
+```powershell
 python -m simulator.run_scenario --scenario scenarios/e2_blackhole_30n.json --seed 42 --out traces/attack_blackhole
 ```
 
-The Blackhole attacker intercepts RREQ broadcasts, advertises an inflated sequence number, and silently drops all intercepted application data.
-
 ### 3. Run Closed-Loop IDS Mitigation
 
-The `--ids` flag loads the trained champion from `ml/models/best_model.joblib` (see §0) and fails with a missing-file error if that artifact does not yet exist.
-
-Run the simulation with active closed-loop machine learning detection and route isolation enabled:
-
-```bash
+```powershell
 python -m simulator.run_scenario --scenario scenarios/e2_blackhole_30n.json --seed 42 --out traces/ids_protected --ids
 ```
 
-The online IDS evaluates sliding-window node behavior every 5.0 seconds. Upon 2 consecutive malicious classifications, the attacker is blacklisted, poisoned routes are expunged, and traffic reroutes around the attacker.
+The online IDS evaluates sliding-window node behavior every 5.0s. After 2 consecutive positive detections, the attacker is isolated, poisoned routes are expunged, and traffic reroutes around the malicious node.
 
-## Key Features & Results
+---
 
-- **Sub-Second Execution:** Built with SimPy discrete-event processing, running 300 seconds of simulated network activity in ~0.83 seconds wall-clock time (~70,000 events/sec).
-- **Robust AODV Discovery Lifecycle:** Integrated RFC 3561 route discovery recovery featuring per-destination state machines, exponential backoff (2 retries, 3 total attempts: 2s -> 4s -> 8s), discovery timeouts with timer-generation protection, bounded packet buffering (queue limit 100 packets, TTL 20.0s), discovery cooldown (2.0s), and quarantine response guards to recover cleanly from temporary network partitions without broadcast storms.
-- **Anti-Leakage Data Partitioning:** Train and test datasets are partitioned strictly by simulation seed (Seeds 42 & 43 for training, Seed 44 for held-out testing), eliminating temporal autocorrelation leakage.
-- **Champion ML Classifier:** Random Forest classifier operating under an enforced $\text{FPR} \le 1.0\%$ threshold to prevent false-alarm network fragmentation.
-- **Measurable QoS Recovery:** Evaluated on the standardized 300-second, Seed-42 comparative triad benchmark (`scenarios/e1_normal_30n.json` vs. `scenarios/e2_blackhole_30n.json`). The online IDS restores PDR from 18.10% under unmitigated attack back to 62.93% (recovering 95.51% of baseline delivery: 3,914 / 4,098 packets, +44.82 percentage points absolute PDR improvement over attack).
+## 300-Second Benchmark Results (Seed 42 Reference)
 
-### 300-Second Benchmark Results (Seed 42 Reference)
-
-> **Benchmark Provenance Note:** The table below documents the verified single-seed reference run (300 simulated seconds, Seed 42, 30 nodes, 6 CBR application flows). Metrics vary across mobility seeds and topologies; do not assume identical numerical results across unseeded configurations.
+> **Benchmark Provenance:** Verified reference run (300 simulated seconds, Seed 42, 30 nodes, 6 CBR application flows). Metrics vary across seeds and topologies.
 
 | Metric | Baseline AODV (Normal) | Blackhole Attack (No IDS) | AODV + Online IDS | Net Mitigation Impact |
 |---|---|---|---|---|
-| **Packet Delivery Ratio (PDR)** | 65.88% (4,098 / 6,220) | 18.10% (1,126 / 6,220) | 62.93% (3,914 / 6,220) | **+44.82 percentage points absolute PDR (+247.6% relative to attack; 95.51% baseline restored: 3,914 / 4,098)** |
+| **Packet Delivery Ratio (PDR)** | 65.88% (4,098 / 6,220) | 18.10% (1,126 / 6,220) | 62.93% (3,914 / 6,220) | **+44.82 percentage points (+247.6% relative to attack; 95.51% baseline restored)** |
 | **Throughput (kbps)** | 55.95 kbps | 15.37 kbps | 53.44 kbps | **+38.07 kbps (+247.7% relative to attack; 95.51% baseline restored)** |
-| **Average Delay (ms)** | 134.74 ms (4,098 delivered pkts) | 138.66 ms (1,126 delivered pkts) | 102.29 ms (3,914 delivered pkts) | **Cohort comparison: 36.37 ms vs. attack, 32.45 ms vs. baseline (delivered pkts only)** |
+| **Average Delay (ms)** | 134.74 ms (4,098 pkts) | 138.66 ms (1,126 pkts) | 102.29 ms (3,914 pkts) | **Descriptive cohort comparison across delivered packets** |
 | **Routing Overhead Ratio** | 0.0950 | 0.1055 | 0.1302 | **+0.0247 bounded control packet overhead** |
 
-> **Delay Measurement Note:** Average end-to-end delay is calculated in `simulator/metrics.py` exclusively across successfully delivered packets (inner join between `DATA_SENT` and `DATA_RECV` on packet ID). Packets dropped by attacks, buffer overflow, or topology partitions are excluded from delay computation. Latency comparisons between modes represent descriptive statistics across distinct delivered-packet populations rather than causal proof of path-level delay optimization.
+---
 
 ## Running the Automated Test Suite
 
-Run the full automated test suite containing 79 unit, integration, recovery, and pipeline validation tests:
+The test suite contains **293 collected tests across 38 test modules**:
 
-```bash
-python -m pytest
+```powershell
+# Run the complete test suite
+python -m pytest -q
+
+# Run AST architectural import boundary enforcement tests (fast)
+python -m pytest tests/test_manet_import_boundaries.py tests/test_import_boundaries.py -q
+
+# Run CLI compatibility regression harness
+python -m pytest tests/test_legacy_cli_compat.py -q
 ```
+
+Expected result: **290 passed, 3 skipped** (symlink privilege skips on non-elevated Windows), **0 failed**.
+
+---
 
 ## Repository Structure
 
 ```text
+├── manet/                 # Full-screen Textual 8.2.8 TUI presentation layer (Zero business logic)
+│   ├── adapters/          # One-way adapters: diagnostics, scenario, execution, workspace, status
+│   ├── commands/          # Command palette provider, registry, console driver
+│   ├── runtime/           # Paths, settings, supervisor, telemetry sink, theme, keymap
+│   ├── screens/           # Workspace, workflow wizard, live run monitor, results, history, prune
+│   └── widgets/           # Dashboard cards, QoS scorecard, nav rails, status bars
+├── bootstrap.py           # Composition root bridging TUI to simulator and ML (never inside manet/)
 ├── simulator/             # Pure-Python discrete-event network simulator (SimPy + NetworkX)
-│   ├── aodv.py            # RFC 3561 AODV protocol (bounded retries/backoff, discovery lifecycle, buffer TTL, blacklist guards)
+│   ├── aodv.py            # RFC 3561 AODV protocol (state machine, backoff, queue TTL, blacklist)
 │   ├── mobility.py        # 2D Random Waypoint mobility model
 │   ├── radio.py           # Unit-disk transmission range & dynamic neighbor discovery
 │   ├── traffic.py         # CBR/UDP application traffic generator
 │   ├── metrics.py         # PDR, throughput, delay, and routing overhead calculators
 │   └── run_scenario.py    # CLI entry point for scenario execution
-├── attacks/               # Decoupled adversarial strategies
+├── attacks/               # Decoupled adversarial strategies (injected at composition root)
 │   ├── base.py            # AttackStrategy base interface
 │   ├── blackhole.py       # Sequence-spoofing & unconditional packet drop strategy
 │   ├── grayhole.py        # Honest routing & selective/probabilistic drop strategy
@@ -126,37 +184,35 @@ python -m pytest
 ├── ml/                    # Machine learning models, evaluation & closed-loop response
 │   ├── dataset.py         # Seed-partitioned train/test splitting and scaling
 │   ├── train.py           # Cost-sensitive pipeline training with 5-fold Stratified CV
-│   ├── evaluate.py        # Multi-metric security evaluator (Precision, Recall, F1, FPR, Confusion Matrix)
+│   ├── evaluate.py        # Multi-metric security evaluator (Precision, Recall, F1, FPR)
 │   ├── response.py        # OnlineIDS real-time sliding controller with 2-strike confirmation
 │   ├── generalization.py  # Cross-scenario domain transfer analysis
 │   ├── plots.py           # Headless-safe 300 DPI Matplotlib/Seaborn visualization suite
 │   └── models/            # Serialized champion models and metadata
 ├── scenarios/             # Declarative scenario JSON configurations
-├── scripts/               # Benchmarking, dataset assembly, and evaluation scripts
+├── scripts/               # Environment verification, benchmarking, dataset assembly scripts
+│   ├── verify_environment.py # On-demand environment & dependency pin verification
 │   ├── build_dataset.py
 │   ├── run_generalization_matrix.py
 │   └── run_closed_loop_benchmark.py
-├── tests/                 # 79 pytest unit, integration, and recovery tests
+├── tests/                 # 293 pytest tests across 38 modules (unit, integration, TUI, AST boundaries)
+├── requirements.txt       # Exact-pinned dependencies (10 packages)
 ├── results/               # Metric CSVs and publication-grade plots (results/plots/)
 └── docs/                  # Detailed documentation and thesis report
 ```
 
-## Documentation
+---
 
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): Simulator mechanics, decoupled attack injection, feature pipeline, and closed-loop response.
-- [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md): Step-by-step setup, scenario execution, and quick experimentation guide.
-- [docs/CONFIGURATION.md](docs/CONFIGURATION.md): Scenario JSON specifications, feature schema, and IDS hyperparameters.
-- [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md): Architectural contracts, guidelines for extending attacks, and coding conventions.
-- [docs/TESTING.md](docs/TESTING.md): Test suite organization, Gate 2 impact verification, and benchmark validation.
-- [docs/FINAL_PROJECT_REPORT.md](docs/FINAL_PROJECT_REPORT.md): Complete B.Tech project thesis report with mathematical models and full experimental results.
+## Documentation Index
 
-## Troubleshooting
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): Architectural design, presentation/core decoupling, AST boundary enforcement, and data flows.
+- [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md): Complete setup guide, TUI walkthrough, and CLI execution tutorials.
+- [docs/CONFIGURATION.md](docs/CONFIGURATION.md): Scenario schemas, TUI session settings, and IDS hyperparameters.
+- [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md): Architectural contracts, extension points, coding standards, and testing guidelines.
+- [docs/TESTING.md](docs/TESTING.md): Test suite architecture, coverage metrics, and verification gates.
+- [docs/FINAL_PROJECT_REPORT.md](docs/FINAL_PROJECT_REPORT.md): Comprehensive thesis report with theoretical formulations and benchmark analysis.
 
-### 1. Missing ml/models/best_model.joblib
-
-- **Symptom:** Running any `--ids` command (or `python -m ml.evaluate`, `python scripts/run_closed_loop_benchmark.py`) fails with a file-not-found / invalid-load error on `ml/models/best_model.joblib`.
-- **Cause:** Model artifacts are excluded from the repository (`.gitignore` rule `ml/models/*.joblib`) and must be regenerated locally.
-- **Fix:** Run the §0 sequence from the repository root: `python scripts/build_dataset.py --multi-attack`, then `python -m ml.train`, then `python -m ml.evaluate`.
+---
 
 ## License
 

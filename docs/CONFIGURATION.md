@@ -1,7 +1,7 @@
 <!-- generated-by: gsd-doc-writer -->
 # Configuration Guide
 
-This document defines the configuration schemas, simulation parameters, scenario JSON specifications, and runtime hyperparameters for the MANET Intrusion Detection and Response System.
+This document defines the configuration schemas, simulation parameters, scenario JSON specifications, TUI session settings, and runtime hyperparameters for the MANET Intrusion Detection and Response System.
 
 ## Overview
 
@@ -9,10 +9,13 @@ The system requires no external environment variables or database credentials. A
 1. **Scenario Configuration Files (`scenarios/*.json`):** Defines topology, mobility, traffic flows, and attack parameters.
 2. **CLI Flags (`simulator/run_scenario.py`):** Controls seed determinism, output paths, and closed-loop IDS activation.
 3. **Hyperparameter Constants:** Controls sliding-window feature extraction and `OnlineIDS` isolation timing.
+4. **TUI Session Settings (`manet/runtime/settings.py`):** Controls display accessibility, animation speed, and density.
+
+---
 
 ## Scenario Configuration Schema
 
-Scenario files are declarative JSON documents loaded by `simulator.run_scenario.load_scenario()`.
+Scenario files are declarative JSON documents loaded by `simulator.run_scenario.load_scenario()` and validated by `manet.adapters.simulation_config.validate_scenario_config()`.
 
 ### Full Example Schema (`scenarios/e4_grayhole_onset_30n.json`)
 
@@ -60,68 +63,72 @@ Scenario files are declarative JSON documents loaded by `simulator.run_scenario.
 }
 ```
 
-### Parameter Reference Table
+### Scenario Validation Tiers
 
-| Field | Type | Required | Default | Description |
-|---|---|---|---|---|
-| `simulation_time` | float | Yes | - | Total duration of the simulation in simulated seconds. |
-| `area.width` | float | Yes | - | Width of the 2D simulation bounding box in meters. |
-| `area.height` | float | Yes | - | Height of the 2D simulation bounding box in meters. |
-| `nodes` | int | Yes | - | Total count of mobile nodes in the network. |
-| `radio_range` | float | Yes | - | Maximum Euclidean transmission distance $R$ in meters. Nodes with $d \le R$ form 1-hop links. |
-| `mobility.model` | string | Yes | - | Mobility model name (currently `"RandomWaypoint"`). |
-| `mobility.min_speed` | float | Yes | - | Minimum node kinematic velocity in meters/second. |
-| `mobility.max_speed` | float | Yes | - | Maximum node kinematic velocity in meters/second. |
-| `mobility.pause_time` | float | Yes | - | Pause duration at each waypoint target before selecting the next destination. |
-| `traffic` | array | Yes | - | Array of CBR/UDP flow definition objects. |
-| `traffic[].src` | int | Yes | - | Node ID of the traffic source. |
-| `traffic[].dst` | int | Yes | - | Node ID of the traffic destination. |
-| `traffic[].packet_rate`| float | Yes | - | Transmission frequency in packets per simulated second. |
-| `traffic[].payload_size`| int | No | 512 | Packet payload size in bytes. |
-| `traffic[].start_time` | float | No | 0.0 | Simulated time in seconds when packet transmission begins. |
-| `attacks` | array | No | `[]` | Array of adversarial injection strategy configurations. |
+The simulation workflow wizard enforces a two-tier validation pipeline:
 
-## Attack Configuration Specifications
+- **Tier 1 (Schema Structure):** Asserts required root fields (`simulation_time`, `area`, `nodes`, `radio_range`, `mobility`, `traffic`, `attacks`) and verifies primitive data types.
+- **Tier 2 (Physical Invariants):**
+  - `nodes >= 2`
+  - `area.width > 0` and `area.height > 0`
+  - `radio_range > 0`
+  - `min_speed < max_speed` (rejects equal, inverted, NaN, or infinite speeds)
+  - `min_speed >= 0` and `pause_time >= 0`
+  - Traffic flow endpoints: `0 <= src < nodes`, `0 <= dst < nodes`, and `src != dst`
+  - `packet_rate > 0` and `payload_size > 0`
+  - Attack parameters: `0.0 <= drop_probability <= 1.0`, `onset_time >= 0`
 
-Adversarial injections are defined in the `attacks` array.
+---
 
-### 1. Blackhole Attack Configuration
+## TUI Session Settings (`SessionSettings`)
 
-```json
-{
-  "type": "blackhole",
-  "strategy_params": {
-    "intercept_mode": "flow_intercept"
-  },
-  "onset_time": 20.0
-}
-```
+Defined in [manet/runtime/settings.py](file:///C:/Users/KIIT0001/Documents/projects/Machine%20Learning-Based%20Intrusion%20Detection%20System%20for%20MANET/manet/runtime/settings.py):
 
-- `type`: `"blackhole"`
-- `intercept_mode`:
-  - `"flow_intercept"` (default): Automatically selects an intermediate node positioned along active application paths to ensure data interception.
-  - `"fixed"`: Targets a specific node ID by adding `"attacker_id": <int>` to the configuration.
-- `onset_time`: Simulated time in seconds when malicious behavior activates. Before `onset_time`, the node behaves as a normal, honest AODV router.
+| Setting | Default | Description |
+|---|---|---|
+| `high_contrast` | `False` | Toggles high-contrast border and text styles for accessibility. |
+| `reduced_motion` | `False` | Disables smooth progress animations and pulsing status badges. |
+| `compact_density` | `False` | Adjusts layout padding and card heights for dense 80×24 viewing. |
 
-### 2. Grayhole Attack Configuration
+> **Architectural Constraint:** `SessionSettings` is strictly in-memory. Settings reset on every launch and are never persisted to disk.
+
+---
+
+## Workspace Manifest Schema (`manifest.json`)
+
+Every simulation run executed via the TUI produces a structured `manifest.json` in `.manet-workspace/<experiment_id>/`:
 
 ```json
 {
-  "type": "grayhole",
-  "strategy_params": {
-    "drop_probability": 0.5,
-    "intercept_mode": "flow_intercept"
+  "experiment_id": "exp_20261111_110500_a1b2",
+  "run_tag": "seed42_blackhole_ids",
+  "created_at": "2026-11-11T11:05:00.000Z",
+  "completed_at": "2026-11-11T11:05:01.200Z",
+  "status": "COMPLETED",
+  "scenario": {
+    "name": "e2_blackhole_30n",
+    "seed": 42,
+    "duration": 300.0,
+    "nodes": 30,
+    "ids_enabled": true
   },
-  "onset_time": 30.0
+  "qos_scorecard": {
+    "pdr": 0.6293,
+    "throughput_kbps": 53.44,
+    "avg_delay_ms": 102.29,
+    "routing_overhead": 0.1302
+  },
+  "checksums": {
+    "scenario.json": "sha256:...",
+    "trace.csv": "sha256:...",
+    "isolation.log": "sha256:..."
+  }
 }
 ```
 
-- `type`: `"grayhole"`
-- `strategy_params.drop_probability`: Floating point value between $0.0$ and $1.0$. Specifies the Bernoulli probability with which intercepted transit data packets are dropped.
-- `strategy_params.target_flows`: (Optional) Array of flow tuples `[[src, dst], ...]` to drop selectively. If omitted, all intercepted flows are dropped with `drop_probability`.
-- `strategy_params.drop_control`: (Optional, boolean, default: `false`). If `true`, routing control packets (RREQs/RREPs) are dropped as well. Default `false` enforces honest AODV route participation with selective data plane dropping.
+---
 
-## AODV Protocol & Route Discovery Recovery Hyperparameters
+## AODV Protocol Hyperparameters
 
 Defined in [simulator/aodv.py](file:///C:/Users/KIIT0001/Documents/projects/Machine%20Learning-Based%20Intrusion%20Detection%20System%20for%20MANET/simulator/aodv.py):
 
@@ -135,6 +142,8 @@ Defined in [simulator/aodv.py](file:///C:/Users/KIIT0001/Documents/projects/Mach
 | `DEFAULT_MAX_BUFFER_TIME` | `20.0` s | Time-To-Live threshold after which buffered data packets expire and are dropped. |
 | `DEFAULT_ACTIVE_ROUTE_TIMEOUT` | `10.0` s | Active route lifetime before entry expiration without traffic refresh. |
 
+---
+
 ## Feature Extraction & Machine Learning Hyperparameters
 
 Defined in [feature_extraction/extract_features.py](file:///C:/Users/KIIT0001/Documents/projects/Machine%20Learning-Based%20Intrusion%20Detection%20System%20for%20MANET/feature_extraction/extract_features.py) and [ml/dataset.py](file:///C:/Users/KIIT0001/Documents/projects/Machine%20Learning-Based%20Intrusion%20Detection%20System%20for%20MANET/ml/dataset.py):
@@ -145,6 +154,8 @@ Defined in [feature_extraction/extract_features.py](file:///C:/Users/KIIT0001/Do
 | `WINDOW_STEP` ($S$) | `2.0` s | Step increment between consecutive temporal feature evaluation points. |
 | `FPR_THRESHOLD` | `0.01` (1.0%) | Maximum permissible False Positive Rate for champion model qualification. |
 | `FEATURE_COLUMNS` | 9 features | `packet_forward_ratio`, `packet_drop_ratio`, `avg_delay`, `route_request_rate`, `route_reply_rate`, `throughput`, `hop_count`, `neighbor_count`, `mobility_speed` |
+
+---
 
 ## Closed-Loop Online IDS Hyperparameters
 
@@ -157,9 +168,11 @@ Defined in [ml/response.py](file:///C:/Users/KIIT0001/Documents/projects/Machine
 | `PROB_THRESHOLD` ($\tau$) | `0.50` | Minimum malicious class prediction probability required to register a strike. |
 | `QUARANTINE_DURATION` | `30.0` s | Elapsed time before an isolated node's quarantine decays and route probing can resume. |
 
+---
+
 ## Command-Line Configuration Flags
 
-The primary CLI runner [simulator/run_scenario.py](file:///C:/Users/KIIT0001/Documents/projects/Machine%20Learning-Based%20Intrusion%20Detection%20System%20for%20MANET/simulator/run_scenario.py) accepts the following arguments:
+The primary CLI runner [simulator/run_scenario.py](file:///C:/Users/KIIT0001/Documents/projects/Machine%20Learning-Based%20Intrusion%20Detection%20System%20for%20MANET/simulator/run_scenario.py) accepts:
 
 ```text
 --scenario PATH    Path to declarative scenario JSON file (required)

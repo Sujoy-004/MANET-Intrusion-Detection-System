@@ -5,34 +5,42 @@ This guide establishes the engineering conventions, architectural guidelines, de
 
 ## Engineering Contracts & Non-Negotiables
 
-All development in this repository is strictly governed by the engineering contracts set in `AGENTS.md`. Key non-negotiables:
+All development in this repository is strictly governed by the engineering contracts set in `AGENTS.md` and the architecture specifications:
 
-1. **Python Only (Windows Native):** No C/C++, no NS-3, no Cython, no external compilers. All simulator and ML code must run natively on CPython 3.11+.
+1. **Python Only (Windows Native):** No C/C++, no NS-3, no Cython, no external compilers. All simulator, ML, and TUI code must run natively on CPython 3.11+.
 2. **Explicit Seed Determinism:** Every stochastic component (Random Waypoint mobility, radio range, packet jitter, attack decisions) MUST be seeded using an explicit integer seed. A simulation run with identical seeds must produce byte-for-byte identical traces.
-3. **Architectural Seam Decoupling:** `simulator/` MUST NEVER import from `attacks/`. Adversarial strategies are injected at runtime by `simulator/run_scenario.py`.
-4. **Zero Random-Row Data Splitting:** Packet traces exhibit heavy temporal autocorrelation. Train/test sets MUST be partitioned strictly by scenario and seed (e.g., Seeds 42 & 43 for training, Seed 44 for testing). Never use `train_test_split(..., shuffle=True)` on raw packet or window rows.
-5. **Anti-Leakage Feature Pipeline:** Never introduce features that encode ground-truth attacker identity, node coordinates, or scenario metadata into the feature matrix $X$.
-6. **Low False Positive Rate Gate:** Any candidate classifier must satisfy $\text{FPR} \le 1.0\%$ before being eligible for deployment as a champion model in closed-loop routing.
+3. **Architectural Seam Decoupling:** `simulator/` MUST NEVER import from `attacks/`. Adversarial strategies are injected at runtime by `simulator/run_scenario.py` or `bootstrap.py`.
+4. **Presentation Layer Isolation:** `manet/` MUST NEVER import from business logic packages (`simulator`, `attacks`, `feature_extraction`, `ml`). `bootstrap.py` at the repo root is the only authorized composition bridge.
+5. **Command Package Safety:** `manet/commands/` MUST NEVER import OS execution primitives (`subprocess`, `shutil`, `os`).
+6. **Zero Random-Row Data Splitting:** Packet traces exhibit heavy temporal autocorrelation. Train/test sets MUST be partitioned strictly by scenario and seed (e.g., Seeds 42 & 43 for training, Seed 44 for testing). Never use `train_test_split(..., shuffle=True)` on raw packet or window rows.
+7. **Anti-Leakage Feature Pipeline:** Never introduce features that encode ground-truth attacker identity, node coordinates, or scenario metadata into the feature matrix $X$.
+8. **Low False Positive Rate Gate:** Any candidate classifier must satisfy $\text{FPR} \le 1.0\%$ before being eligible for deployment as a champion model in closed-loop routing.
+
+---
 
 ## Development Commands
 
 | Command | Purpose |
 |---|---|
-| `python -m pytest` | Run the complete 79-test automated test suite. |
+| `python scripts/verify_environment.py` | Verify environment health, exact dependency pin compliance, and entry points. |
+| `python -m manet` | Launch the full-screen Interactive Terminal UI application (`MANET IDS`). |
+| `python -m pytest -q` | Run the complete automated test suite (293 tests across 38 modules). |
+| `python -m pytest tests/test_manet_import_boundaries.py tests/test_import_boundaries.py -q` | Fast static AST import boundary enforcement checks (7 tests). |
+| `python -m pytest tests/test_legacy_cli_compat.py -q` | Run subprocess CLI compatibility regression harness. |
 | `python -m simulator.run_scenario --scenario <json> --seed <int> --out <dir>` | Run an individual simulation scenario. |
-| `python scripts/build_dataset.py` | **Run FIRST** — generate seed-partitioned train (`data/train.csv`) and test (`data/test.csv`) CSVs into `data/`; add `--multi-attack` for the canonical Blackhole+Grayhole dataset (52,200 rows: train 34,800 from seeds 42 & 43; test 17,400 from seed 44). Must precede `ml.train`. |
-| `python -m ml.train` | Train Random Forest, Decision Tree, and SVM pipelines with 5-fold Stratified CV; writes candidate pipelines to `ml/models/<name>.joblib`. Requires `data/train.csv` from `build_dataset.py` (run above). |
-| `python -m ml.evaluate` | Evaluate trained models on the held-out test split and export metrics; selects the champion under the FPR gate (`FPR_GATE = 0.01` in `ml/evaluate.py` — candidates above the gate are disqualified; evaluation aborts if none pass) and writes `ml/models/best_model.joblib` + `ml/models/model_metadata.json`. Requires candidate joblibs from `ml.train` (run above). |
-| `python -m simulator.run_scenario --scenario <json> --seed <int> --out <dir> --ids` | Run a scenario with real-time Online IDS mitigation. Requires `ml/models/best_model.joblib` (regenerated via the dataset → `ml.train` → `ml.evaluate` rows above). |
+| `python scripts/build_dataset.py --multi-attack` | Generate seed-partitioned train (`data/train.csv`) and test (`data/test.csv`) datasets (52,200 rows). |
+| `python -m ml.train` | Train Random Forest, Decision Tree, and SVM pipelines with 5-fold Stratified CV. |
+| `python -m ml.evaluate` | Evaluate trained models on held-out test split under the FPR gate (`FPR <= 1.0%`). |
+| `python -m simulator.run_scenario --scenario <json> --seed <int> --out <dir> --ids` | Run a scenario with real-time Online IDS mitigation. |
 | `python scripts/run_generalization_matrix.py` | Run the 18-combination cross-scenario generalization benchmark. |
-| `python scripts/run_closed_loop_benchmark.py` | Run the authoritative 36-run 3-way comparative QoS benchmark triad. Requires `ml/models/best_model.joblib`. |
+| `python scripts/run_closed_loop_benchmark.py` | Run the authoritative 36-run 3-way comparative QoS benchmark triad. |
 | `python -m ml.plots` | Generate all publication-grade 300 DPI figures in `results/plots/`. |
+
+---
 
 ## Model Artifact Regeneration
 
-The trained model binaries (`ml/models/*.joblib`, including the champion `ml/models/best_model.joblib`) are excluded from version control by the `.gitignore` key `ml/models/*.joblib`. Because every stochastic component is explicitly seeded (Engineering Contract 2), regeneration is lossless and equivalent: identical seeds reproduce identical artifacts. Fresh-clone readers should use the Step-0 walkthrough in [docs/GETTING-STARTED.md](GETTING-STARTED.md) or the README.md Quick Start before attempting any `--ids` or ML workflow.
-
-Regenerate with the three-command sequence from the repository root:
+The trained model binaries (`ml/models/*.joblib`, including champion `ml/models/best_model.joblib`) are excluded from version control via `.gitignore`. Regeneration is lossless and deterministic from the canonical seeds:
 
 ```powershell
 python scripts/build_dataset.py --multi-attack
@@ -40,9 +48,10 @@ python -m ml.train
 python -m ml.evaluate
 ```
 
-Expected artifacts: `data/train.csv` and `data/test.csv` from the dataset builder (52,200 rows: train 34,800 from seeds 42 & 43; test 17,400 from seed 44), candidate pipelines `ml/models/{random_forest,decision_tree,svm}.joblib` from `python -m ml.train`, and the FPR-gated champion `ml/models/best_model.joblib` + `ml/models/model_metadata.json` from `python -m ml.evaluate`. The gate is `FPR <= 1.0%` (`FPR_GATE = 0.01` in `ml/evaluate.py`): any candidate exceeding 1.0% FPR is disqualified from champion selection, and evaluation aborts if no candidate passes. Verified reference champion: Random Forest, F1 0.7593, FPR 0.0099 (0.99%).
+- **Output:** `data/train.csv` (34,800 rows), `data/test.csv` (17,400 rows), candidate pipelines `ml/models/{random_forest,decision_tree,svm}.joblib`, and champion `ml/models/best_model.joblib` + `ml/models/model_metadata.json`.
+- **FPR Gate:** Any candidate exceeding 1.0% FPR is disqualified from champion selection. Verified champion: Random Forest, F1 0.7593, FPR 0.0099 (0.99%).
 
-Caution: never commit generated `data/`, `traces/`, bulk `results/` records, or `ml/models/*.joblib` — this is already enforced by `.gitignore`. Keep `ml/models/model_metadata.json` diffs small and commit them only when intentional.
+---
 
 ## Adding a New Attack Strategy
 
@@ -81,7 +90,7 @@ class MyAttackStrategy(AttackStrategy):
 
 ### Step 2: Register the Strategy in `attacks/registry.py`
 
-Add your strategy class to the factory dictionary in [attacks/registry.py](file:///C:/Users/KIIT0001/Documents/projects/Machine%20Learning-Based%20Intrusion%20Detection%20System%20for%20MANET/attacks/registry.py):
+Add your strategy class to `STRATEGY_REGISTRY`:
 
 ```python
 from attacks.my_attack import MyAttackStrategy
@@ -99,22 +108,27 @@ Create `tests/test_attacks_my_attack.py` asserting:
 1. Strategy initialization and parameter parsing.
 2. Routing behavior changes (e.g., drops vs forwards).
 3. Non-interference with honest nodes.
-4. Conformance to architectural import boundaries (asserted automatically by `tests/test_import_boundaries.py`).
+4. Conformance to architectural import boundaries (`tests/test_import_boundaries.py`).
+
+---
 
 ## Code Style & Conventions
 
-- **Python Version:** 3.11.8.
+- **Python Version:** 3.11.8 (native Windows).
 - **Style Guide:** Follow PEP 8 (4 spaces indent, snake_case for functions/variables, PascalCase for classes, UPPER_CASE for constants).
 - **Paths:** Always use `pathlib.Path` for cross-platform Windows compatibility; never concatenate paths with raw slashes or backslashes.
 - **Type Annotations:** Use typing hints (`typing.Optional`, `typing.List`, `typing.Dict`, `typing.Tuple`).
-- **Dependencies:** Never add heavy framework dependencies (e.g., PyTorch, TensorFlow, Flask) to the core simulator or ML engine.
+- **Dependencies:** Strictly adhere to the 10 pinned dependencies in `requirements.txt`. Never add unpinned or compiled C++ dependencies.
+
+---
 
 ## Branching & Pull Request Workflow
 
 1. **Default Branch:** `main`.
 2. **Branch Naming:** Use feature branches (`feat/attack-rreq-flood`, `fix/quarantine-decay-timer`).
-3. **Pre-Commit Checks:** Run `python -m pytest` locally and ensure all 79 tests pass before opening a PR.
-4. **PR Guidelines:**
+3. **Pre-Commit Checks:** Run `python -m pytest -q` locally and ensure all 290+ tests pass before opening a PR.
+4. **AST Boundary Gate:** Ensure `python -m pytest tests/test_manet_import_boundaries.py tests/test_import_boundaries.py -q` reports 0 violations.
+5. **PR Guidelines:**
    - Clearly document scenario configurations and random seeds used for testing.
    - Attach side-by-side QoS comparison tables for any changes affecting routing protocols.
    - Maintain provenance: all benchmark numbers in PR descriptions must trace to an executable scenario and seed.
