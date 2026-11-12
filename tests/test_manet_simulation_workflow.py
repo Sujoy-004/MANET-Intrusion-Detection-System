@@ -343,7 +343,7 @@ async def test_step3_train_champion_button(tmp_path: Path):
         assert btn_train.label == "Calculate Best Model"
 
         # Press Calculate Best Model button
-        btn_train.press()
+        step3.action_train_champion()
         await step3.workers.wait_for_complete()
         await pilot.pause()
 
