@@ -41,7 +41,7 @@ PINNED_DEPENDENCIES: dict[str, tuple[str, str]] = {
     "networkx": ("networkx", "3.6.1"),
     "sklearn": ("scikit-learn", "1.8.0"),
     "pandas": ("pandas", "3.0.2"),
-    "numpy": ("numpy", "1.26.4"),
+    "numpy": ("numpy", "2.3.3"),
     "matplotlib": ("matplotlib", "3.10.8"),
     "seaborn": ("seaborn", "0.13.2"),
     "joblib": ("joblib", "1.5.3"),

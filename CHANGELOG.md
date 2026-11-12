@@ -5,6 +5,11 @@ All notable changes to the Machine Learning-Based Intrusion Detection System for
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- **Python 3.13 Fresh-Clone Bootstrap Failure:** Bumped the `numpy` pin from `1.26.4` to `2.3.3` in `requirements.txt` (mirrored in `scripts/verify_environment.py`). numpy 1.26.4 ships no CPython 3.13+ wheels, so `pip install -r requirements.txt` aborted during a Meson source build on wheel-less interpreters, leaving the entire environment untouched (`simpy`/`textual` absent, all pinned packages drifted, CLI/TUI entrypoints failing on `No module named 'simpy'`). numpy 2.3.3 provides wheels for CPython 3.11-3.14 and satisfies pandas 3.0.2's `numpy>=2.3.3` floor on Python >= 3.14.
+
 ## [2.0.0] - 2026-11-11
 
 ### Added
