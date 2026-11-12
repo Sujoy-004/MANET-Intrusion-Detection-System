@@ -7,8 +7,9 @@ data/
 results/*
 !results/plots/
 
-# Model binaries (regenerate deterministically from seeds; model_metadata.json stays tracked)
+# Model binaries (champion model is tracked for instant out-of-the-box execution)
 ml/models/*.joblib
+!ml/models/best_model.joblib
 
 # Python
 __pycache__/

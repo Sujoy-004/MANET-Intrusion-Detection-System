@@ -161,8 +161,33 @@ class ConcreteSimulationExecutor:
         return metrics
 
 
-def create_app(**kwargs: Any) -> ManetApp:
+def ensure_champion_model(project_root: Optional[Path] = None) -> None:
+    """Ensure the champion model exists on disk, training and evaluating if missing."""
+    root = (project_root or get_project_root()).resolve()
+    model_path = root / "ml" / "models" / "best_model.joblib"
+    if model_path.is_file() and model_path.stat().st_size > 0:
+        return
+
+    import sys
+    if str(root) not in sys.path:
+        sys.path.insert(0, str(root))
+
+    train_csv = root / "data" / "train.csv"
+    if not (train_csv.is_file() and train_csv.stat().st_size > 0):
+        from scripts.build_dataset import main as build_dataset_main
+        build_dataset_main(["--multi-attack"])
+
+    from ml.train import tune_and_save
+    tune_and_save(train_path=str(train_csv), models_dir=str(root / "ml" / "models"))
+
+    from ml.evaluate import main as evaluate_main
+    evaluate_main()
+
+
+def create_app(auto_bootstrap: bool = True, **kwargs: Any) -> ManetApp:
     """Instantiate ManetApp injected with ConcreteSimulationExecutor."""
+    if auto_bootstrap:
+        ensure_champion_model()
     executor = ConcreteSimulationExecutor()
     return ManetApp(executor=executor, **kwargs)
 
@@ -170,4 +195,5 @@ def create_app(**kwargs: Any) -> ManetApp:
 __all__ = [
     "ConcreteSimulationExecutor",
     "create_app",
+    "ensure_champion_model",
 ]
