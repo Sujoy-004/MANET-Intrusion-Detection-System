@@ -161,6 +161,41 @@ class ConcreteSimulationExecutor:
         return metrics
 
 
+class ConcreteModelTrainer:
+    """Concrete model trainer implementing ModelTrainingExecutorProtocol."""
+
+    def train_champion_model(
+        self,
+        progress_cb: Callable[[str, float], None],
+    ) -> Dict[str, Any]:
+        """Execute dataset generation, training, and evaluation with progress updates."""
+        root = get_project_root().resolve()
+        import sys
+        if str(root) not in sys.path:
+            sys.path.insert(0, str(root))
+
+        # Stage 1: Dataset build
+        progress_cb("Stage 1/3: Checking/generating multi-attack dataset...", 0.15)
+        train_csv = root / "data" / "train.csv"
+        if not (train_csv.is_file() and train_csv.stat().st_size > 0):
+            from scripts.build_dataset import main as build_dataset_main
+            build_dataset_main(["--multi-attack"])
+        progress_cb("Stage 1/3 Complete: Dataset ready (34,800 train rows).", 0.35)
+
+        # Stage 2: Train candidate models
+        progress_cb("Stage 2/3: Training candidate models (Random Forest, Decision Tree, SVM)...", 0.45)
+        from ml.train import tune_and_save
+        tune_and_save(train_path=str(root / "data" / "train.csv"), models_dir=str(root / "ml" / "models"))
+        progress_cb("Stage 2/3 Complete: Candidate models trained & persisted.", 0.75)
+
+        # Stage 3: Evaluate and persist champion
+        progress_cb("Stage 3/3: Evaluating against FPR <= 1.0% gate & selecting champion...", 0.85)
+        from ml.evaluate import main as evaluate_main
+        evaluate_main()
+        progress_cb("Stage 3/3 Complete: Champion model ready (best_model.joblib).", 1.0)
+        return {"status": "success", "model_path": str(root / "ml" / "models" / "best_model.joblib")}
+
+
 def ensure_champion_model(project_root: Optional[Path] = None) -> None:
     """Ensure the champion model exists on disk, training and evaluating if missing."""
     root = (project_root or get_project_root()).resolve()
@@ -185,14 +220,16 @@ def ensure_champion_model(project_root: Optional[Path] = None) -> None:
 
 
 def create_app(auto_bootstrap: bool = True, **kwargs: Any) -> ManetApp:
-    """Instantiate ManetApp injected with ConcreteSimulationExecutor."""
+    """Instantiate ManetApp injected with ConcreteSimulationExecutor and ConcreteModelTrainer."""
     if auto_bootstrap:
         ensure_champion_model()
     executor = ConcreteSimulationExecutor()
-    return ManetApp(executor=executor, **kwargs)
+    model_trainer = ConcreteModelTrainer()
+    return ManetApp(executor=executor, model_trainer=model_trainer, **kwargs)
 
 
 __all__ = [
+    "ConcreteModelTrainer",
     "ConcreteSimulationExecutor",
     "create_app",
     "ensure_champion_model",

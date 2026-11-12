@@ -301,6 +301,61 @@ async def test_ids_gating(tmp_path: Path):
 
 
 @pytest.mark.asyncio
+async def test_step3_train_champion_button(tmp_path: Path):
+    """Verify clicking 'Calculate Best Model' in Step 3 executes training and unblocks launch."""
+    target_model = tmp_path / "best_model.joblib"
+    app = DummyStep3App(model_path=target_model)
+
+    class MockTrainer:
+        def train_champion_model(self, progress_cb):
+            progress_cb("Step 1/3: Preparing dataset...", 0.3)
+            progress_cb("Step 2/3: Training models...", 0.6)
+            progress_cb("Step 3/3: Evaluating...", 1.0)
+            target_model.write_bytes(b"mock_trained_champion_model")
+            return {"status": "success", "model_path": str(target_model)}
+
+    app.model_trainer = MockTrainer()
+
+    async with app.run_test() as pilot:
+        step3 = app.query_one("#step-preflight-review", StepReviewWidget)
+        btn_launch = step3.query_one("#btn-review-launch", Button)
+        btn_train = step3.query_one("#btn-train-champion", Button)
+
+        config_with_ids = {
+            "scenario_id": "test_ids_sim",
+            "nodes": 30,
+            "duration": 100.0,
+            "seed": 42,
+            "flows": [{"src": 0, "dst": 29, "rate_pps": 4.0}],
+            "ids": {"enabled": True},
+        }
+        step3.update_review(
+            config=config_with_ids,
+            run_tag="test_tag",
+            scenario_name="test_ids_sim",
+            mode="custom",
+            model_path=target_model,
+        )
+        await pilot.pause()
+
+        assert btn_launch.disabled is True
+        assert btn_train.display is True
+        assert btn_train.label == "Calculate Best Model"
+
+        # Press Calculate Best Model button
+        btn_train.press()
+        await step3.workers.wait_for_complete()
+        await pilot.pause()
+
+        # Launch button must now be enabled and model present
+        assert target_model.is_file()
+        assert btn_launch.disabled is False
+        assert btn_train.label == "Recalculate Best Model"
+        model_content = step3.query_one("#review-model-content", Static)
+        assert "CHAMPION MODEL PRESENT" in str(model_content.render())
+
+
+@pytest.mark.asyncio
 async def test_review_confirmation(tmp_path: Path):
     """Verify pre-flight review confirmation allocates directory and writes manifest (TUI-13, TUI-14)."""
     ws_root = tmp_path / ".manet-workspace"

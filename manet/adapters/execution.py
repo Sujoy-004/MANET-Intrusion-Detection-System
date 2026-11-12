@@ -57,7 +57,19 @@ class SimulationExecutorProtocol(Protocol):
         ...
 
 
+class ModelTrainingExecutorProtocol(Protocol):
+    """Protocol defining the model training/calculation contract for background workers."""
+
+    def train_champion_model(
+        self,
+        progress_cb: Callable[[str, float], None],
+    ) -> Dict[str, Any]:
+        """Execute dataset generation, training, and evaluation with progress updates."""
+        ...
+
+
 __all__ = [
+    "ModelTrainingExecutorProtocol",
     "SimulationExecutorProtocol",
     "TelemetryEvent",
     "TelemetrySinkProtocol",

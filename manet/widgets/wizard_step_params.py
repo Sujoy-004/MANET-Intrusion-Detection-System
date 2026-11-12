@@ -21,6 +21,7 @@ from textual.widgets import (
 )
 
 from manet.adapters.scenario import ScenarioPreset
+from manet.runtime.paths import get_project_root
 from manet.adapters.simulation_config import (
     DEFAULT_AREA,
     DEFAULT_CUSTOM_DURATION,
@@ -204,6 +205,7 @@ class StepParamsWidget(VerticalScroll):
             with Horizontal(classes="form-row"):
                 yield Label("IDS Mitigation Toggle:", classes="field-label")
                 yield Switch(value=False, id="switch-ids")
+                yield Static("", id="lbl-ids-hint")
 
         # Collapsible Advanced Section
         with Collapsible(title="Advanced Network Parameters", collapsed=True, id="collapsible-advanced"):
@@ -392,6 +394,22 @@ class StepParamsWidget(VerticalScroll):
                     self._rate_manually_edited = True
             except (ValueError, TypeError):
                 self._rate_manually_edited = True
+
+    def on_switch_changed(self, event: Switch.Changed) -> None:
+        """Provide immediate contextual feedback when IDS mitigation is toggled."""
+        if event.switch.id == "switch-ids":
+            try:
+                hint = self.query_one("#lbl-ids-hint", Static)
+                if event.value:
+                    model_p = get_project_root() / "ml" / "models" / "best_model.joblib"
+                    if model_p.is_file() and model_p.stat().st_size > 0:
+                        hint.update("  [bold $success]✓ Model Ready[/]")
+                    else:
+                        hint.update("  [bold $warning]⚠ Model Missing (calculable in Step 3)[/]")
+                else:
+                    hint.update("")
+            except Exception:
+                pass
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle Back and Next button actions."""

@@ -156,10 +156,17 @@ class ManetApp(App):
         Binding("ctrl+c", "quit", "Quit", show=False, priority=True),
     ]
 
-    def __init__(self, *args: Any, executor: Optional[Any] = None, **kwargs: Any) -> None:
-        """Initialize ManetApp, supervisor, console driver, and in-memory session settings."""
+    def __init__(
+        self,
+        *args: Any,
+        executor: Optional[Any] = None,
+        model_trainer: Optional[Any] = None,
+        **kwargs: Any,
+    ) -> None:
+        """Initialize ManetApp, supervisor, console driver, model trainer, and in-memory session settings."""
         super().__init__(*args, **kwargs)
         self.supervisor = WorkloadSupervisor(executor=executor)
+        self.model_trainer = model_trainer
         self.console_driver = ConsoleDriver(self)
         self.settings = SessionSettings()
         self._shutdown_timer: Optional[Timer] = None
@@ -296,6 +303,28 @@ class ManetApp(App):
     def action_toggle_reduced_motion(self) -> None:
         """Toggle UI motion and animation effects."""
         self.settings.reduced_motion = not self.settings.reduced_motion
+
+    def action_train_champion_model(self) -> None:
+        """Trigger calculation of the champion ML model."""
+        if not self.is_screen_installed("simulation"):
+            try:
+                self.notify("Simulation screen is not installed.", severity="error")
+            except Exception:
+                pass
+            return
+        self.switch_screen("simulation")
+        try:
+            wizard = self.get_screen("simulation")
+            switcher = wizard.query_one("#wizard-switcher")
+            switcher.current = "step-preflight-review"
+            review = wizard.query_one("#step-preflight-review")
+            if hasattr(review, "action_train_champion"):
+                review.action_train_champion()
+        except Exception as exc:
+            try:
+                self.notify(f"Could not trigger model calculation: {exc}", severity="error")
+            except Exception:
+                pass
 
 
 __all__ = ["ManetApp"]

@@ -7,10 +7,12 @@ import re
 from typing import Any
 
 from rich.markup import escape
+from textual import work
 from textual.app import ComposeResult
-from textual.containers import Container, VerticalScroll
+from textual.containers import Container, Horizontal, VerticalScroll
 from textual.message import Message
-from textual.widgets import Button, Static
+from textual.widgets import Button, ProgressBar, Static
+from textual.worker import get_current_worker
 
 from manet.adapters.simulation_config import validate_structural_invariants
 from manet.adapters.workspace import sanitize_run_tag
@@ -92,6 +94,28 @@ class StepReviewWidget(VerticalScroll):
         color: $error;
     }
 
+    #review-model-actions {
+        layout: horizontal;
+        height: auto;
+        margin-top: 1;
+        align: left middle;
+    }
+
+    #btn-train-champion {
+        margin-right: 2;
+        min-width: 26;
+    }
+
+    #bar-train-champion {
+        width: 32;
+        margin-right: 2;
+        display: none;
+    }
+
+    #lbl-train-champion-status {
+        color: $info-blue;
+    }
+
     #review-workspace-box {
         margin-top: 1;
         margin-bottom: 1;
@@ -157,6 +181,10 @@ class StepReviewWidget(VerticalScroll):
         with Container(id="review-model-status-box", classes="model-ok"):
             yield Static("Champion Model Status", classes="review-section-title")
             yield Static("", id="review-model-content")
+            with Horizontal(id="review-model-actions"):
+                yield Button("Calculate Best Model", variant="primary", id="btn-train-champion")
+                yield ProgressBar(id="bar-train-champion", show_percentage=True)
+                yield Static("", id="lbl-train-champion-status")
 
         with Container(id="review-workspace-box"):
             yield Static("Target Workspace Destination", classes="review-section-title")
@@ -222,6 +250,7 @@ class StepReviewWidget(VerticalScroll):
         # 2. Check Champion Model Status
         model_box = self.query_one("#review-model-status-box")
         model_content = self.query_one("#review-model-content", Static)
+        btn_train = self.query_one("#btn-train-champion", Button)
         model_exists = False
         try:
             if self.model_path.is_file() and self.model_path.stat().st_size > 0:
@@ -230,6 +259,7 @@ class StepReviewWidget(VerticalScroll):
             model_exists = False
 
         if ids_enabled:
+            btn_train.display = True
             if model_exists:
                 model_box.remove_class("model-missing")
                 model_box.add_class("model-ok")
@@ -237,19 +267,29 @@ class StepReviewWidget(VerticalScroll):
                     f"[bold $success]CHAMPION MODEL PRESENT:[/] {escape(str(self.model_path))}\n"
                     f"[dim]Artifact verified on disk. OnlineIDS active isolation gate enabled.[/]"
                 )
+                btn_train.label = "Recalculate Best Model"
+                btn_train.variant = "default"
             else:
                 model_box.remove_class("model-ok")
                 model_box.add_class("model-missing")
                 model_content.update(
                     "[bold $error]CHAMPION MODEL MISSING - IDS DISABLED[/]\n"
                     f"[dim]Model artifact {escape(str(self.model_path))} was not found on disk.[/]\n"
-                    "[bold $warning]Remediation Command:[/] "
+                    "[bold $warning]Remediation:[/] Click [bold cyan]'Calculate Best Model'[/] below or run: "
                     "[bold cyan]python scripts/build_dataset.py --multi-attack && python -m ml.train && python -m ml.evaluate[/]"
                 )
+                btn_train.label = "Calculate Best Model"
+                btn_train.variant = "primary"
         else:
             model_box.remove_class("model-missing")
             model_box.remove_class("model-ok")
             model_content.update("[dim]IDS mitigation is not active for this run.[/]")
+            if not model_exists:
+                btn_train.display = True
+                btn_train.label = "Calculate Best Model"
+                btn_train.variant = "default"
+            else:
+                btn_train.display = False
 
         # 3. Workspace Path Preview (truthful pattern with configured workspace root)
         clean_scenario = re.sub(r'[\s\\/:*?"<>|]+', "_", str(scenario_name).strip()).strip("._") or "scenario"
@@ -297,11 +337,117 @@ class StepReviewWidget(VerticalScroll):
             pass
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
-        """Handle Back to Edit and Confirm & Allocate Run buttons."""
+        """Handle Back to Edit, Confirm & Allocate Run, and Calculate Best Model buttons."""
         if event.button.id == "btn-review-back":
             self.post_message(self.ReviewBack())
         elif event.button.id == "btn-review-launch":
             self.action_confirm_launch()
+        elif event.button.id == "btn-train-champion":
+            self.action_train_champion()
+
+    def action_train_champion(self) -> None:
+        """Trigger asynchronous champion model training with live progress reporting."""
+        btn_train = self.query_one("#btn-train-champion", Button)
+        if btn_train.disabled:
+            return
+        btn_train.disabled = True
+        btn_train.label = "Calculating Best Model..."
+
+        bar = self.query_one("#bar-train-champion", ProgressBar)
+        bar.display = True
+        bar.update(total=100, progress=0)
+
+        lbl = self.query_one("#lbl-train-champion-status", Static)
+        lbl.update("[cyan]Initializing ML pipeline...[/]")
+
+        self.train_champion_worker()
+
+    @work(thread=True)
+    def train_champion_worker(self) -> None:
+        """Run model calculation in background thread with live progress updates."""
+        worker = get_current_worker()
+        try:
+            trainer = getattr(self.app, "model_trainer", None)
+            if trainer is None:
+                from bootstrap import ConcreteModelTrainer
+                trainer = ConcreteModelTrainer()
+
+            def progress_cb(message: str, fraction: float) -> None:
+                if worker.is_cancelled:
+                    return
+                try:
+                    self.app.call_from_thread(self._on_train_progress, message, fraction)
+                except Exception:
+                    pass
+
+            trainer.train_champion_model(progress_cb=progress_cb)
+
+            if not worker.is_cancelled:
+                try:
+                    self.app.call_from_thread(self._on_train_complete)
+                except Exception:
+                    pass
+        except Exception as exc:
+            if not worker.is_cancelled:
+                try:
+                    self.app.call_from_thread(self._on_train_failed, str(exc))
+                except Exception:
+                    pass
+
+    def _on_train_progress(self, message: str, fraction: float) -> None:
+        """Update progress bar and status label on main thread."""
+        try:
+            bar = self.query_one("#bar-train-champion", ProgressBar)
+            bar.update(progress=int(fraction * 100))
+            lbl = self.query_one("#lbl-train-champion-status", Static)
+            lbl.update(f"[cyan]{escape(message)}[/]")
+        except Exception:
+            pass
+
+    def _on_train_complete(self) -> None:
+        """Handle training completion: refresh review and re-enable controls."""
+        try:
+            bar = self.query_one("#bar-train-champion", ProgressBar)
+            bar.update(progress=100)
+            lbl = self.query_one("#lbl-train-champion-status", Static)
+            lbl.update("[bold $success]Champion model calculated successfully![/]")
+
+            btn_train = self.query_one("#btn-train-champion", Button)
+            btn_train.disabled = False
+            btn_train.label = "Recalculate Best Model"
+            btn_train.variant = "default"
+
+            # Re-run review validation with current configuration
+            self.update_review(
+                config=self.config,
+                run_tag=self.run_tag,
+                scenario_name=self.scenario_name,
+                mode=self.mode,
+                model_path=self.model_path,
+            )
+
+            # If workspace screen exists, trigger diagnostics refresh
+            if self.app.is_screen_installed("workspace"):
+                try:
+                    workspace_screen = self.app.get_screen("workspace")
+                    if hasattr(workspace_screen, "refresh_diagnostics"):
+                        workspace_screen.refresh_diagnostics()
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+    def _on_train_failed(self, error_message: str) -> None:
+        """Handle training failure."""
+        try:
+            lbl = self.query_one("#lbl-train-champion-status", Static)
+            lbl.update(f"[bold $error]Model training failed:[/] {escape(error_message)}")
+            btn_train = self.query_one("#btn-train-champion", Button)
+            btn_train.disabled = False
+            btn_train.label = "Retry Calculate Best Model"
+            btn_train.variant = "primary"
+        except Exception:
+            pass
 
     def action_confirm_launch(self) -> None:
         """Trigger launch confirmation if no validation errors exist."""

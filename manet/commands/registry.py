@@ -103,6 +103,13 @@ _COMMANDS: tuple[AppCommand, ...] = (
         parameters=(),
         action="action_show_results",
     ),
+    AppCommand(
+        name="ml:train",
+        display="Calculate Champion Model",
+        help="Train candidate ML models, evaluate against FPR gate, and persist champion model",
+        parameters=(),
+        action="action_train_champion_model",
+    ),
 )
 
 
